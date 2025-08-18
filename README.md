@@ -1,7 +1,10 @@
 # BIC-QA 智能问答助手
 
-<div align="right">
-[![中文](https://img.shields.io/badge/语言-中文-blue?style=for-the-badge)](README.md) [![English](https://img.shields.io/badge/Language-English-green?style=for-the-badge)](README_EN.md)
+<div align="center">
+
+## 🌐 语言选择 / Language Selection
+
+[![中文版](https://img.shields.io/badge/📖_中文版_README-blue?style=for-the-badge&logo=github)](README.md) [![English Version](https://img.shields.io/badge/📖_English_README-green?style=for-the-badge&logo=github)](README_EN.md)
 
 </div>
 
