@@ -1,34 +1,35 @@
-# BIC-QA 智能问答助手
+# BIC-QA Intelligent Q&A Assistant
 
 <div align="center">
 
-## 🌐 语言选择 / Language Selection
+## 🌐 Language Selection / 语言选择
 
 [![中文版](https://img.shields.io/badge/📖_中文版_README-blue?style=for-the-badge&logo=github)](README.md) [![English Version](https://img.shields.io/badge/📖_English_README-green?style=for-the-badge&logo=github)](README_EN.md)
 
 </div>
 
-## 📖 产品介绍
+## 📖 Product Introduction
 
-**BIC-QA（Business Intelligence & Knowledge Query Assistant）** 是一款专为企业级数据库知识管理而设计的智能问答系统。作为新一代数据库知识检索解决方案，BIC-QA 致力于为数据库管理员、开发人员和运维工程师提供高效、精准的知识查询服务。
+**BIC-QA (Business Intelligence & Knowledge Query Assistant)** is an intelligent Q&A system specifically designed for enterprise-level database knowledge management. As a next-generation database knowledge retrieval solution, BIC-QA is committed to providing efficient and accurate knowledge query services for database administrators, developers, and operations engineers.
 
-### 🎯 核心定位
-BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据库系统，特别针对国产数据库生态进行了深度优化。系统集成了丰富的数据库知识库，涵盖 SQL 语法、性能优化、故障诊断、最佳实践等全方位内容，为用户提供即问即答的专业数据库技术支持。
+### 🎯 Core Positioning
+BIC-QA is a comprehensive database knowledge Q&A platform that supports all mainstream database systems, with deep optimization specifically for domestic database ecosystems. The system integrates rich database knowledge bases covering SQL syntax, performance optimization, troubleshooting, best practices, and comprehensive content, providing users with instant professional database technical support.
 
-### 🗄️ 数据库支持
-- **国际主流数据库**：Oracle、MySQL、PostgreSQL、SQL Server、MongoDB、Redis 等
-- **国产数据库优先支持**：达梦数据库（DM）、人大金仓（KingBase）、OceanBase、GoldenDB、华为 GaussDB、腾讯 TDSQL 等
+### 🗄️ Database Support
+- **International Mainstream Databases**: Oracle, MySQL, PostgreSQL, SQL Server, MongoDB, Redis, etc.
+- **Domestic Database Priority Support**: DM Database (DM), KingBase, OceanBase, GoldenDB, Huawei GaussDB, Tencent TDSQL, etc.
+- **Cloud-Native Databases**: Alibaba Cloud PolarDB, Tencent Cloud TDSQL-C, Huawei Cloud GaussDB, etc.
 
-### 🚀 技术优势
-- **智能语义理解**：基于先进的 NLP 技术，准确理解用户查询意图
-- **知识图谱构建**：构建完整的数据库知识关联网络，提供上下文相关的答案
-- **实时知识更新**：持续更新数据库版本特性和最佳实践
-- **多维度检索**：支持按数据库类型、问题类型、技术领域等多维度精准检索
+### 🚀 Technical Advantages
+- **Intelligent Semantic Understanding**: Based on advanced NLP technology for accurate user query intent understanding
+- **Knowledge Graph Construction**: Builds complete database knowledge association networks for contextually relevant answers
+- **Real-time Knowledge Updates**: Continuously updates database version features and best practices
+- **Multi-dimensional Retrieval**: Supports precise retrieval by database type, problem type, technical domain, and other dimensions
 
 <div align="center">
 <img src="icons/logo.png" alt="BIC-QA Logo" width="600" height="150">
 
-**功能强大的浏览器扩展插件，提供智能问答与知识库检索服务**
+**A powerful browser extension providing intelligent Q&A and knowledge base retrieval services**
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Web%20Store-blue?logo=google-chrome)](https://chrome.google.com/webstore)
 [![Edge Add-ons](https://img.shields.io/badge/Edge-Add--ons-blue?logo=microsoft-edge)](https://microsoftedge.microsoft.com/addons)
@@ -39,327 +40,327 @@ BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据�
 
 <div align="center">
 
-## 🚀 立即下载
+## 🚀 Download Now
 
-[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
 
-**版本**: v1.0.6 | **大小**: ~15MB | **更新日期**: 2025年8月
+**Version**: v1.0.6 | **Size**: ~15MB | **Updated**: August 2025
 
 </div>
 
-## 📋 目录
+## 📋 Table of Contents
 
-- [✨ 功能特性](#-功能特性)
-- [🚀 快速开始](#-快速开始)
-- [⚙️ 配置指南](#️-配置指南)
-- [🎯 使用说明](#-使用说明)
-- [🔧 高级功能](#-高级功能)
-- [🛠️ 故障排除](#️-故障排除)
-- [📱 系统要求](#-系统要求)
-- [🔒 隐私安全](#-隐私安全)
-- [📞 技术支持](#-技术支持)
+- [✨ Features](#-features)
+- [🚀 Quick Start](#-quick-start)
+- [⚙️ Configuration Guide](#️-configuration-guide)
+- [🎯 Usage Instructions](#-usage-instructions)
+- [🔧 Advanced Features](#-advanced-features)
+- [🛠️ Troubleshooting](#️-troubleshooting)
+- [📱 System Requirements](#-system-requirements)
+- [🔒 Privacy & Security](#-privacy--security)
+- [📞 Technical Support](#-technical-support)
 
-## ✨ 功能特性
+## ✨ Features
 
-### 🤖 智能问答
-- **多模型支持**：集成 GPT、Claude、本地 Ollama 等多种 AI 模型
-- **流式输出**：实时显示回答内容，提升用户体验
-- **对话管理**：保存历史对话，支持一键清空
-- **智能停止**：随时中断生成过程
+### 🤖 Intelligent Q&A
+- **Multi-model Support**: Integrates GPT, Claude, local Ollama, and various AI models
+- **Streaming Output**: Real-time display of responses for enhanced user experience
+- **Conversation Management**: Save conversation history with one-click clear functionality
+- **Smart Stop**: Interrupt generation process at any time
 
-### 📚 知识库检索
-- **企业级集成**：无缝连接企业知识库系统
-- **智能匹配**：基于相似度的精准内容检索
-- **多库支持**：同时管理多个知识库
-- **结果优化**：智能排序和相关性过滤
+### 📚 Knowledge Base Retrieval
+- **Enterprise Integration**: Seamlessly connect to enterprise knowledge base systems
+- **Intelligent Matching**: Precise content retrieval based on similarity
+- **Multi-library Support**: Manage multiple knowledge bases simultaneously
+- **Result Optimization**: Smart sorting and relevance filtering
 
-### ⚙️ 灵活配置
-- **参数自定义**：温度、相似度、TopN 等参数可调
-- **提示词优化**：支持自定义系统提示词
-- **规则预设**：内置多种预设规则，开箱即用
+### ⚙️ Flexible Configuration
+- **Parameter Customization**: Adjustable temperature, similarity, TopN, and other parameters
+- **Prompt Optimization**: Support for custom system prompts
+- **Rule Presets**: Built-in multiple preset rules for out-of-the-box use
 
-### 📊 结果管理
-- **一键复制**：快速复制回答内容
-- **格式导出**：支持 HTML 格式导出
-- **反馈系统**：内置评价机制，持续优化体验
+### 📊 Result Management
+- **One-click Copy**: Quickly copy response content
+- **Format Export**: Support HTML format export
+- **Feedback System**: Built-in rating mechanism for continuous experience optimization
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 📦 安装扩展
+### 📦 Install Extension
 
-1. 下载扩展文件到本地
-2. 打开浏览器扩展管理页面
-3. 启用开发者模式
-4. 点击"加载已解压的扩展程序"
-5. 选择扩展文件夹
+1. Download extension files to local machine
+2. Open browser extension management page
+3. Enable developer mode
+4. Click "Load unpacked extension"
+5. Select extension folder
 
-### ⚡ 四步配置
+### ⚡ Four-Step Configuration
 
-#### 步骤 1：用户注册
+#### Step 1: User Registration
 
-![用户注册界面](assets/image-20250815140746815.png)
+![User Registration Interface](assets/image-20250815140746815.png)
 
-1. 打开扩展设置页面
-2. 填写用户名、企业名称和邮箱地址
-3. 点击 **保存** 按钮
-4. 查收邮件获取 API Key
+1. Open extension settings page
+2. Fill in username, company name, and email address
+3. Click **Save** button
+4. Check email for API Key
 
-> ⚠️ **重要提醒**：请勿随意修改默认 URL，以免影响插件正常运行。如已修改，请重置设置恢复默认值。
+> ⚠️ **Important Reminder**: Do not modify the default URL arbitrarily to avoid affecting plugin operation. If already modified, please reset settings to restore default values.
 
-#### 步骤 2：知识库服务配置
+#### Step 2: Knowledge Base Service Configuration
 
-![知识库配置](assets/image-20250815140930391.png)
+![Knowledge Base Configuration](assets/image-20250815140930391.png)
 
-1. 进入知识库服务配置页面
-2. 将邮件中的 API Key 填入对应字段
-3. 点击 **保存** 完成配置
+1. Enter knowledge base service configuration page
+2. Fill in the API Key from email into corresponding fields
+3. Click **Save** to complete configuration
 
-#### 步骤 3：AI 模型配置
+#### Step 3: AI Model Configuration
 
-##### 3.1 配置服务商接口
+##### 3.1 Configure Service Provider Interface
 
-![模型服务商配置](assets/image-20250815141625955.png)
+![Model Service Provider Configuration](assets/image-20250815141625955.png)
 
-1. 打开 **设置** → **模型与服务商**
-2. 添加服务商（如 `ollama`、`deepseek` 等）
-3. 填写对应的 **API 地址** 和 **API Key**（如需要）
+1. Open **Settings** → **Models & Service Providers**
+2. Add service providers (such as `ollama`, `deepseek`, etc.)
+3. Fill in corresponding **API Address** and **API Key** (if required)
 
-**本地 Ollama 配置示例**：
+**Local Ollama Configuration Example**:
 ```bash
-API 地址：http://localhost:11434/v1
+API Address: http://localhost:11434/v1
 ```
 
-4. 点击 **测试** 连接，系统自动发现可用模型
-5. 勾选所需模型，点击 **批量纳管** 保存
+4. Click **Test** to connect, system automatically discovers available models
+5. Check desired models, click **Batch Management** to save
 
-![模型纳管界面](assets/image-20250815141948338.png)
+![Model Management Interface](assets/image-20250815141948338.png)
 
-> 💡 **提示**：首页下拉菜单会显示 **模型名（服务商）** 格式，避免同名模型混淆。
+> 💡 **Tip**: Homepage dropdown menu displays **Model Name (Service Provider)** format to avoid confusion with same-name models.
 
-##### 3.2 手动配置模型
+##### 3.2 Manual Model Configuration
 
-![模型配置界面](assets/image-20250815142020584.png)
+![Model Configuration Interface](assets/image-20250815142020584.png)
 
-对于不支持自动发现的服务商：
+For service providers that don't support auto-discovery:
 
-1. 点击 **添加模型**
-2. 填写模型名称、Token 限制、温度等参数
-3. 点击 **保存** 完成配置
+1. Click **Add Model**
+2. Fill in model name, token limit, temperature, and other parameters
+3. Click **Save** to complete configuration
 
-![模型参数设置](assets/image-20250815142317185.png)
+![Model Parameter Settings](assets/image-20250815142317185.png)
 
-#### 步骤 4：开始使用
+#### Step 4: Start Using
 
-1. 在首页选择已配置的 **模型（服务商）**
-2. 从 **知识库** 下拉菜单选择目标知识库
-3. 输入问题，点击 **发送** 或按回车键
-4. 享受智能问答体验！
+1. Select configured **Model (Service Provider)** on homepage
+2. Choose target knowledge base from **Knowledge Base** dropdown menu
+3. Input question, click **Send** or press Enter
+4. Enjoy intelligent Q&A experience!
 
-> 💡 **使用技巧**：开启知识库后，系统会自动加载最新配置并优先使用知识库服务。
+> 💡 **Usage Tip**: When knowledge base is enabled, system automatically loads latest configuration and prioritizes knowledge base services.
 
-## ⚙️ 配置指南
+## ⚙️ Configuration Guide
 
-### 🔧 参数规则设置
+### 🔧 Parameter Rule Settings
 
-BIC-QA 支持自定义提示词和检索参数，提供三种预设模式：
+BIC-QA supports custom prompts and retrieval parameters with three preset modes:
 
-| 模式 | 温度 | 相似度 | 适用场景 |
-|------|------|--------|----------|
-| **创意模式** | 高 | 中等 | 需要创造性回答 |
-| **精确模式** | 低 | 高 | 需要准确性优先 |
-| **自定义模式** | 可调 | 可调 | 完全自定义需求 |
+| Mode | Temperature | Similarity | Use Case |
+|------|-------------|------------|----------|
+| **Creative Mode** | High | Medium | Requires creative responses |
+| **Precise Mode** | Low | High | Requires accuracy priority |
+| **Custom Mode** | Adjustable | Adjustable | Fully customizable needs |
 
-**可配置参数**：
-- **提示词（Prompt）**：系统指令模板
-- **温度（Temperature）**：控制回答随机性
-- **相似度（Similarity）**：知识库检索阈值
-- **TopN**：检索结果数量
+**Configurable Parameters**:
+- **Prompt**: System instruction template
+- **Temperature**: Controls response randomness
+- **Similarity**: Knowledge base retrieval threshold
+- **TopN**: Number of retrieval results
 
-> ⚠️ **参数影响**：温度越高创造性越强，相似度/TopN 影响知识库检索范围和数量。
+> ⚠️ **Parameter Impact**: Higher temperature increases creativity, similarity/TopN affects knowledge base retrieval scope and quantity.
 
-## 🎯 使用说明
+## 🎯 Usage Instructions
 
-### 📱 使用模式
+### 📱 Usage Modes
 
-#### 弹窗模式
-- 点击浏览器工具栏的 BIC-QA 图标
-- 适合快速问答和简单问题
-- 界面简洁，响应迅速
+#### Popup Mode
+- Click BIC-QA icon in browser toolbar
+- Suitable for quick Q&A and simple questions
+- Clean interface with rapid response
 
-#### 完整页面模式
-- 在弹窗中点击右上角 **🖥️ 完整页面** 按钮
-- 新标签页打开，提供完整功能
-- 适合复杂对话和长时间使用
+#### Full Page Mode
+- Click **🖥️ Full Page** button in top-right corner of popup
+- Opens in new tab with complete functionality
+- Suitable for complex conversations and extended use
 
-### 🎮 操作指南
+### 🎮 Operation Guide
 
-#### 基础问答
-1. 选择 AI 模型
-2. 选择知识库（可选）
-3. 输入问题
-4. 等待流式回答
-5. 使用复制/导出功能
+#### Basic Q&A
+1. Select AI model
+2. Select knowledge base (optional)
+3. Input question
+4. Wait for streaming response
+5. Use copy/export functions
 
-#### 高级功能
-- **停止生成**：点击停止按钮中断回答
-- **清空对话**：一键清除历史记录
-- **评价反馈**：对回答质量进行评价
-- **参数调整**：实时调整模型参数
+#### Advanced Features
+- **Stop Generation**: Click stop button to interrupt response
+- **Clear Conversation**: One-click clear history
+- **Rating Feedback**: Rate response quality
+- **Parameter Adjustment**: Real-time model parameter adjustment
 
-## 🔧 高级功能
+## 🔧 Advanced Features
 
-### 🔍 知识库管理
-- **多库切换**：支持多个知识库同时管理
-- **智能检索**：基于语义相似度的内容匹配
-- **结果排序**：按相关性自动排序检索结果
+### 🔍 Knowledge Base Management
+- **Multi-library Switching**: Support simultaneous management of multiple knowledge bases
+- **Intelligent Retrieval**: Content matching based on semantic similarity
+- **Result Sorting**: Automatic sorting of retrieval results by relevance
 
-### 📊 对话管理
-- **历史记录**：自动保存所有对话内容
-- **会话导出**：支持 HTML 格式导出
-- **批量操作**：支持批量清空和导出
+### 📊 Conversation Management
+- **History Records**: Automatically save all conversation content
+- **Session Export**: Support HTML format export
+- **Batch Operations**: Support batch clear and export
 
-### ⚡ 性能优化
-- **流式输出**：实时显示生成内容
-- **缓存机制**：智能缓存提升响应速度
-- **并发控制**：防止重复请求
+### ⚡ Performance Optimization
+- **Streaming Output**: Real-time display of generated content
+- **Cache Mechanism**: Smart caching for improved response speed
+- **Concurrency Control**: Prevent duplicate requests
 
-## 🛠️ 故障排除
+## 🛠️ Troubleshooting
 
-### ❗ 常见问题
+### ❗ Common Issues
 
-#### 1. 插件导入失败
+#### 1. Extension Import Failure
 
-**可能原因**：
-- 解压出现文件损坏
-- 浏览器选择插件时候没有选最后一层文件
+**Possible Causes**:
+- File corruption during extraction
+- Browser didn't select the innermost folder when choosing plugin
 
-**解决方案**：
-- 选择的文件夹下有manifest.json,如下所示：
+**Solutions**:
+- Selected folder should contain manifest.json as shown below:
 
-![导入文件层级](assets/q1-chajian.png)
+![Import File Hierarchy](assets/q1-chajian.png)
 
-#### 2. 请求失败
-**可能原因**：
-- 模型服务地址错误
-- 网络连接问题
-- API Key 无效
-- 本地模型权限未放行
+#### 2. Request Failure
+**Possible Causes**:
+- Incorrect model service address
+- Network connection issues
+- Invalid API Key
+- Local model permissions not granted
 
-**解决方案**：
+**Solutions**:
 ```bash
-# 检查服务地址
+# Check service address
 curl http://localhost:11434/v1/models
 
-# 验证网络连接
+# Verify network connection
 ping your-api-endpoint.com
 
-# 配置本地环境变量
-系统变量设置OLLAMA_ORIGINS值为*
+# Configure local environment variables
+Set system variable OLLAMA_ORIGINS to *
 ```
 
-#### 3. 模型无法加载
-**可能原因**：
-- Ollama 服务未启动
-- API 地址格式错误
-- 模型未正确部署
+#### 3. Model Loading Failure
+**Possible Causes**:
+- Ollama service not started
+- Incorrect API address format
+- Model not properly deployed
 
-**解决方案**：
+**Solutions**:
 ```bash
-# 启动 Ollama 服务
+# Start Ollama service
 ollama serve
 
-# 检查模型列表
+# Check model list
 ollama list
 ```
 
-#### 4. 知识库连接失败
-**可能原因**：
-- 知识库服务 URL 错误
-- API Key 过期或无效
-- 网络权限限制
+#### 4. Knowledge Base Connection Failure
+**Possible Causes**:
+- Incorrect knowledge base service URL
+- Expired or invalid API Key
+- Network permission restrictions
 
-**解决方案**：
-- 检查知识库服务状态
-- 重新获取 API Key
-- 验证网络访问权限
+**Solutions**:
+- Check knowledge base service status
+- Re-obtain API Key
+- Verify network access permissions
 
-### 🔍 调试步骤
+### 🔍 Debug Steps
 
-1. **重新加载扩展**
-   - 打开扩展管理页面
-   - 点击重新加载按钮
+1. **Reload Extension**
+   - Open extension management page
+   - Click reload button
 
-2. **清除缓存**
-   - 清除浏览器缓存和 Cookie
-   - 重启浏览器
+2. **Clear Cache**
+   - Clear browser cache and cookies
+   - Restart browser
 
-3. **检查控制台**
-   - 按 F12 打开开发者工具
-   - 查看 Console 错误信息
+3. **Check Console**
+   - Press F12 to open developer tools
+   - View Console error messages
 
-4. **验证配置**
-   - 检查配置文件格式
-   - 确认所有必填字段
+4. **Verify Configuration**
+   - Check configuration file format
+   - Confirm all required fields
 
-## 📱 系统要求
+## 📱 System Requirements
 
-### 🌐 浏览器支持
+### 🌐 Browser Support
 - **Chrome** 88+
 - **Edge** 88+
-- **其他基于 Chromium 的浏览器**
+- **Other Chromium-based browsers**
 
-### 💻 操作系统
+### 💻 Operating Systems
 - **Windows** 10/11
 - **macOS** 10.15+
 - **Linux** (Ubuntu 18.04+)
 
-### 🌍 网络要求
-- 支持 HTTPS/HTTP 请求
-- 稳定的网络连接
-- 防火墙允许扩展访问
+### 🌍 Network Requirements
+- Support HTTPS/HTTP requests
+- Stable network connection
+- Firewall allows extension access
 
-## 🔒 隐私安全
+## 🔒 Privacy & Security
 
-### 🛡️ 数据保护
-- **本地存储**：对话历史存储在本地
-- **加密传输**：所有网络请求使用 HTTPS
-- **权限控制**：最小化权限要求
+### 🛡️ Data Protection
+- **Local Storage**: Conversation history stored locally
+- **Encrypted Transmission**: All network requests use HTTPS
+- **Permission Control**: Minimized permission requirements
 
-### 🔐 安全特性
-- **本地模型**：支持完全本地部署
-- **API 密钥**：安全存储和传输
-- **访问控制**：可配置网络访问权限
+### 🔐 Security Features
+- **Local Models**: Support complete local deployment
+- **API Keys**: Secure storage and transmission
+- **Access Control**: Configurable network access permissions
 
-### 📋 隐私政策
-- 不收集个人敏感信息
-- 不向第三方分享数据
-- 支持数据导出和删除
+### 📋 Privacy Policy
+- No collection of personal sensitive information
+- No data sharing with third parties
+- Support data export and deletion
 
-## 📞 技术支持
+## 📞 Technical Support
 
-### 🆘 获取帮助
-- **文档**：查看详细使用文档
-- **社区**：加入用户讨论群
-- **反馈**：提交问题反馈
+### 🆘 Get Help
+- **Documentation**: View detailed usage documentation
+- **Community**: Join user discussion groups
+- **Feedback**: Submit issue feedback
 
-### 📧 联系方式
-- **邮箱**：support@bic-qa.com
-- **GitHub**：[提交 Issue](https://github.com/your-repo/BIC-QA/issues)
-- **文档**：[在线文档](https://docs.bic-qa.com)
+### 📧 Contact Information
+- **Email**: support@bic-qa.com
+- **GitHub**: [Submit Issue](https://github.com/your-repo/BIC-QA/issues)
+- **Documentation**: [Online Docs](https://docs.bic-qa.com)
 
-### 🔄 更新日志
-- **v1.0.5**：优化性能，修复已知问题
-- **v1.0.4**：新增知识库功能
-- **v1.0.3**：支持本地 Ollama 模型
+### 🔄 Update Log
+- **v1.0.5**: Performance optimization, fixed known issues
+- **v1.0.4**: Added knowledge base functionality
+- **v1.0.3**: Support for local Ollama models
 
 ---
 
 <div align="center">
 
-**BIC-QA 智能问答助手** - 让知识检索更智能，让问答更高效
+**BIC-QA Intelligent Q&A Assistant** - Making knowledge retrieval smarter, making Q&A more efficient
 
-**版本**：v1.0.5 | **更新日期**：2025年8月
+**Version**: v1.0.5 | **Update Date**: August 2025
 
-[⭐ 给我们一个星标](https://github.com/your-repo/BIC-QA) | [📖 使用文档](https://docs.bic-qa.com) | [🐛 报告问题](https://github.com/your-repo/BIC-QA/issues)
+[⭐ Give us a star](https://github.com/your-repo/BIC-QA) | [📖 Documentation](https://docs.bic-qa.com) | [🐛 Report Issues](https://github.com/your-repo/BIC-QA/issues)
 
 </div>
