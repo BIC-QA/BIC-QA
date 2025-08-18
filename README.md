@@ -1,7 +1,26 @@
 # BIC-QA 智能问答助手
 
+<div align="right">
+[![中文](https://img.shields.io/badge/语言-中文-blue?style=for-the-badge)](README.md) [![English](https://img.shields.io/badge/Language-English-green?style=for-the-badge)](README_EN.md)
 
-[ **📥点击此处直接下载** ](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+</div>
+
+## 📖 产品介绍
+
+**BIC-QA（Business Intelligence & Knowledge Query Assistant）** 是一款专为企业级数据库知识管理而设计的智能问答系统。作为新一代数据库知识检索解决方案，BIC-QA 致力于为数据库管理员、开发人员和运维工程师提供高效、精准的知识查询服务。
+
+### 🎯 核心定位
+BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据库系统，特别针对国产数据库生态进行了深度优化。系统集成了丰富的数据库知识库，涵盖 SQL 语法、性能优化、故障诊断、最佳实践等全方位内容，为用户提供即问即答的专业数据库技术支持。
+
+### 🗄️ 数据库支持
+- **国际主流数据库**：Oracle、MySQL、PostgreSQL、SQL Server、MongoDB、Redis 等
+- **国产数据库优先支持**：达梦数据库（DM）、人大金仓（KingBase）、OceanBase、GoldenDB、华为 GaussDB、腾讯 TDSQL 等
+
+### 🚀 技术优势
+- **智能语义理解**：基于先进的 NLP 技术，准确理解用户查询意图
+- **知识图谱构建**：构建完整的数据库知识关联网络，提供上下文相关的答案
+- **实时知识更新**：持续更新数据库版本特性和最佳实践
+- **多维度检索**：支持按数据库类型、问题类型、技术领域等多维度精准检索
 
 <div align="center">
 <img src="icons/logo.png" alt="BIC-QA Logo" width="600" height="150">
@@ -12,6 +31,16 @@
 [![Edge Add-ons](https://img.shields.io/badge/Edge-Add--ons-blue?logo=microsoft-edge)](https://microsoftedge.microsoft.com/addons)
 [![Version](https://img.shields.io/badge/Version-v1.0.5-green)](https://github.com/your-repo/BIC-QA)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+</div>
+
+<div align="center">
+
+## 🚀 立即下载
+
+[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+
+**版本**: v1.0.6 | **大小**: ~15MB | **更新日期**: 2025年8月
 
 </div>
 
