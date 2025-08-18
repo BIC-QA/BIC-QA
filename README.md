@@ -41,7 +41,7 @@ BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据�
 
 ## 🚀 立即下载
 
-[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
 
 **版本**: v1.0.6 | **大小**: ~15MB | **更新日期**: 2025年8月
 

@@ -42,7 +42,7 @@ BIC-QA is a comprehensive database knowledge Q&A platform that supports all main
 
 ## 🚀 Download Now
 
-[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
 
 **Version**: v1.0.6 | **Size**: ~15MB | **Updated**: August 2025
 
