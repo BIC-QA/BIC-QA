@@ -1,0 +1,207 @@
+/* BIC-QA 内容脚本样式 */
+
+/* 高亮样式 */
+.bic-qa-highlight {
+    background-color: #ffff00 !important;
+    color: #000 !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+}
+
+/* 浮动工具栏 */
+.bic-qa-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 999999;
+    font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    display: none;
+    animation: bic-qa-fadeIn 0.3s ease;
+}
+
+.bic-qa-toolbar.show {
+    display: block;
+}
+
+.bic-qa-toolbar button {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 4px 8px;
+    margin: 0 2px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background-color 0.2s ease;
+}
+
+.bic-qa-toolbar button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* 弹出对话框 */
+.bic-qa-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 999999;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: none;
+    animation: bic-qa-scaleIn 0.3s ease;
+}
+
+.bic-qa-dialog.show {
+    display: block;
+}
+
+.bic-qa-dialog-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bic-qa-dialog-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.bic-qa-dialog-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.bic-qa-dialog-close:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.bic-qa-dialog-content {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.bic-qa-dialog-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 遮罩层 */
+.bic-qa-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999998;
+    display: none;
+    animation: bic-qa-fadeIn 0.3s ease;
+}
+
+.bic-qa-overlay.show {
+    display: block;
+}
+
+/* 加载指示器 */
+.bic-qa-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: bic-qa-spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+/* 动画 */
+@keyframes bic-qa-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes bic-qa-scaleIn {
+    from { 
+        opacity: 0; 
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes bic-qa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .bic-qa-dialog {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .bic-qa-dialog-content {
+        padding: 15px;
+    }
+    
+    .bic-qa-toolbar {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .bic-qa-toolbar button {
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+}
+
+/* 深色主题支持 */
+@media (prefers-color-scheme: dark) {
+    .bic-qa-dialog {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .bic-qa-dialog-text {
+        color: #e2e8f0;
+    }
+    
+    .bic-qa-highlight {
+        background-color: #fbbf24 !important;
+        color: #1a202c !important;
+    }
+} 

@@ -1,0 +1,161 @@
+{
+  "knowledge_bases": [
+    {
+      "id": "2101",
+      "name": "Oracle",
+      "dataset_name": "Oracle 知识库",
+      "description": "Oracle数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2102",
+      "name": "MySQL兼容",
+      "dataset_name": "MySQL兼容 知识库",
+      "description": "MySQL兼容数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2103",
+      "name": "达梦",
+      "dataset_name": "达梦 知识库",
+      "description": "达梦数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2104",
+      "name": "PG兼容生态",
+      "dataset_name": "PG兼容生态 知识库",
+      "description": "PostgreSQL兼容生态相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2105",
+      "name": "SQL Server",
+      "dataset_name": "SQL Server 知识库",
+      "description": "SQL Server数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2106",
+      "name": "神通-OSCAR",
+      "dataset_name": "神通-OSCAR 知识库",
+      "description": "神通OSCAR数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2107",
+      "name": "YashanDB",
+      "dataset_name": "YashanDB 知识库",
+      "description": "YashanDB数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2108",
+      "name": "Redis",
+      "dataset_name": "Redis 知识库",
+      "description": "Redis缓存数据库相关知识",
+      "category": "NoSQL数据库"
+    },
+    {
+      "id": "2109",
+      "name": "MongoDB",
+      "dataset_name": "MongoDB 知识库",
+      "description": "MongoDB文档数据库相关知识",
+      "category": "NoSQL数据库"
+    },
+    {
+      "id": "2110",
+      "name": "Redis Cluster",
+      "dataset_name": "Redis Cluster 知识库",
+      "description": "Redis集群相关知识",
+      "category": "NoSQL数据库"
+    },
+    {
+      "id": "2111",
+      "name": "DB2",
+      "dataset_name": "DB2 知识库",
+      "description": "IBM DB2数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2114",
+      "name": "KingBase",
+      "dataset_name": "KingBase 知识库",
+      "description": "人大金仓数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2115",
+      "name": "Gbase",
+      "dataset_name": "Gbase 知识库",
+      "description": "Gbase数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2116",
+      "name": "磐维",
+      "dataset_name": "磐维 知识库",
+      "description": "磐维数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2117",
+      "name": "OpenGauss",
+      "dataset_name": "OpenGauss 知识库",
+      "description": "OpenGauss数据库相关知识",
+      "category": "关系型数据库"
+    },
+    {
+      "id": "2201",
+      "name": "TDSQL",
+      "dataset_name": "TDSQL 知识库",
+      "description": "腾讯云TDSQL分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2202",
+      "name": "GaussDB",
+      "dataset_name": "GaussDB 知识库",
+      "description": "华为GaussDB分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2203",
+      "name": "OceanBase",
+      "dataset_name": "OceanBase 知识库",
+      "description": "蚂蚁金服OceanBase分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2204",
+      "name": "TiDB",
+      "dataset_name": "TiDB 知识库",
+      "description": "PingCAP TiDB分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2205",
+      "name": "GoldenDB",
+      "dataset_name": "GoldenDB 知识库",
+      "description": "中兴GoldenDB分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2206",
+      "name": "Gbase 分布式",
+      "dataset_name": "Gbase 分布式 知识库",
+      "description": "Gbase分布式数据库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "1111",
+      "name": "操作系统",
+      "dataset_name": "操作系统 知识库",
+      "description": "操作系统相关知识",
+      "category": "系统软件"
+    }
+  ],
+  "version": "1.0.0",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "total_count": 23
+} 

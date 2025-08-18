@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BIC-QA 使用说明（快速上手）</title>
+<style>
+  :root {
+    --fg: #17202a;
+    --muted: #5b6b7c;
+    --primary: #2b73ff;
+    --primary-weak: #ecf2ff;
+    --bg: #f7f9fc;
+    --card: #ffffff;
+    --border: #e8edf3;
+    --shadow: 0 1px 2px rgba(5, 16, 55, 0.06), 0 6px 24px rgba(5, 16, 55, 0.04);
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft Yahei', Arial, Helvetica, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+  header.hero {
+    background: linear-gradient(180deg, #ffffff, #fafcff);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 4px 0 6px;
+    letter-spacing: 0.2px;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin: 0;
+  }
+  nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0 2px;
+  }
+  nav a {
+    color: var(--primary);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+  nav a:hover { background: var(--primary-weak); }
+
+  section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    margin: 14px 0;
+    box-shadow: var(--shadow);
+  }
+  h2 {
+    font-size: 16px;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(43,115,255,0.35);
+    flex: 0 0 22px;
+  }
+
+  p { margin: 6px 0; }
+  ul { margin: 6px 0 6px 14px; padding: 0; list-style: none; }
+  li { margin: 6px 0; position: relative; padding-left: 14px; }
+  li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.7em;
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.9;
+  }
+
+  .hint, .note {
+    display: block;
+    font-size: 12.5px;
+    color: var(--fg);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 8px 0 2px;
+    box-shadow: var(--shadow);
+  }
+  .hint { background: #fcfdff; }
+  .note { background: #fffdf6; border-left-color: #ffb020; }
+
+  .step-title { font-weight: 600; color: #2b3a4a; }
+  .kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
+    background: #f4f7fb;
+    border: 1px solid var(--border);
+    border-bottom-color: #dfe6ee;
+    border-radius: 6px;
+    padding: 1px 6px;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.04);
+  }
+
+  .footer-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 12px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1>BIC-QA 使用说明（快速上手）</h1>
+      <p class="subtitle">按四个步骤完成配置，立刻开始问答与知识库检索。</p>
+      <nav>
+        <a href="#step1">1. 配置基础模型</a>
+        <a href="#step2">2. 获取密钥与知识库 URL</a>
+        <a href="#step3">3. 启用知识库问答</a>
+        <a href="#step4">4. 参数规则设置</a>
+        <a href="#step5">5. 导入导出配置</a>
+      </nav>
+    </header>
+
+    <section id="step1">
+      <h2><span class="step-badge">1</span> 配置基础模型（含本地 Ollama）</h2>
+      <p class="step-title">操作步骤</p>
+      <ul>
+        <li>打开插件 <span class="kbd">设置</span> 页面，进入 <span class="kbd">模型与服务商</span> 配置。</li>
+        <li>添加服务商（例：<span class="kbd">local</span>、<span class="kbd">苏州</span>），分别填写对应的 <span class="kbd">API 地址</span>、<span class="kbd">API Key</span>（若需要）。</li>
+        <li>本地 Ollama：将 <span class="kbd">API 地址</span> 填写为 <span class="kbd">http://localhost:11434/v1</span>（或你的 Ollama 地址）。</li>
+        <li>点击 <span class="kbd">测试</span>，系统会自动发现已部署的模型；可勾选需要的模型并 <span class="kbd">批量纳管</span> 保存。</li>
+        <li>保存后，首页下拉即可按 <span class="kbd">模型名（服务商）</span> 选择，避免同名模型混淆。</li>
+      </ul>
+      <div class="hint">同名模型会以“模型名（服务商）”形式区分，例如：<span class="kbd">deepseek-r1:8b（local）</span> 与 <span class="kbd">deepseek-r1:8b（苏州）</span>。<br><br><strong>本地部署模型，如果显卡不足，建议用QWEN3:8B</strong></div>
+    </section>
+
+    <section id="step2">
+      <h2><span class="step-badge">2</span> 用户注册获取密钥和知识库 URL，并保存</h2>
+      <p class="step-title">操作步骤</p>
+      <ul>
+        <li>在企业知识库服务平台注册或向管理员获取：<span class="kbd">API Key</span> 与 <span class="kbd">知识库服务 URL</span>（一般形如 <span class="kbd">.../knowledge</span>）。</li>
+        <li>在插件 <span class="kbd">设置</span> 的 <span class="kbd">知识库服务</span> 区域，填写 <span class="kbd">默认服务 URL</span> 与 <span class="kbd">API Key</span>。</li>
+        <li>点击 <span class="kbd">保存</span>。保存成功后，知识库下拉与流式回答通道将使用该服务。</li>
+      </ul>
+      <div class="note">建议优先在 <span class="kbd">知识库服务</span> 中配置可用的 <span class="kbd">API Key</span> 与 <span class="kbd">默认 URL</span>，系统会自动优先使用该密钥与地址。</div>
+      <div class="hint"><strong>忘记密钥怎么办？</strong> 已注册用户如果忘记 API Key，可以联系平台管理员或通过填写注册邮箱和服务 URL 重新获取密钥。</div>
+    </section>
+
+    <section id="step3">
+      <h2><span class="step-badge">3</span> 启用知识库问答服务</h2>
+      <p class="step-title">操作步骤</p>
+      <ul>
+        <li>在首页选择已配置的 <span class="kbd">模型（服务商）</span>。</li>
+        <li>在 <span class="kbd">知识库</span> 下拉中选择目标知识库（或保持“不使用知识库”）。</li>
+        <li>输入问题并点击 <span class="kbd">发送</span>（或回车）。系统会调用知识库检索与模型进行回答。</li>
+        <li>回答为流式输出，可随时 <span class="kbd">停止</span>，并在结果区复制或导出。</li>
+      </ul>
+      <div class="hint">若开启知识库，系统会自动加载最新的知识库配置并优先使用 <span class="kbd">知识库服务 URL</span> 与 <span class="kbd">API Key</span>。</div>
+    </section>
+
+    <section id="step4">
+      <h2><span class="step-badge">4</span> 参数模型设置（提示词/温度/相似度/topN）</h2>
+      <p class="step-title">操作步骤</p>
+      <ul>
+        <li>在首页或设置页选择 <span class="kbd">参数规则</span>：内置三种规则可直接使用。</li>
+        <li>支持自定义：<span class="kbd">提示词（Prompt）</span>、<span class="kbd">温度（temperature）</span>、<span class="kbd">相似度（similarity）</span>、<span class="kbd">topN</span> 等。</li>
+        <li>保存后，提问时选择对应规则即可生效。</li>
+      </ul>
+      <div class="note">参数规则会直接影响召回与生成效果：温度越高创造性越强；相似度/TopN 影响知识库检索范围与数量。</div>
+    </section>
+
+    <section id="step5">
+      <h2><span class="step-badge">5</span> 导入导出配置</h2>
+      <p class="step-title">操作步骤</p>
+      <ul>
+        <li>在插件 <span class="kbd">设置</span> 页面，点击 <span class="kbd">导入</span> 或 <span class="kbd">导出</span> 按钮。</li>
+        <li>选择要导入的 <span class="kbd">JSON 文件</span> 或 <span class="kbd">导出</span> 到 <span class="kbd">JSON 文件</span>。</li>
+        <li>导入时，系统会自动合并配置，并提示是否覆盖同名项。</li>
+        <li>导出时，系统会生成一个包含所有当前配置的 JSON 文件。</li>
+      </ul>
+      <div class="hint">建议定期导出配置，以便在不同设备或系统间迁移。</div>
+    </section>
+
+    <p class="footer-note">提示：若出现请求失败，请检查模型服务地址、知识库 URL 与 API Key 是否正确，以及网络是否可达。</p>
+  </div>
+</body>
+</html> 

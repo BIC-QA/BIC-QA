@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="url(#grad1)" stroke="#fff" stroke-width="4"/>
+  
+  <!-- BIC 标志简化版 -->
+  <!-- B字母 -->
+  <path d="M45 35 L45 85 M45 35 Q55 35, 60 40 Q55 45, 45 45 M45 45 Q55 45, 60 50 Q55 55, 45 55 M45 55 Q55 55, 60 60 Q55 65, 45 65 M45 65 Q55 65, 60 70 Q55 75, 45 75" 
+        stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/>
+  
+  <!-- IC字母组合 -->
+  <path d="M70 35 L70 85 M75 35 Q85 35, 90 40 Q85 45, 75 45 M75 45 Q85 45, 90 50 Q85 55, 75 55 M75 55 Q85 55, 90 60 Q85 65, 75 65 M75 65 Q85 65, 90 70 Q85 75, 75 75" 
+        stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/>
+  
+  <!-- 智能计算元素 -->
+  <circle cx="64" cy="95" r="8" fill="#2c3e50" stroke="#fff" stroke-width="2"/>
+  <path d="M60 95 L68 95 M64 91 L64 99" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+</svg> 

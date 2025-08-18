@@ -1,0 +1,7 @@
+{
+  "registration_service": {
+    "default_url": "http://www.dbaiops.cn:37225/api/user/register",
+    "timeout": 10000,
+    "retry_count": 3
+  }
+} 

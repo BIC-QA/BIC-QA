@@ -1,0 +1,8 @@
+{
+    "knowledge_service": {
+        "default_url": "http://www.dbaiops.cn:37225/api/chat/message",
+        "api_key": "",
+        "enabled": false,
+        "updated_at": "2024-01-01T00:00:00.000Z"
+    }
+} 

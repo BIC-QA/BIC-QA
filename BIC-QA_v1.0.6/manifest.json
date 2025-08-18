@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "BIC-QA",
+  "version": "1.0.6",
+  "description": "佰晟智算 - BIC问答助手",
+  "icons": {
+    "16": "icons/logo.png",
+    "32": "icons/logo.png",
+    "48": "icons/logo.png",
+    "128": "icons/logo.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "action": {
+    "default_title": "BIC-QA 智能问答",
+    "default_icon": {
+      "16": "icons/logo.png",
+      "32": "icons/logo.png",
+      "48": "icons/logo.png",
+      "128": "icons/logo.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background_simple.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup.html",
+        "bic_qa_page.html",
+        "settings.html",
+        "user-guide.html",
+        "user-agreement.html",
+        "privacy-policy.html",
+        "config/*",
+        "js/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+} 

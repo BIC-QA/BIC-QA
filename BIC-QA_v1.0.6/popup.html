@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIC-QA - 佰晟智算智能问答助手</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧边栏 -->
+        <aside class="sidebar">
+            <!-- Logo区域 -->
+            <div class="logo-section">
+                <div class="logo-content">
+                    <img src="icons/logo.png" alt="BIC-QA" class="logo-icon">
+                    <!-- <div class="logo-text">
+                        <h1 class="logo-title">BIC-QA</h1>
+                        <p class="logo-subtitle">国产数据库智能问答</p>
+                        
+                    </div> -->
+                </div>
+            </div>
+            
+            <!-- 快捷操作区域 -->
+            <div class="quick-actions-sidebar">
+                <div class="action-buttons-vertical">
+                    <!-- <button id="pageSummaryBtn" class="sidebar-action-btn">
+                        <span class="action-icon">📋</span>
+                        <span class="action-text">结论摘要</span>
+                    </button>
+                    <button id="translateBtn" class="sidebar-action-btn">
+                        <span class="action-icon">🌐</span>
+                        <span class="action-text">翻译结论</span>
+                    </button> -->
+                    <button id="newSessionBtn" class="sidebar-action-btn">
+                        <span class="action-icon">🆕</span>
+                        <span class="action-text">开启新会话</span>
+                    </button>
+                    <button id="historyBtn" class="sidebar-action-btn">
+                        <span class="action-icon">📚</span>
+                        <span class="action-text">历史记录</span>
+                    </button>
+                    
+                    <!-- 使用说明按钮 -->
+                    <button id="helpBtn" class="sidebar-action-btn help-action-btn" title="使用说明">
+                        <span class="action-icon">❓</span>
+                        <span class="action-text">使用说明</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 版本信息 -->
+            <div class="help-section">
+                <div class="version-info">
+                    <p class="version-text">BIC-QA <span>v1.0.6</span></p>
+                </div>
+            </div>
+            
+        </aside>
+        
+        <!-- 右侧主内容区域 -->
+        <main class="main-content">
+            
+            <!-- 搜索和问答区域 -->
+            <div class="content-area">
+                <!-- 搜索区域 -->
+                <div class="search-section">
+                    <div class="selector-row">
+                        <div class="selector-left">
+                            <div class="model-selector">
+                                <label for="modelSelect">选择模型：</label>
+                                <select id="modelSelect" class="model-select">
+                                    <option value="">加载中...</option>
+                                </select>
+                            </div>
+                            <span class="selector-divider">/</span>
+                            <div class="knowledge-base-selector">
+                                <label for="knowledgeBaseSelect">选择知识库：</label>
+                                <select id="knowledgeBaseSelect" class="knowledge-base-select">
+                                    <option value="">不使用知识库</option>
+                                </select>
+                            </div>
+                            <span class="selector-divider">/</span>
+                            <div class="parameter-rule-selector">
+                                <label for="parameterRuleSelect">参数规则：</label>
+                                <select id="parameterRuleSelect" class="parameter-rule-select">
+                                    <option value="">加载中...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="selector-right">
+                            <button id="settingsBtn" class="settings-button" title="设置">
+                                <span class="settings-icon">⚙️</span>
+                                <span>设置</span>
+                            </button>
+                            <!-- <button id="openFullPageBtn" class="settings-button" title="打开完整页面" style="margin-left: 10px;">
+                                <span class="settings-icon">🖥️</span>
+                                <span>完整页面</span>
+                            </button> -->
+                        </div>
+                    </div>
+                    
+                    <!-- 结果区域 -->
+                    <div class="result-section">
+                        <div id="resultContainer" class="result-container" style="display: none;">
+                            <div class="conversation-container" id="conversation-default">
+                                <div class="resultListShow">
+                                    <div id="questionDisplay" class="question-display" style="display: none;">
+                                        <div class="question-header">
+                                            <div class="user-avatar">
+                                                <img src="icons/bic-user.png" alt="用户" class="avatar-img">
+                                            </div>
+                                            <div class="question-info">
+                                                <div class="question-name">用户</div>
+                                                <div class="question-time" id="questionTime"></div>
+                                            </div>
+                                        </div>
+                                        <div class="question-content">
+                                            <div id="questionText" class="question-text"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="aiDisplay" class="ai-display" style="display: none;">
+                                        <div class="ai-header">
+                                            <div class="ai-avatar">
+                                                <img src="icons/bic-an.png" alt="BIC-QA" class="avatar-img">
+                                            </div>
+                                            <div class="ai-info">
+                                                <div class="ai-name">BIC-QA</div>
+                                                <div class="ai-time" id="aiTime"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <h3 class="result-title">回答：</h3>
+                                    <div id="resultText" class="result-text">
+                                        <p class="result-text-tips"></p>
+                                        <div class="result-text-content"></div>
+                                        <div class="result-text-knowlist"></div>
+                                    </div>
+                                    <div class="result-actions">
+                                        <div class="action-icons-row">
+                                            <button id="exportButton" class="action-icon-btn export-btn" title="导出HTML">
+                                                <img src="icons/download.svg" alt="导出" class="action-icon-svg">
+                                            </button>
+                                            <button id="copyButton" class="action-icon-btn copy-btn" title="复制">
+                                                <img src="icons/copy.svg" alt="复制" class="action-icon-svg">
+                                            </button>
+                                            <button id="clearButton" class="action-icon-btn clear-btn" title="清空">
+                                                <img src="icons/clear.svg" alt="清空" class="action-icon-svg">
+                                            </button>
+                                            <button id="likeButton" class="action-icon-btn like-btn" title="点赞 - 回答有帮助">
+                                                <img src="icons/good.svg" alt="点赞" class="action-icon-svg">
+                                            </button>
+                                            <button id="dislikeButton" class="action-icon-btn dislike-btn" title="否定 - 回答没有帮助">
+                                                <img src="icons/bad.svg" alt="否定" class="action-icon-svg">
+                                            </button>
+                                        </div> 
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-center-wrapper">
+                        <div class="input-header">
+                            <h2 class="input-title">BIC-QA</h2>
+                            <p class="input-subtitle">国产数据库智能问答</p>
+                            
+                        </div>
+                        <div class="input-container">
+                            <textarea 
+                                id="questionInput" 
+                                class="question-input" 
+                                placeholder="请输入您的问题..."
+                                rows="3"
+                            ></textarea>
+                            <button id="askButton" class="ask-button" title="提问">
+                                <span class="send-icon">↑</span>
+                                <span class="stop-icon" style="display: none;">⏹</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部版本信息 -->
+                <footer class="footer">
+                    <!-- <p class="version">版本 1.0.5</p> -->
+                    <p class="input-subtitle">"不胡说八道的知识库，我们会不断改进知识库，今天无法回答的问题，我们也会很快补充完善，请帮我们不断完善这个公共知识库吧！"</p>
+                </footer>
+            </div>
+            
+            <!-- 回到顶部按钮 -->
+            <button id="backToTopBtn" class="back-to-top-btn" title="回到顶部" style="display: none;">
+                <span class="back-to-top-icon">↑</span>
+            </button>
+        </main>
+        
+        <!-- 历史记录对话框 -->
+        <div id="historyDialog" class="dialog-overlay" style="display: none;">
+            <div class="dialog-container">
+                <div class="dialog-header">
+                    <h3>对话历史记录</h3>
+                    <button id="closeHistoryDialog" class="close-btn">×</button>
+                </div>
+                <div class="dialog-content">
+                    <div class="history-controls">
+                        <button id="clearHistoryBtn" class="clear-btn">清空历史</button>
+                        <button id="exportHistoryBtn" class="export-btn">导出历史</button>
+                    </div>
+                    <div id="historyList" class="history-list">
+                        <!-- 历史记录将在这里动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script src="js/knowledge_base_simple.js"></script>
+        <script src="popup.js"></script>
+        <script src="js/help-button.js"></script>
+    </div>
+</body>
+</html> 
