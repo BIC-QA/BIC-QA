@@ -41,7 +41,7 @@ BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据�
 
 ## 🚀 立即下载
 
-[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-QA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
 
 **版本**: v1.0.6 | **大小**: ~15MB | **更新日期**: 2025年8月
 
@@ -338,16 +338,20 @@ ollama list
 ## 📞 技术支持
 
 ### 🆘 获取帮助
-- **文档**：查看详细使用文档
-- **社区**：加入用户讨论群
+- **社区**：加入BIC-QA讨论群
+
+<img src="assets/bic-qa-wechat.jpg" style="zoom: 50%;" />
+
 - **反馈**：提交问题反馈
 
 ### 📧 联系方式
-- **邮箱**：support@bic-qa.com
-- **GitHub**：[提交 Issue](https://github.com/your-repo/BIC-QA/issues)
-- **文档**：[在线文档](https://docs.bic-qa.com)
+- **售后邮箱**：support@dbaiops.com
+- **DBAIOps社区:**
+<img src="assets/DBAIOps社区二维码.png" style="zoom:50%;" />
+- **GitHub**：[提交 Issue](https://github.com/BIC-QA/BIC-QA/issues)
 
 ### 🔄 更新日志
+- **v1.0.6**：支持添加大模型服务商，修复已知问题
 - **v1.0.5**：优化性能，修复已知问题
 - **v1.0.4**：新增知识库功能
 - **v1.0.3**：支持本地 Ollama 模型
@@ -358,8 +362,8 @@ ollama list
 
 **BIC-QA 智能问答助手** - 让知识检索更智能，让问答更高效
 
-**版本**：v1.0.5 | **更新日期**：2025年8月
+**版本**：v1.0.6 | **更新日期**：2025年8月
 
-[⭐ 给我们一个星标](https://github.com/your-repo/BIC-QA) | [📖 使用文档](https://docs.bic-qa.com) | [🐛 报告问题](https://github.com/your-repo/BIC-QA/issues)
+[⭐ 给我们一个星标](https://github.com/BIC-QA/BIC-QA) | [📖 使用文档](https://docs.bic-qa.com) | [🐛 报告问题](https://github.com/BIC-QA/BIC-QA/issues)
 
 </div>

@@ -42,7 +42,7 @@ BIC-QA is a comprehensive database knowledge Q&A platform that supports all main
 
 ## 🚀 Download Now
 
-[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-CA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
+[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.6-orange?style=for-the-badge&logo=download)](https://github.com/BIC-QA/BIC-QA/releases/download/v1.0.6/BIC-QA_v1.0.6.zip)
 
 **Version**: v1.0.6 | **Size**: ~15MB | **Updated**: August 2025
 
@@ -339,16 +339,20 @@ ollama list
 ## 📞 Technical Support
 
 ### 🆘 Get Help
-- **Documentation**: View detailed usage documentation
-- **Community**: Join user discussion groups
+- **Community**: Join BIC-QA discussion group
+
+<img src="assets/bic-qa-wechat.jpg" style="zoom: 50%;" />
+
 - **Feedback**: Submit issue feedback
 
 ### 📧 Contact Information
-- **Email**: support@bic-qa.com
-- **GitHub**: [Submit Issue](https://github.com/your-repo/BIC-QA/issues)
-- **Documentation**: [Online Docs](https://docs.bic-qa.com)
+- **Support Email**: support@dbaiops.com
+- **DBAIOps Community:**
+<img src="assets/DBAIOps社区二维码.png" style="zoom:50%;" />
+- **GitHub**: [Submit Issue](https://github.com/BIC-QA/BIC-QA/issues)
 
 ### 🔄 Update Log
+- **v1.0.6**: Support for adding large model service providers, fixed known issues
 - **v1.0.5**: Performance optimization, fixed known issues
 - **v1.0.4**: Added knowledge base functionality
 - **v1.0.3**: Support for local Ollama models
@@ -359,8 +363,8 @@ ollama list
 
 **BIC-QA Intelligent Q&A Assistant** - Making knowledge retrieval smarter, making Q&A more efficient
 
-**Version**: v1.0.5 | **Update Date**: August 2025
+**Version**: v1.0.6 | **Update Date**: August 2025
 
-[⭐ Give us a star](https://github.com/your-repo/BIC-QA) | [📖 Documentation](https://docs.bic-qa.com) | [🐛 Report Issues](https://github.com/your-repo/BIC-QA/issues)
+[⭐ Give us a star](https://github.com/BIC-QA/BIC-QA) | [📖 Documentation](https://docs.bic-qa.com) | [🐛 Report Issues](https://github.com/BIC-QA/BIC-QA/issues)
 
 </div>
