@@ -50,7 +50,6 @@ BIC-QA is a comprehensive database knowledge Q&A platform that supports all main
 
 ## 📋 Table of Contents
 
-- [✨ Features](#-features)
 - [🚀 Quick Start](#-quick-start)
 - [⚙️ Configuration Guide](#️-configuration-guide)
 - [🎯 Usage Instructions](#-usage-instructions)
@@ -59,30 +58,6 @@ BIC-QA is a comprehensive database knowledge Q&A platform that supports all main
 - [📱 System Requirements](#-system-requirements)
 - [🔒 Privacy & Security](#-privacy--security)
 - [📞 Technical Support](#-technical-support)
-
-## ✨ Features
-
-### 🤖 Intelligent Q&A
-- **Multi-model Support**: Integrates GPT, Claude, local Ollama, and various AI models
-- **Streaming Output**: Real-time display of responses for enhanced user experience
-- **Conversation Management**: Save conversation history with one-click clear functionality
-- **Smart Stop**: Interrupt generation process at any time
-
-### 📚 Knowledge Base Retrieval
-- **Enterprise Integration**: Seamlessly connect to enterprise knowledge base systems
-- **Intelligent Matching**: Precise content retrieval based on similarity
-- **Multi-library Support**: Manage multiple knowledge bases simultaneously
-- **Result Optimization**: Smart sorting and relevance filtering
-
-### ⚙️ Flexible Configuration
-- **Parameter Customization**: Adjustable temperature, similarity, TopN, and other parameters
-- **Prompt Optimization**: Support for custom system prompts
-- **Rule Presets**: Built-in multiple preset rules for out-of-the-box use
-
-### 📊 Result Management
-- **One-click Copy**: Quickly copy response content
-- **Format Export**: Support HTML format export
-- **Feedback System**: Built-in rating mechanism for continuous experience optimization
 
 ## 🚀 Quick Start
 
@@ -178,51 +153,6 @@ BIC-QA supports custom prompts and retrieval parameters with three preset modes:
 
 > ⚠️ **Parameter Impact**: Higher temperature increases creativity, similarity/TopN affects knowledge base retrieval scope and quantity.
 
-## 🎯 Usage Instructions
-
-### 📱 Usage Modes
-
-#### Popup Mode
-- Click BIC-QA icon in browser toolbar
-- Suitable for quick Q&A and simple questions
-- Clean interface with rapid response
-
-#### Full Page Mode
-- Click **🖥️ Full Page** button in top-right corner of popup
-- Opens in new tab with complete functionality
-- Suitable for complex conversations and extended use
-
-### 🎮 Operation Guide
-
-#### Basic Q&A
-1. Select AI model
-2. Select knowledge base (optional)
-3. Input question
-4. Wait for streaming response
-5. Use copy/export functions
-
-#### Advanced Features
-- **Stop Generation**: Click stop button to interrupt response
-- **Clear Conversation**: One-click clear history
-- **Rating Feedback**: Rate response quality
-- **Parameter Adjustment**: Real-time model parameter adjustment
-
-## 🔧 Advanced Features
-
-### 🔍 Knowledge Base Management
-- **Multi-library Switching**: Support simultaneous management of multiple knowledge bases
-- **Intelligent Retrieval**: Content matching based on semantic similarity
-- **Result Sorting**: Automatic sorting of retrieval results by relevance
-
-### 📊 Conversation Management
-- **History Records**: Automatically save all conversation content
-- **Session Export**: Support HTML format export
-- **Batch Operations**: Support batch clear and export
-
-### ⚡ Performance Optimization
-- **Streaming Output**: Real-time display of generated content
-- **Cache Mechanism**: Smart caching for improved response speed
-- **Concurrency Control**: Prevent duplicate requests
 
 ## 🛠️ Troubleshooting
 
@@ -257,6 +187,7 @@ ping your-api-endpoint.com
 # Configure local environment variables
 Set system variable OLLAMA_ORIGINS to *
 ```
+![](./assets/ollama_origins.png)
 
 #### 3. Model Loading Failure
 **Possible Causes**:
@@ -308,11 +239,6 @@ ollama list
 - **Chrome** 88+
 - **Edge** 88+
 - **Other Chromium-based browsers**
-
-### 💻 Operating Systems
-- **Windows** 10/11
-- **macOS** 10.15+
-- **Linux** (Ubuntu 18.04+)
 
 ### 🌍 Network Requirements
 - Support HTTPS/HTTP requests
