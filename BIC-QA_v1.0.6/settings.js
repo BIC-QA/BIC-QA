@@ -30,6 +30,15 @@ class BicQASettings {
                 description: 'DeepSeek官方API服务'
             },
             {
+                id: 'aliyun',
+                name: '通义千问',
+                displayName: '通义千问',
+                apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                authType: 'Bearer',
+                requestFormat: 'OpenAI',
+                description: '通义千问官方API服务'
+            },
+            {
                 id: 'openai',
                 name: 'OpenAI',
                 displayName: 'OpenAI',
@@ -1678,7 +1687,11 @@ class BicQASettings {
         // 构建正确的API端点URL
         let apiEndpoint = provider.apiEndpoint;
         if (!apiEndpoint.includes("/chat/completions")) {
-            apiEndpoint = apiEndpoint + "/chat/completions";
+            if (provider.apiEndpoint.includes('aliyuncs.com')) {
+                apiEndpoint = apiEndpoint.replace('/compatible-mode/v1', '/compatible-mode/v1/chat/completions');
+            } else {
+                apiEndpoint = apiEndpoint + "/chat/completions";
+            }
         }
         console.log('处理后的API端点:', apiEndpoint);
         console.log('认证类型:', provider.authType);
@@ -2223,6 +2236,7 @@ class BicQASettings {
 
     // 构建测试消息
     buildTestMessage(provider, modelName) {
+        debugger;
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
         
@@ -2241,7 +2255,7 @@ class BicQASettings {
         }
         
         // 根据服务商名称而不是URL来判断
-        const providerName = provider.name.toLowerCase();
+        const providerName = provider.apiEndpoint.toLowerCase();
         
         if (providerName.includes('deepseek')) {
             return {
@@ -2294,6 +2308,33 @@ class BicQASettings {
                     temperature: 0.7
                 }
             };
+        }  else if (providerName.includes('aliyun') || providerName.includes('tongyi')) {
+            return {
+                model: modelName,
+                messages: [
+                    {
+                        role: "user",
+                        content: "你好"
+                    }
+                ],
+                stream: false,
+                // parameters: {
+                //     enable_thinking: true // 流式调用可以开启
+                //   },
+                enable_thinking: false,
+                max_tokens: 20
+            }
+            //  {
+            //     model: "qwen3-30b-a3b",
+            //     input: {
+            //       messages: [{ role: "user", content: "你好" }]
+            //     },
+            //     parameters: {
+            //       temperature: 0.85,
+            //       max_tokens: 1024,
+            //       result_format: "message"
+            //     }
+            //   };
         } else {
             // 默认使用OpenAI格式（兼容大多数自定义服务商）
             return {
@@ -2349,7 +2390,11 @@ class BicQASettings {
         // 构建正确的聊天API端点URL
         let apiEndpoint = provider.apiEndpoint;
         if (!apiEndpoint.includes("/chat/completions")) {
-            apiEndpoint = apiEndpoint + "/chat/completions";
+            if (provider.apiEndpoint.includes('aliyuncs.com')) {
+                apiEndpoint = apiEndpoint.replace('/compatible-mode/v1', '/compatible-mode/v1/chat/completions');
+            } else {
+                apiEndpoint = apiEndpoint + "/chat/completions";
+            }
         }
         console.log('聊天测试API端点:', apiEndpoint);
         
@@ -2916,7 +2961,7 @@ class BicQASettings {
         // 默认配置
         const defaultConfig = {
             registration_service: {
-                default_url: "http://192.168.32.81:8180/api/user/register",
+                default_url: "http://www.dbaiops.cn/api/user/register",
                 timeout: 10000,
                 retry_count: 3
             }
@@ -3169,7 +3214,7 @@ class BicQASettings {
         const enableKnowledgeService = document.getElementById('enableKnowledgeService');
         
         if (knowledgeServiceUrl) {
-            knowledgeServiceUrl.value = 'http://192.168.32.81:8180/api/chat/stream';
+            knowledgeServiceUrl.value = 'http://www.dbaiops.cn/api/chat/message';
         }
         if (knowledgeServiceApiKey) {
             knowledgeServiceApiKey.value = '';
@@ -3525,6 +3570,10 @@ class BicQASettings {
             { id: "2204", name: "TiDB", dataset_name: "TiDB 知识库" },
             { id: "2205", name: "GoldenDB", dataset_name: "GoldenDB 知识库" },
             { id: "2206", name: "Gbase 分布式", dataset_name: "Gbase 分布式 知识库" },
+            { id: "2208", name: "GBase 8a", dataset_name: "GBase 8a 知识库" },
+            { id: "2209", name: "HashData", dataset_name: "HashData 知识库" },
+            { id: "2118", name: "GreatSQL", dataset_name: "GreatSQL 知识库" },
+            { id: "2119", name: "虚谷数据库", dataset_name: "虚谷 知识库" },
             { id: "1111", name: "操作系统", dataset_name: "操作系统 知识库" }
         ];
     }
@@ -3588,11 +3637,13 @@ class BicQASettings {
         const numId = parseInt(id);
         if (numId >= 2101 && numId <= 2117) {
             return '关系型数据库';
-        } else if (numId >= 2201 && numId <= 2206) {
+        } else if (numId >= 2201 && numId <= 2209) {
             return '分布式数据库';
         } else if (numId === 1111) {
             return '操作系统';
-        } else {
+        }else if (numId === 2118 || numId === 2119) {
+            return '集中式数据库';
+        }  else {
             return '其他';
         }
     }

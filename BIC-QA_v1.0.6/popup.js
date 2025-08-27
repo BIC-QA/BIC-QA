@@ -104,6 +104,9 @@ class BicQAPopup {
         this.newSessionBtn = document.getElementById('newSessionBtn');
         this.helpBtn = document.getElementById('helpBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
+        // 字符计数元素
+        this.charCount = document.getElementById('charCount');
+        this.charCountContainer = document.querySelector('.character-count');
         // 移除 streamChatBtn，因为元素不存在
         // this.streamChatBtn = document.getElementById('streamChatBtn');
         // 修复：HTML中没有.button-text元素，只有.send-icon和.loading-spinner
@@ -131,6 +134,9 @@ class BicQAPopup {
         // 检测是否为弹出窗口模式
         this.isPopupMode = window.innerWidth <= 400 || window.innerHeight <= 600;
         this.initFullscreenMode();
+        
+        // 初始化字符计数显示
+        this.updateCharacterCount();
     }
 
     bindEvents() {
@@ -152,7 +158,10 @@ class BicQAPopup {
         
         // 输入框内容变化监听
         if (this.questionInput) {
-            this.questionInput.addEventListener('input', () => this.updateButtonState());
+            this.questionInput.addEventListener('input', () => {
+                this.updateButtonState();
+                this.updateCharacterCount();
+            });
             this.questionInput.addEventListener('keydown', (e) => {
                 // 处理回车键事件
                 if (e.key === 'Enter') {
@@ -172,6 +181,55 @@ class BicQAPopup {
                     // 普通回车键，执行提问操作
                     e.preventDefault();
                     this.handleAskQuestion();
+                }
+            });
+            
+            // 添加粘贴事件监听，限制粘贴内容长度
+            this.questionInput.addEventListener('paste', (e) => {
+                const maxLength = 500;
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const pastedText = clipboardData.getData('text');
+                
+                // 获取当前输入框的内容
+                const currentValue = this.questionInput.value;
+                const selectionStart = this.questionInput.selectionStart;
+                const selectionEnd = this.questionInput.selectionEnd;
+                
+                // 计算粘贴后的总长度
+                const newValue = currentValue.substring(0, selectionStart) + 
+                               pastedText + 
+                               currentValue.substring(selectionEnd);
+                
+                // 如果粘贴后超过最大长度，阻止默认粘贴行为
+                if (newValue.length > maxLength) {
+                    e.preventDefault();
+                    
+                    // 计算可以粘贴的字符数
+                    const availableSpace = maxLength - (currentValue.length - (selectionEnd - selectionStart));
+                    
+                    if (availableSpace > 0) {
+                        // 只粘贴能容纳的部分
+                        const truncatedText = pastedText.substring(0, availableSpace);
+                        const finalValue = currentValue.substring(0, selectionStart) + 
+                                         truncatedText + 
+                                         currentValue.substring(selectionEnd);
+                        
+                        // 手动设置值
+                        this.questionInput.value = finalValue;
+                        
+                        // 设置光标位置
+                        const newCursorPos = selectionStart + truncatedText.length;
+                        this.questionInput.setSelectionRange(newCursorPos, newCursorPos);
+                        
+                        // 触发input事件更新按钮状态
+                        this.questionInput.dispatchEvent(new Event('input'));
+                        
+                        // 显示提示信息
+                        this.showMessage(`粘贴内容已截断，最多只能输入${maxLength}个字符`, 'warning');
+                    } else {
+                        // 没有空间可以粘贴
+                        this.showMessage(`输入框已满，无法粘贴更多内容（最多${maxLength}个字符）`, 'warning');
+                    }
                 }
             });
         }
@@ -227,12 +285,20 @@ class BicQAPopup {
             this.clearButton.addEventListener('click', () => this.clearResult());
         }
         
-        // 反馈按钮
+        // 反馈按钮 - 修改这部分
         if (this.likeButton) {
-            this.likeButton.addEventListener('click', () => this.handleFeedback('like'));
+            this.likeButton.addEventListener('click', () => {
+                // 传入默认容器，而不是null
+                const defaultContainer = this.resultContainer.querySelector('#conversation-default');
+                this.handleFeedback('like', defaultContainer);
+            });
         }
         if (this.dislikeButton) {
-            this.dislikeButton.addEventListener('click', () => this.handleFeedback('dislike'));
+            this.dislikeButton.addEventListener('click', () => {
+                // 传入默认容器，而不是null
+                const defaultContainer = this.resultContainer.querySelector('#conversation-default');
+                this.handleFeedback('dislike', defaultContainer);
+            });
         }
         
         // 快捷操作按钮
@@ -298,6 +364,12 @@ class BicQAPopup {
         if (openFullPageBtn) {
             openFullPageBtn.addEventListener('click', () => this.openFullPage());
         }
+        // 添加复制问题按钮的事件监听器
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.copy-question-btn')) {
+                this.copyQuestionText(e.target.closest('.copy-question-btn'));
+            }
+        });
     }
 
     async loadSettings() {
@@ -407,7 +479,7 @@ class BicQAPopup {
     loadKnowledgeBasesFromManager() {
         try {
             const knowledgeBases = window.knowledgeBaseManager.getKnowledgeBases();
-            console.log('获取到的知识库列表:', knowledgeBases);
+            // console.log('获取到的知识库列表:', knowledgeBases);
             
             if (knowledgeBases && knowledgeBases.length > 0) {
                 const select = this.knowledgeBaseSelect;
@@ -480,6 +552,10 @@ class BicQAPopup {
             { id: "2204", name: "TiDB", dataset_name: "TiDB 知识库" },
             { id: "2205", name: "GoldenDB", dataset_name: "GoldenDB 知识库" },
             { id: "2206", name: "Gbase 分布式", dataset_name: "Gbase 分布式 知识库" },
+            { id: "2208", name: "GBase 8a", dataset_name: "GBase 8a 知识库" },
+            { id: "2209", name: "HashData", dataset_name: "HashData 知识库" },
+            { id: "2118", name: "GreatSQL", dataset_name: "GreatSQL 知识库" },
+            { id: "2119", name: "虚谷数据库", dataset_name: "虚谷 知识库" },
             { id: "1111", name: "操作系统", dataset_name: "操作系统 知识库" }
         ];
         
@@ -764,7 +840,7 @@ class BicQAPopup {
                 console.log('没有找到知识库服务配置，使用默认值');
                 // 设置默认配置
                 this.knowledgeServiceConfig = {
-                    default_url: 'http://www.dbaiops.cn:37225/api/chat/message',
+                    default_url: 'http://www.dbaiops.cn/api/chat/message',
                     api_key: '',
                     enabled: false,
                     updated_at: new Date().toISOString()
@@ -774,7 +850,7 @@ class BicQAPopup {
             console.error('加载知识库服务配置失败:', error);
             // 设置默认配置
             this.knowledgeServiceConfig = {
-                default_url: 'http://www.dbaiops.cn:37225/api/chat/message',
+                default_url: 'http://www.dbaiops.cn/api/chat/message',
                 api_key: '',
                 enabled: false,
                 updated_at: new Date().toISOString()
@@ -805,6 +881,7 @@ class BicQAPopup {
         }else{
             //清空操作
             this.questionInput.value = '';
+            this.updateCharacterCount();
         }
         
         // 强制创建新的对话容器，确保每次对话都独立
@@ -1034,8 +1111,15 @@ class BicQAPopup {
     }
 
     // 清空对话容器的辅助方法
+    // 清空对话容器的辅助方法
     clearConversationContainer(container) {
         if (!container) return;
+        
+        // 保存反馈按钮状态
+        const likeBtn = container.querySelector('.like-btn');
+        const dislikeBtn = container.querySelector('.dislike-btn');
+        const isLiked = likeBtn ? likeBtn.classList.contains('active') : false;
+        const isDisliked = dislikeBtn ? dislikeBtn.classList.contains('active') : false;
         
         // 清空问题显示
         const questionDisplay = container.querySelector('.question-display');
@@ -1063,6 +1147,22 @@ class BicQAPopup {
                 <div class="result-text-content"></div>
                 <div class="result-text-knowlist"></div>
             `;
+        }
+        
+        // 恢复反馈按钮状态
+        if (likeBtn) {
+            if (isLiked) {
+                likeBtn.classList.add('active');
+            } else {
+                likeBtn.classList.remove('active');
+            }
+        }
+        if (dislikeBtn) {
+            if (isDisliked) {
+                dislikeBtn.classList.add('active');
+            } else {
+                dislikeBtn.classList.remove('active');
+            }
         }
     }
 
@@ -1555,7 +1655,7 @@ class BicQAPopup {
         console.log('=== 参数规则调试信息 ===');
         console.log('parameterRule:', parameterRule);
         if (parameterRule) {
-            console.log('parameterRule.prompt:', parameterRule.prompt);
+            // console.log('parameterRule.prompt:', parameterRule.prompt);
             console.log('parameterRule.similarity:', parameterRule.similarity);
             console.log('parameterRule.topN:', parameterRule.topN);
             console.log('parameterRule.temperature:', parameterRule.temperature);
@@ -1564,7 +1664,7 @@ class BicQAPopup {
         // 如果选择了参数规则，使用规则中的提示词
         if (parameterRule && parameterRule.prompt) {
             systemContent = parameterRule.prompt;
-            console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
+            // console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
         }
         
         // 如果选择了知识库，添加知识库信息
@@ -1597,10 +1697,6 @@ class BicQAPopup {
                 content: systemContent
             }
         ];
-        
-        // 添加当前会话的历史对话（最多3轮）
-        // const recentHistory = this.currentSessionHistory.slice(-6); // 取最近6条消息（3轮对话）
-        // messages.push(...recentHistory);
         
         // 添加当前用户问题
         // 注意：历史记录中存储的是原始问题，而这里需要的是处理后的context
@@ -1645,6 +1741,8 @@ class BicQAPopup {
 
         // 设置认证头
         this.setAuthHeaders(headers, provider);
+        
+        // 其他服务商使用标准的chat/completions接口
         if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
             provider.apiEndpoint=provider.apiEndpoint
         }else{
@@ -1840,7 +1938,7 @@ class BicQAPopup {
         // 如果选择了参数规则，使用规则中的提示词
         if (parameterRule && parameterRule.prompt) {
             systemContent = parameterRule.prompt;
-            console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
+            // console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
         }
         // 如果选择了知识库，添加知识库信息
         if (knowledgeBaseId) {
@@ -1923,11 +2021,35 @@ class BicQAPopup {
 
         // 设置认证头
         this.setAuthHeaders(headers, provider);
+        // if (provider.apiEndpoint.includes('aliyuncs.com')) {
+        //     // 通义千问使用不同的聊天接口
+        //     if (provider.apiEndpoint.includes('/services/aigc/text-generation/generation')) {
+        //         // 已经是正确的端点，保持不变
+        //         console.log('使用通义千问API端点:', provider.apiEndpoint);
+        //     } else {
+        //         // 替换为通义千问的聊天接口
+        //         provider.apiEndpoint = provider.apiEndpoint.replace('/compatible-mode/v1', '/compatible-mode/v1/services/aigc/text-generation/generation');
+        //         console.log('转换为通义千问API端点:', provider.apiEndpoint);
+        //     }
+        // } else {
+        //     // 其他服务商使用标准的chat/completions接口
+        //     if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
+        //         provider.apiEndpoint=provider.apiEndpoint
+        //     }else{
+        //         provider.apiEndpoint=provider.apiEndpoint+"/chat/completions"
+        //     }
+        // }
+        // 其他服务商使用标准的chat/completions接口
         if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
             provider.apiEndpoint=provider.apiEndpoint
         }else{
             provider.apiEndpoint=provider.apiEndpoint+"/chat/completions"
         }
+        // if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
+        //     provider.apiEndpoint=provider.apiEndpoint
+        // }else{
+        //     provider.apiEndpoint=provider.apiEndpoint+"/chat/completions"
+        // }
         try {
             // 初始化中止控制器（覆盖上一阶段，专用于LLM流式）
             this.abortController = new AbortController();
@@ -1991,7 +2113,14 @@ class BicQAPopup {
                 
                 // 显示结果
                 this.showResult(result, conversationContainer);
-                
+                // 显示result-actions
+                const resultActions = conversationContainer.querySelector('.result-actions');
+                if (resultActions) {
+                    resultActions.style.display = 'block';
+                    setTimeout(() => {
+                        resultActions.style.opacity = '1';
+                    }, 100);
+                }
                 // 计算用时并更新标题
                 if (this.startTime) {
                     const endTime = Date.now();
@@ -2120,7 +2249,8 @@ class BicQAPopup {
                     contentEl.innerHTML = formattedContent;
                 } else {
                     // 兜底：如果未能获取到contentEl，避免抛错
-                    this.resultText.innerHTML = formattedContent;
+                    // this.resultText.innerHTML = formattedContent;
+                    console.warn('未能获取到contentEl，跳过最终内容更新');
                 }
                 
                 // 平滑滚动到底部
@@ -2154,7 +2284,7 @@ class BicQAPopup {
 
             const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
-            console.log('接收到数据块，长度:', chunk.length, 'buffer总长度:', buffer.length);
+            // console.log('接收到数据块，长度:', chunk.length, 'buffer总长度:', buffer.length);
             
             // 处理每一行（SSE每行以data: 开头）
             let lines = buffer.split('\n');
@@ -2174,7 +2304,8 @@ class BicQAPopup {
                         if (contentEl) {
                             contentEl.innerHTML = finalFormattedContent;
                         } else {
-                            this.resultText.innerHTML = finalFormattedContent;
+                            // this.resultText.innerHTML = finalFormattedContent;
+                            console.warn('未能获取到contentEl，跳过最终内容更新');
                         }
                         
                         // 设置最终提示
@@ -2197,18 +2328,18 @@ class BicQAPopup {
                             console.log('=== 准备渲染知识库列表 ===');
                             console.log('hasBeenStopped:', this.hasBeenStopped);
                             console.log('_useKnowledgeBaseThisTime:', this._useKnowledgeBaseThisTime);
-                            console.log('_kbItems:', this._kbItems);
-                            console.log('_kbItems.length:', this._kbItems.length);
-                            console.log('targetContainer:', targetContainer);
+                            // console.log('_kbItems:', this._kbItems);
+                            // console.log('_kbItems.length:', this._kbItems.length);
+                            // console.log('targetContainer:', targetContainer);
                             console.log('流式处理完成，渲染知识库列表，条目数量:', this._kbItems.length);
                             this.renderKnowledgeList(this._kbItems, targetContainer);
                         } else {
                             console.log('=== 不渲染知识库列表的原因 ===');
                             console.log('hasBeenStopped:', this.hasBeenStopped);
                             console.log('_useKnowledgeBaseThisTime:', this._useKnowledgeBaseThisTime);
-                            console.log('_kbItems:', this._kbItems);
-                            console.log('_kbItems type:', typeof this._kbItems);
-                            console.log('Array.isArray(_kbItems):', Array.isArray(this._kbItems));
+                            // console.log('_kbItems:', this._kbItems);
+                            // console.log('_kbItems type:', typeof this._kbItems);
+                            // console.log('Array.isArray(_kbItems):', Array.isArray(this._kbItems));
                             console.log('_kbItemsLength:', Array.isArray(this._kbItems) ? this._kbItems.length : 'not array');
                             console.log('流式处理完成，不渲染知识库列表');
                         }
@@ -2219,8 +2350,15 @@ class BicQAPopup {
                         }, 100);
                         
                         // 重置反馈按钮状态
-                        this.resetFeedbackButtons();
-                        
+                        this.resetFeedbackButtons(targetContainer);
+                        const resultActions = targetContainer ? targetContainer.querySelector('.result-actions') : null;
+                        if (resultActions) {
+                            resultActions.style.display = 'block';
+                            // 使用setTimeout确保DOM更新后再显示
+                            setTimeout(() => {
+                                resultActions.style.opacity = '1';
+                            }, 100);
+                        }
                         // 更新标题显示完成状态和用时
                         if (this.startTime) {
                             const endTime = Date.now();
@@ -2244,7 +2382,7 @@ class BicQAPopup {
                         if (data.choices && data.choices[0] && data.choices[0].delta) {
                             const delta = data.choices[0].delta;
                             if (delta.content) {
-                                console.log('接收到内容:', delta.content);
+                                // console.log('接收到内容:', delta.content);
                                 fullContent += delta.content;
                                 
                                 // 使用防抖更新显示内容
@@ -2253,7 +2391,7 @@ class BicQAPopup {
                         }
                         // 处理其他可能的格式
                         else if (data.content) {
-                            console.log('接收到内容:', data.content);
+                            // console.log('接收到内容:', data.content);
                             fullContent += data.content;
                             
                             // 使用防抖更新显示内容
@@ -3005,7 +3143,7 @@ class BicQAPopup {
         try {
             console.log('开始测试流式聊天...');
             console.log('测试消息:', testMessage);
-            console.log('resultText元素:', this.resultText);
+            // console.log('resultText元素:', this.resultText);
             console.log('resultContainer元素:', this.resultContainer);
             
             // 检查DOM元素是否正确初始化
@@ -3128,7 +3266,7 @@ class BicQAPopup {
                 headers['Authorization'] = `Bearer ${provider.apiKey}`;
             } else if (endpoint.includes('baidu') || endpoint.includes('wenxin')) {
                 headers['Authorization'] = `Bearer ${provider.apiKey}`;
-            } else if (endpoint.includes('ali') || endpoint.includes('tongyi')) {
+            } else if (endpoint.includes('aliyun') || endpoint.includes('tongyi')) {
                 headers['Authorization'] = `Bearer ${provider.apiKey}`;
             } else if (endpoint.includes('zhipu') || endpoint.includes('glm')) {
                 headers['Authorization'] = `Bearer ${provider.apiKey}`;
@@ -4138,6 +4276,25 @@ ${text}
         }
     }
 
+    updateCharacterCount() {
+        if (!this.questionInput || !this.charCount || !this.charCountContainer) return;
+        
+        const currentLength = this.questionInput.value.length;
+        const maxLength = 500;
+        
+        // 更新字符计数显示
+        this.charCount.textContent = currentLength;
+        
+        // 根据字符数量更新样式
+        this.charCountContainer.classList.remove('warning', 'danger');
+        
+        if (currentLength >= maxLength) {
+            this.charCountContainer.classList.add('danger');
+        } else if (currentLength >= maxLength * 0.8) { // 80%时显示警告
+            this.charCountContainer.classList.add('warning');
+        }
+    }
+
     // 更新布局状态
     updateLayoutState() {
         if (!this.contentArea || !this.resultContainer) return;
@@ -4197,7 +4354,15 @@ ${text}
             knowlistEl.className = 'result-text-knowlist';
             resultText.appendChild(knowlistEl);
         }
-
+        // 显示result-actions
+        const resultActions = targetContainer ? targetContainer.querySelector('.result-actions') : this.resultContainer.querySelector('.result-actions');
+        if (resultActions) {
+            resultActions.style.display = 'block';
+            // 使用setTimeout确保DOM更新后再显示
+            setTimeout(() => {
+                resultActions.style.opacity = '1';
+            }, 100);
+        }
         // 渲染结果到内容容器
         contentEl.innerHTML = this.formatContent(text);
         
@@ -4591,6 +4756,9 @@ ${text}
         <div class="question-section">
             <div class="question-label">问题：</div>
             <div class="question-text">${this.escapeHtml(question)}</div>
+            <button class="copy-question-btn" title="复制问题" data-action="copy-question">
+                <img src="icons/copy.svg" alt="复制" class="copy-icon">
+            </button>
         </div>
         
         <div class="result-section">
@@ -4782,6 +4950,9 @@ ${text}
         this.questionInput.value = '';
         this.questionInput.focus();
         
+        // 更新字符计数显示
+        this.updateCharacterCount();
+        
         // 更新布局状态
         this.updateLayoutState();
         
@@ -4790,62 +4961,158 @@ ${text}
     }
 
     // 处理用户反馈
-    handleFeedback(type, container = null) {
+    // 处理用户反馈
+    handleFeedback(type, container) {
+        const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
+        
+        // 如果选择了"不使用知识库"，清空知识库列表
+        if (!selectedKnowledgeBase || selectedKnowledgeBase === '不使用知识库') {
+            if (container) {
+                const likeBtn = container.querySelector('.like-btn');
+                const dislikeBtn = container.querySelector('.dislike-btn');
+                
+                if (likeBtn && dislikeBtn) {
+                    const isCurrentlyLiked = likeBtn.classList.contains('active');
+                    const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
+                    
+                    // 处理点赞逻辑
+                    if (type === 'like') {
+                        if (isCurrentlyLiked) {
+                            // 如果当前已点赞，则取消点赞
+                            likeBtn.classList.remove('active');
+                            this.showMessage('已取消点赞', 'info');
+                        } else {
+                            // 如果当前未点赞，则点赞
+                            likeBtn.classList.add('active');
+                            dislikeBtn.classList.remove('active'); // 清空否定状态
+                            this.saveFeedback('like');
+                            this.showMessage('感谢您的反馈！👍', 'success');
+                        }
+                    } else if (type === 'dislike') {
+                        if (isCurrentlyDisliked) {
+                            // 如果当前已否定，则取消否定
+                            dislikeBtn.classList.remove('active');
+                            this.showMessage('已取消否定', 'info');
+                        } else {
+                            // 如果当前未否定，则否定
+                            dislikeBtn.classList.add('active');
+                            likeBtn.classList.remove('active'); // 清空点赞状态
+                            this.saveFeedback('dislike');
+                            this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+                        }
+                    }
+                }
+                return;
+            }
+        }else{
+            //针对已经选择了的可以评价
+            // 获取当前问题文本
+            const questionDisplay = container ? container.querySelector('.question-text') : this.questionText;
+            const question = questionDisplay ? questionDisplay.textContent : '';
+            
+            // 获取当前回答文本
+            const resultText = container ? container.querySelector('.result-text-content') : this.resultText;
+            const answer = resultText ? resultText.textContent : '';
+            
+            // 确定反馈类型
+            const adviceType = type === 'like' ? 'good' : 'bad';
+            debugger;
+            // 调用统一处理函数
+            // 直接调用统一处理函数
+            this.doAdviceForAnswer(question, answer, adviceType, container);
+            
+        }
+        
+        return;
         // 如果指定了容器，针对该容器的按钮进行操作
         if (container) {
             const likeBtn = container.querySelector('.like-btn');
             const dislikeBtn = container.querySelector('.dislike-btn');
             
             if (likeBtn && dislikeBtn) {
-                // 移除之前的活跃状态
-                likeBtn.classList.remove('active');
-                dislikeBtn.classList.remove('active');
+                const isCurrentlyLiked = likeBtn.classList.contains('active');
+                const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
                 
-                // 设置当前按钮为活跃状态
+                // 处理点赞逻辑
                 if (type === 'like') {
-                    likeBtn.classList.add('active');
-                    this.saveFeedback('like');
-                    this.showMessage('感谢您的反馈！👍', 'success');
+                    if (isCurrentlyLiked) {
+                        // 如果当前已点赞，则取消点赞
+                        likeBtn.classList.remove('active');
+                        this.showMessage('已取消点赞', 'info');
+                        this.doAdviceForAnswer(question, answer, adviceType, container);
+                    } else {
+                        // 如果当前未点赞，则点赞
+                        likeBtn.classList.add('active');
+                        dislikeBtn.classList.remove('active'); // 清空否定状态
+                        this.saveFeedback('like');
+                        this.showMessage('感谢您的反馈！👍', 'success');
+                        this.doAdviceForAnswer(question, answer, adviceType, container);
+                    }
                 } else if (type === 'dislike') {
-                    dislikeBtn.classList.add('active');
-                    this.saveFeedback('dislike');
-                    this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+                    if (isCurrentlyDisliked) {
+                        // 如果当前已否定，则取消否定
+                        dislikeBtn.classList.remove('active');
+                        this.showMessage('已取消否定', 'info');
+                        this.doAdviceForAnswer(question, answer, adviceType, container);
+                    } else {
+                        // 如果当前未否定，则否定
+                        dislikeBtn.classList.add('active');
+                        likeBtn.classList.remove('active'); // 清空点赞状态
+                        this.saveFeedback('dislike');
+                        this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+                        this.doAdviceForAnswer(question, answer, adviceType, container);
+                    }
                 }
-                
-                // 3秒后重置按钮状态
-                setTimeout(() => {
-                    likeBtn.classList.remove('active');
-                    dislikeBtn.classList.remove('active');
-                }, 3000);
             }
             return;
         }
+        debugger;
+        // 如果没有指定容器，说明是第一轮对话，使用默认容器
+        const defaultContainer = this.resultContainer.querySelector('#conversation-default');
+        if (defaultContainer) {
+            // 递归调用，传入默认容器
+            this.handleFeedback(type, defaultContainer);
+            return;
+        }
         
-        // 如果没有指定容器，使用原有的固定按钮（用于第一个容器）
+        // 如果连默认容器都没有，使用全局按钮（备用方案）
         const likeBtn = this.likeButton;
         const dislikeBtn = this.dislikeButton;
         
         if (!likeBtn || !dislikeBtn) return;
         
-        // 移除之前的活跃状态
-        likeBtn.classList.remove('active');
-        dislikeBtn.classList.remove('active');
+        const isCurrentlyLiked = likeBtn.classList.contains('active');
+        const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
         
-        // 设置当前按钮为活跃状态
+        // 处理点赞逻辑
         if (type === 'like') {
-            likeBtn.classList.add('active');
-            this.saveFeedback('like');
-            this.showMessage('感谢您的反馈！👍', 'success');
+            if (isCurrentlyLiked) {
+                // 如果当前已点赞，则取消点赞
+                likeBtn.classList.remove('active');
+                this.showMessage('已取消点赞', 'info');
+            } else {
+                // 如果当前未点赞，则点赞
+                likeBtn.classList.add('active');
+                dislikeBtn.classList.remove('active'); // 清空否定状态
+                this.saveFeedback('like');
+                this.showMessage('感谢您的反馈！👍', 'success');
+            }
+            this.doAdviceForAnswer(question, answer, adviceType, container);
         } else if (type === 'dislike') {
-            dislikeBtn.classList.add('active');
-            this.saveFeedback('dislike');
-            this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+            if (isCurrentlyDisliked) {
+                // 如果当前已否定，则取消否定
+                dislikeBtn.classList.remove('active');
+                this.showMessage('已取消否定', 'info');
+            } else {
+                // 如果当前未否定，则否定
+                dislikeBtn.classList.add('active');
+                likeBtn.classList.remove('active'); // 清空点赞状态
+                this.saveFeedback('dislike');
+                this.showMessage('感谢您的反馈！我们会继续改进。��', 'info');
+            }
+            this.doAdviceForAnswer(question, answer, adviceType, container);
         }
         
-        // 3秒后重置按钮状态
-        setTimeout(() => {
-            this.resetFeedbackButtons();
-        }, 3000);
     }
 
     // 重置反馈按钮状态
@@ -5155,14 +5422,14 @@ ${text}
             chrome.storage.sync.set({
                 conversationHistory: this.conversationHistory
             }).catch(error => {
-                console.error('保存对话历史记录失败:', error);
+                console.log('保存对话历史记录失败:', error);
                 // 如果保存失败，尝试清理旧记录
                 this.cleanupHistoryRecords();
             });
 
             console.log('对话历史记录已保存，当前记录数:', this.conversationHistory.length);
         } catch (error) {
-            console.error('保存对话历史记录失败:', error);
+            console.log('保存对话历史记录失败:', error);
         }
     }
 
@@ -6034,7 +6301,7 @@ ${text}
     replaceProgressMessagesAfterStream() {
         try {
             console.log('=== 开始替换提示信息 ===');
-            console.log('resultText元素:', this.resultText);
+            // console.log('resultText元素:', this.resultText);
             
             // 检查resultText是否存在
             if (!this.resultText) {
@@ -6262,8 +6529,8 @@ ${text}
             if (targetContainer) {
                 // 如果传入的是conversationContainer，直接查找其中的.result-text
                 resultText = targetContainer.querySelector('.result-text');
-                console.log('从传入的container中查找.result-text:', resultText);
-                console.log('targetContainer.innerHTML:', targetContainer.innerHTML);
+                // console.log('从传入的container中查找.result-text:', resultText);
+                // console.log('targetContainer.innerHTML:', targetContainer.innerHTML);
             }
             
             // 如果没找到，使用默认的resultText
@@ -6277,8 +6544,8 @@ ${text}
                 return;
             }
             
-            console.log('最终使用的resultText:', resultText);
-            console.log('resultText.innerHTML:', resultText.innerHTML);
+            // console.log('最终使用的resultText:', resultText);
+            // console.log('resultText.innerHTML:', resultText.innerHTML);
             
             let knowlistEl = resultText.querySelector('.result-text-knowlist');
             console.log('找到的knowlistEl:', knowlistEl);
@@ -6343,7 +6610,7 @@ ${text}
             });
             
             console.log('知识库列表渲染完成，共渲染', items.length, '条知识库');
-            console.log('最终knowlistEl.innerHTML:', knowlistEl.innerHTML);
+            // console.log('最终knowlistEl.innerHTML:', knowlistEl.innerHTML);
             console.log('=== renderKnowledgeList 结束 ===');
         } catch (error) {
             console.error('渲染参考知识库列表失败:', error);
@@ -6429,6 +6696,9 @@ ${text}
                 </div>
                 <div class="question-content">
                     <div class="question-text">${question}</div>
+                    <button class="copy-question-btn" title="复制问题" data-action="copy-question">
+                        <img src="icons/copy.svg" alt="复制" class="copy-icon">
+                    </button>
                 </div>
             `;
         }
@@ -6518,6 +6788,9 @@ ${text}
                     </div>
                     <div class="question-content">
                         <div class="question-text"></div>
+                        <button class="copy-question-btn" title="复制问题" data-action="copy-question">
+                            <img src="icons/copy.svg" alt="复制" class="copy-icon">
+                        </button>
                     </div>
                 </div>
                 <div class="ai-display" style="display: none;">
@@ -6563,7 +6836,13 @@ ${text}
         if (this.resultContainer) {
             this.resultContainer.appendChild(conversationContainer);
         }
-        
+        const resultActions = conversationContainer.querySelector('.result-actions');
+        if (resultActions) {
+            // 初始时隐藏result-actions，等待内容加载完成后显示
+            resultActions.style.display = 'none';
+            resultActions.style.opacity = '0';
+            resultActions.style.transition = 'opacity 0.3s ease';
+        }
         // 滚动到底部
         this.scrollToBottom();
         
@@ -6701,7 +6980,397 @@ ${text}
                 <div class="result-text-knowlist"></div>
             `;
         }
+        // 【修改点5】在clearConversationContainer方法中，清空内容时隐藏result-actions
+        const resultActions = container.querySelector('.result-actions');
+        if (resultActions) {
+            resultActions.style.display = 'none';
+            resultActions.style.opacity = '0';
+        }
     }
+    // 统一的点赞和否定处理函数
+// 统一的点赞和否定处理函数
+async doAdviceForAnswer(question, answer, adviceType, container = null) {
+    debugger;
+    try {
+        debugger;
+        // 获取目标容器
+        const targetContainer = container || this.resultContainer;
+        if (!targetContainer) {
+            console.error('未找到目标容器');
+            return;
+        }
+
+        // 获取当前容器的反馈按钮
+        const likeBtn = targetContainer.querySelector('.like-btn');
+        const dislikeBtn = targetContainer.querySelector('.dislike-btn');
+        
+        if (!likeBtn || !dislikeBtn) {
+            console.error('未找到反馈按钮');
+            return;
+        }
+
+        // 检查当前状态
+        const isCurrentlyLiked = likeBtn.classList.contains('active');
+        const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
+        
+        // 获取当前容器的反馈ID（隐藏字段）
+        const feedbackIdElement = targetContainer.querySelector('.feedback-id');
+        const currentFeedbackId = feedbackIdElement ? feedbackIdElement.textContent : null;
+        
+        // 获取当前时间
+        const now = new Date();
+        const operTime = now.toISOString().slice(0, 19).replace('T', ' ');
+        
+        // 获取API密钥
+        await this.loadKnowledgeServiceConfig();
+        let apiKey = '';
+        let apiUserId = 0; // 默认用户ID，你可以根据需要修改
+        
+        if (this.knowledgeServiceConfig && this.knowledgeServiceConfig.api_key) {
+            apiKey = this.knowledgeServiceConfig.api_key.trim();
+        }
+        
+        if (!apiKey) {
+            console.error('未配置API密钥，无法提交反馈', 'error');
+            this.showMessage("感谢您的反馈!", 'success');
+            // this.showMessage('未配置API密钥，无法提交反馈', 'error');
+            return;
+        }
+
+        // 构建请求参数
+        const requestData = {
+            id: currentFeedbackId ? parseInt(currentFeedbackId) : null,
+            question: question,
+            answer: answer,
+            adviceType: adviceType,
+            // operTime: operTime,
+            // apiUserId: apiUserId
+        };
+
+        // 构建请求头
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        };
+
+        let response;
+        let operation = '';
+
+        // 根据当前状态和操作类型决定API调用
+        if (adviceType === 'good') {
+            if (isCurrentlyLiked) {
+                // 当前已点赞，再次点击取消点赞（删除）
+                if (currentFeedbackId) {
+                    operation = 'delete';
+                    response = await this.deleteFeedback(currentFeedbackId, apiKey);
+                } else {
+                    // 没有ID，直接移除样式
+                    this.removeFeedbackStyle(targetContainer);
+                    this.showMessage('已取消点赞', 'info');
+                    return;
+                }
+            } else {
+                // 当前未点赞，执行点赞操作
+                if (currentFeedbackId && isCurrentlyDisliked) {
+                    // 从否定改为点赞（编辑）
+                    operation = 'update';
+                    response = await this.updateFeedback(requestData, apiKey);
+                } else {
+                    // 新增点赞
+                    operation = 'add';
+                    response = await this.addFeedback(requestData, apiKey);
+                }
+            }
+        } else if (adviceType === 'bad') {
+            if (isCurrentlyDisliked) {
+                // 当前已否定，再次点击取消否定（删除）
+                if (currentFeedbackId) {
+                    operation = 'delete';
+                    response = await this.deleteFeedback(currentFeedbackId, apiKey);
+                } else {
+                    // 没有ID，直接移除样式
+                    this.removeFeedbackStyle(targetContainer);
+                    this.showMessage('已取消否定', 'info');
+                    return;
+                }
+            } else {
+                // 当前未否定，执行否定操作
+                if (currentFeedbackId && isCurrentlyLiked) {
+                    // 从点赞改为否定（编辑）
+                    operation = 'update';
+                    response = await this.updateFeedback(requestData, apiKey);
+                } else {
+                    // 新增否定
+                    operation = 'add';
+                    response = await this.addFeedback(requestData, apiKey);
+                }
+            }
+        }
+        debugger;
+
+        // 处理响应
+        if (response && response.status === 'success') {
+            // 更新UI状态
+            this.updateFeedbackUI(targetContainer, adviceType, operation, response.data);
+            
+            // 显示成功消息
+            let message = '';
+            if (operation === 'add') {
+                message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
+            } else if (operation === 'update') {
+                message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
+            } else if (operation === 'delete') {
+                message = adviceType === 'good' ? '已取消点赞' : '已取消否定';
+            }
+            this.showMessage(message, 'success');
+        } else {
+            // 显示错误消息
+            const errorMsg = response ? response.message || '操作失败' : '网络错误';
+            console.error('反馈操作失败:', errorMsg);
+            this.showMessage("感谢您的反馈!", 'success');
+            // this.showMessage(errorMsg, 'error');
+        }
+
+    } catch (error) {
+        console.error('反馈操作失败:', error);
+        this.showMessage("感谢您的反馈!", 'success');
+        // this.showMessage('操作失败，请稍后重试', 'error');
+    }
+}
+
+// 新增反馈
+async addFeedback(data, apiKey) {
+    try {
+        const response = await fetch('http://www.dbaiops.cn/api/chat/addFeedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('新增反馈失败:', error);
+        throw error;
+    }
+}
+
+// 编辑反馈
+async updateFeedback(data, apiKey) {
+    try {
+        const response = await fetch('http://www.dbaiops.cn/api/chat/updateFeedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('编辑反馈失败:', error);
+        throw error;
+    }
+}
+
+// 删除反馈
+async deleteFeedback(id, apiKey) {
+    try {
+        const response = await fetch(`http://www.dbaiops.cn/api/chat/deleteFeedback?id=${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('删除反馈失败:', error);
+        throw error;
+    }
+}
+
+// 更新反馈UI状态
+updateFeedbackUI(container, adviceType, operation, responseData) {
+    const likeBtn = container.querySelector('.like-btn');
+    const dislikeBtn = container.querySelector('.dislike-btn');
+    
+    if (!likeBtn || !dislikeBtn) return;
+
+    // 移除所有活跃状态
+    likeBtn.classList.remove('active');
+    dislikeBtn.classList.remove('active');
+
+    // 根据操作类型更新状态
+    if (operation === 'add' || operation === 'update') {
+        if (adviceType === 'good') {
+            likeBtn.classList.add('active');
+        } else if (adviceType === 'bad') {
+            dislikeBtn.classList.add('active');
+        }
+        
+        // 保存反馈ID
+        this.saveFeedbackId(container, responseData.id || responseData.feedbackId);
+    } else if (operation === 'delete') {
+        // 删除操作，移除反馈ID
+        this.removeFeedbackId(container);
+    }
+}
+
+// 保存反馈ID到容器中
+saveFeedbackId(container, feedbackId) {
+    // 移除旧的反馈ID元素
+    this.removeFeedbackId(container);
+    
+    // 创建新的反馈ID元素（隐藏）
+    const feedbackIdElement = document.createElement('div');
+    feedbackIdElement.className = 'feedback-id';
+    feedbackIdElement.style.display = 'none';
+    feedbackIdElement.textContent = feedbackId;
+    
+    // 添加到容器中
+    container.appendChild(feedbackIdElement);
+}
+
+// 移除反馈ID
+removeFeedbackId(container) {
+    const existingIdElement = container.querySelector('.feedback-id');
+    if (existingIdElement) {
+        existingIdElement.remove();
+    }
+}
+
+// 移除反馈样式
+removeFeedbackStyle(container) {
+    const likeBtn = container.querySelector('.like-btn');
+    const dislikeBtn = container.querySelector('.dislike-btn');
+    
+    if (likeBtn) likeBtn.classList.remove('active');
+    if (dislikeBtn) dislikeBtn.classList.remove('active');
+}
+
+// 格式化日期时间
+formatDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+// 复制问题文本功能
+copyQuestionText(button) {
+    try {
+        // 获取问题文本
+        const questionText = button.parentElement.querySelector('.question-text');
+        const textToCopy = questionText.textContent || questionText.innerText;
+        
+        if (!textToCopy || textToCopy.trim() === '') {
+            console.log('没有找到问题文本');
+            return;
+        }
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            // 显示复制成功提示
+            this.showCopySuccess(button);
+        }).catch(err => {
+            console.error('复制失败:', err);
+            // 降级方案：使用传统方法
+            this.fallbackCopyTextToClipboard(textToCopy, button);
+        });
+    } catch (error) {
+        console.error('复制功能出错:', error);
+    }
+}
+
+// 降级复制方案
+fallbackCopyTextToClipboard(text, button) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            this.showCopySuccess(button);
+        } else {
+            console.log('复制失败');
+        }
+    } catch (err) {
+        console.error('复制失败:', err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// 显示复制成功提示
+// 简洁蓝色提示：屏幕居中显示“复制成功”
+showCopySuccess() {
+	try {
+		const existing = document.querySelector('.bicqa-toast');
+		if (existing) existing.remove();
+
+		const toast = document.createElement('div');
+		toast.className = 'bicqa-toast';
+		toast.textContent = '复制成功';
+		toast.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%) scale(.98);
+			background: #1d4ed8;
+			color: #fff;
+			padding: 12px 18px;
+			border-radius: 8px;
+			font-size: 14px;
+			line-height: 1;
+			box-shadow: 0 4px 16px rgba(0,0,0,.2);
+			z-index: 2147483647;
+			opacity: 0;
+			transition: opacity .15s ease, transform .15s ease;
+			pointer-events: none;
+		`;
+		document.body.appendChild(toast);
+
+		requestAnimationFrame(() => {
+			toast.style.opacity = '1';
+			toast.style.transform = 'translate(-50%, -50%) scale(1)';
+		});
+
+		setTimeout(() => {
+			toast.style.opacity = '0';
+			toast.style.transform = 'translate(-50%, -50%) scale(.98)';
+			setTimeout(() => toast.remove(), 150);
+		}, 1500);
+	} catch (e) {
+		console.warn(e);
+	}
+}
+
 }
 
 // 初始化应用

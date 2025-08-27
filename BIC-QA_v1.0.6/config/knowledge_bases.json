@@ -148,6 +148,34 @@
       "category": "分布式数据库"
     },
     {
+      "id": "2208",
+      "name": "GBase 8a",
+      "dataset_name": "GBase 8a 知识库",
+      "description": "GBase 8a MPP相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2209",
+      "name": "HashData",
+      "dataset_name": "HashData 知识库",
+      "description": "HashData数据仓库相关知识",
+      "category": "分布式数据库"
+    },
+    {
+      "id": "2118",
+      "name": "GreatSQL",
+      "dataset_name": "GreatSQL 知识库",
+      "description": "GreatSQL数据库相关知识",
+      "category": "集中式数据库"
+    },
+    {
+      "id": "2119",
+      "name": "虚谷数据库",
+      "dataset_name": "虚谷 知识库",
+      "description": "虚谷数据库(集中/分布)相关知识",
+      "category": "集中式数据库"
+    },
+    {
       "id": "1111",
       "name": "操作系统",
       "dataset_name": "操作系统 知识库",

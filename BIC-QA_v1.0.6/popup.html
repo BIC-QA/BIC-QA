@@ -47,6 +47,12 @@
                         <span class="action-icon">❓</span>
                         <span class="action-text">使用说明</span>
                     </button>
+                    
+                    <!-- 公告按钮 -->
+                    <a href="http://www.dbaiops.cn/notice.html" target="_blank" class="sidebar-action-btn announcement-btn" title="公告">
+                        <span class="action-icon">📢</span>
+                        <span class="action-text">公告</span>
+                    </a>
                 </div>
             </div>
             
@@ -175,7 +181,11 @@
                                 class="question-input" 
                                 placeholder="请输入您的问题..."
                                 rows="3"
+                                maxlength="500"
                             ></textarea>
+                            <div class="character-count">
+                                <span id="charCount">0</span>/500
+                            </div>
                             <button id="askButton" class="ask-button" title="提问">
                                 <span class="send-icon">↑</span>
                                 <span class="stop-icon" style="display: none;">⏹</span>

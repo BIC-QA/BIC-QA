@@ -173,6 +173,27 @@ body {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* 公告按钮样式 */
+.announcement-btn {
+    text-decoration: none;
+    background: #f8f9fa;
+    border-color: #e9ecef;
+    color: #333;
+}
+
+.announcement-btn:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+    color: #007bff;
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+}
+
+.announcement-btn:active {
+    transform: none;
+}
+
 /* 帮助按钮区域 */
 .help-section {
     padding: 20px;
@@ -605,6 +626,28 @@ body {
     opacity: 0.8;
 }
 
+/* 字符计数显示 */
+.character-count {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    font-size: 12px;
+    color: #6c757d;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 10;
+    transition: color 0.3s ease;
+}
+
+.character-count.warning {
+    color: #ffc107;
+}
+
+.character-count.danger {
+    color: #dc3545;
+}
+
 /* 提问按钮 */
 .ask-button {
     position: absolute;
@@ -689,7 +732,7 @@ body {
     animation: fadeIn 0.3s ease;
     min-height: 400px;
     max-height: calc(100vh - 300px);
-    width: 810px;
+    width: 812px;
     max-width: 100%;
     margin: 0 auto;
     /* 减少布局抖动 */
@@ -745,7 +788,6 @@ body {
 .result-text {
     line-height: 1.6;
     color: #333;
-    margin-bottom: 24px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     width: 100%;
@@ -858,7 +900,6 @@ body {
 .result-actions {
     border-top: 1px solid #e9ecef;
     padding-top: 16px;
-    margin-top: 20px;
     flex-shrink: 0;
     width: 100%;
     max-width: 800px;
@@ -931,17 +972,51 @@ body {
 }
 
 .action-icon-btn.like-btn.active {
-    background: rgba(40, 167, 69, 0.12);
+    background: transparent !important;
     color: #28a745;
     opacity: 1;
 }
 
 .action-icon-btn.dislike-btn.active {
-    background: rgba(220, 53, 69, 0.12);
+    background: transparent !important;
     color: #dc3545;
     opacity: 1;
 }
+/* 添加SVG图标的激活状态样式 */
+.action-icon-btn.like-btn.active .action-icon-svg {
+    filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%) !important;
+}
 
+.action-icon-btn.dislike-btn.active .action-icon-svg {
+    filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%) !important;
+}
+/* 找到这些样式并修改 */
+.action-icon-btn.like-btn.active {
+    background: transparent !important;
+    color: #28a745; /* 绿色 */
+    opacity: 1;
+}
+
+.action-icon-btn.dislike-btn.active {
+    background: transparent !important;
+    color: #dc3545; /* 红色 */
+    opacity: 1;
+}
+
+/* 深色模式下的样式也需要修改 */
+@media (prefers-color-scheme: dark) {
+    .action-icon-btn.like-btn.active {
+        background: transparent !important;
+        color: #28a745;
+        opacity: 1;
+    }
+    
+    .action-icon-btn.dislike-btn.active {
+        background: transparent !important;
+        color: #dc3545;
+        opacity: 1;
+    }
+}
 .action-icon {
     font-size: 14px;
     line-height: 1;
@@ -1942,6 +2017,28 @@ body {
     .help-action-btn:hover {
         background: #4a5568;
         border-color: #667eea;
+        transform: translateX(4px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* 公告按钮深色模式样式 */
+    .announcement-btn {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #f6e05e;
+    }
+    
+    .announcement-btn:hover {
+        background: #4a5568;
+        border-color: #f6e05e;
+        color: #f6e05e;
+        transform: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        text-decoration: none;
+    }
+    
+    .announcement-btn:active {
+        transform: none;
     }
     
     .help-section {
@@ -2155,14 +2252,25 @@ body {
         color: #e2e8f0;
     }
     
-    .action-icon-btn.like-btn:hover {
-        background: rgba(40, 167, 69, 0.2) !important;
-        color: #68d391;
+    .action-icon-btn.like-btn.active {
+        background: transparent !important;
+        color: #4CAF50;
+        opacity: 1;
     }
     
-    .action-icon-btn.dislike-btn:hover {
-        background: rgba(220, 53, 69, 0.2) !important;
-        color: #fc8181;
+    .action-icon-btn.dislike-btn.active {
+        background: transparent !important;
+        color: #dc3545;
+        opacity: 1;
+    }
+    
+    /* 深色模式下的SVG激活状态 */
+    .action-icon-btn.like-btn.active .action-icon-svg {
+        filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(56deg) brightness(118%) contrast(119%) !important;
+    }
+    
+    .action-icon-btn.dislike-btn.active .action-icon-svg {
+        filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%) !important;
     }
     
     .action-icon-btn.export-btn:hover {
@@ -2448,3 +2556,42 @@ body {
         color: #fff !important;
     }
 } 
+/* 问题复制按钮样式 */
+.question-content {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.copy-question-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-top: 2px;
+    opacity: 0.6;
+}
+
+.copy-question-btn:hover {
+    background: #f8f9fa;
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.copy-question-btn:active {
+    transform: scale(0.95);
+}
+
+.copy-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+.copy-question-btn:hover .copy-icon {
+    opacity: 1;
+}
