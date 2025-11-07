@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,35 +13,42 @@
             background: #F4F6F9;
             color: #333;
         }
+
         .page-container {
             display: flex;
             min-height: 100vh;
         }
+
         .sidebar {
             width: 280px;
             background: white;
             border-right: 1px solid #e9ecef;
             padding: 20px;
         }
+
         .logo-section {
             text-align: center;
             margin-bottom: 30px;
         }
+
         .logo-icon {
             width: 80px;
             height: auto;
             margin-bottom: 15px;
         }
+
         .logo-title {
             font-size: 24px;
             font-weight: bold;
             margin: 0;
         }
+
         .logo-subtitle {
             font-size: 14px;
             color: #666;
             margin: 5px 0 0 0;
         }
+
         .action-btn {
             display: flex;
             align-items: center;
@@ -54,22 +62,26 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
+
         .action-btn:hover {
             background: #e9ecef;
         }
+
         .main-content {
             flex: 1;
             padding: 30px;
             background: white;
             margin: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
+
         .page-title {
             font-size: 28px;
             font-weight: bold;
             margin-bottom: 30px;
         }
+
         .selector-row {
             display: flex;
             gap: 20px;
@@ -78,41 +90,49 @@
             background: #f8f9fa;
             border-radius: 8px;
         }
+
         .selector-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
+
         .selector-group label {
             font-size: 12px;
             font-weight: 500;
             color: #666;
         }
+
         .selector-group select {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             min-width: 120px;
         }
+
         .input-container {
             position: relative;
             max-width: 600px;
             margin: 40px auto;
         }
+
         .input-header {
             text-align: center;
             margin-bottom: 30px;
         }
+
         .input-title {
             font-size: 36px;
             font-weight: bold;
             margin: 0 0 10px 0;
         }
+
         .input-subtitle {
             font-size: 18px;
             color: #666;
             margin: 0;
         }
+
         .question-input {
             width: 100%;
             min-height: 120px;
@@ -124,10 +144,12 @@
             resize: vertical;
             box-sizing: border-box;
         }
+
         .question-input:focus {
             outline: none;
             border-color: #007bff;
         }
+
         .ask-button {
             position: absolute;
             bottom: 15px;
@@ -144,13 +166,16 @@
             align-items: center;
             justify-content: center;
         }
+
         .ask-button:hover {
             background: #0056b3;
         }
+
         .ask-button:disabled {
             background: #6c757d;
             cursor: not-allowed;
         }
+
         .result-container {
             background: #f8f9fa;
             border-radius: 12px;
@@ -159,6 +184,7 @@
             margin-top: 40px;
             display: none;
         }
+
         .question-display {
             margin-bottom: 20px;
             padding: 15px;
@@ -167,22 +193,26 @@
             border: 1px solid #e9ecef;
             display: none;
         }
+
         .result-title {
             font-size: 24px;
             font-weight: bold;
             margin: 0 0 20px 0;
         }
+
         .result-text {
             font-size: 16px;
             line-height: 1.8;
             white-space: pre-wrap;
         }
+
         .result-actions {
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e9ecef;
             text-align: center;
         }
+
         .action-button {
             padding: 10px 20px;
             margin: 0 5px;
@@ -193,9 +223,11 @@
             cursor: pointer;
             font-size: 14px;
         }
+
         .action-button:hover {
             background: #5a6268;
         }
+
         .footer {
             text-align: center;
             padding: 20px;
@@ -204,6 +236,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="page-container">
         <!-- 左侧边栏 -->
@@ -213,7 +246,7 @@
                 <h1 class="logo-title">BIC-QA</h1>
                 <p class="logo-subtitle">国产数据库智能问答</p>
             </div>
-            
+
             <button class="action-btn" id="pageSummaryBtn">
                 <span>📋</span>
                 <span>结论摘要</span>
@@ -231,11 +264,11 @@
                 <span>使用说明</span>
             </button>
         </aside>
-        
+
         <!-- 主内容区域 -->
         <main class="main-content">
             <h2 class="page-title">智能问答</h2>
-            
+
             <div class="selector-row">
                 <div class="selector-group">
                     <label>选择模型：</label>
@@ -265,26 +298,22 @@
                 </div>
                 <div class="selector-group">
                     <label>&nbsp;</label>
-                    <button id="settingsBtn" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <button id="settingsBtn"
+                        style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         ⚙️ 设置
                     </button>
                 </div>
             </div>
-            
+
             <div class="input-container">
                 <div class="input-header">
                     <h2 class="input-title">BIC-QA</h2>
                     <p class="input-subtitle">国产数据库智能问答</p>
                 </div>
-                <textarea 
-                    id="questionInput" 
-                    class="question-input" 
-                    placeholder="请输入您的问题..."
-                    rows="5"
-                ></textarea>
+                <textarea id="questionInput" class="question-input" placeholder="请输入您的问题..." rows="5"></textarea>
                 <button id="askButton" class="ask-button" title="提问">↑</button>
             </div>
-            
+
             <div id="resultContainer" class="result-container">
                 <div id="questionDisplay" class="question-display">
                     <div style="font-size: 14px; color: #666; margin-bottom: 8px;">您的问题：</div>
@@ -297,9 +326,9 @@
                     <button id="clearButton" class="action-button">清空</button>
                 </div>
             </div>
-            
+
             <div class="footer">
-                <p>版本 1.0.6</p>
+                <p>版本 1.0.7</p>
             </div>
         </main>
     </div>
@@ -332,14 +361,14 @@
                             // 不阻止默认行为，允许换行
                             return;
                         }
-                        
+
                         // 如果按下了Ctrl键，执行提问操作
                         if (e.ctrlKey) {
                             e.preventDefault();
                             this.handleAskQuestion();
                             return;
                         }
-                        
+
                         // 普通回车键，执行提问操作
                         e.preventDefault();
                         this.handleAskQuestion();
@@ -358,7 +387,7 @@
                 }
 
                 this.setLoading(true);
-                
+
                 try {
                     this.showQuestion(question);
                     await this.simulateAPIResponse(question);
@@ -377,7 +406,7 @@
 
             async simulateAPIResponse(question) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
-                
+
                 const response = `关于"${question}"的回答：
 
 这是一个模拟的AI回答。在实际应用中，这里会调用真实的AI API来生成回答。
@@ -389,7 +418,7 @@
 • 实时响应
 
 如果您需要配置真实的API，请在设置中配置相应的API密钥和端点。`;
-                
+
                 this.showResult(response);
             }
 
@@ -437,4 +466,5 @@
         });
     </script>
 </body>
-</html> 
+
+</html>

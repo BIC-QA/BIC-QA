@@ -18,39 +18,39 @@ class BicQAPopup {
         this.progressMessageReplacementInterval = null;
         this.userInteractionTimeout = null;
         this.lastUserInteraction = Date.now();
-        
+
         this.initElements();
         this.bindEvents();
-        
+
         // 确保页面完全加载后再初始化
         this.initializeAfterLoad();
     }
-    
+
     // 新增方法：确保页面完全加载后再初始化
     async initializeAfterLoad() {
         // 添加缓存清理逻辑
         await this.clearCacheOnStartup();
-        
+
         // 检测浏览器兼容性
         this.detectBrowserCompatibility();
-        
+
         // 等待DOM完全加载
         if (document.readyState === 'loading') {
             await new Promise(resolve => {
                 document.addEventListener('DOMContentLoaded', resolve, { once: true });
             });
         }
-        
+
         // 额外等待一小段时间确保所有元素都已渲染
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         // 加载设置
         await this.loadSettings();
-        
+
         // 根据浏览器兼容性调整延迟时间
         const delay = this.chromeCompatibilityDelay || 1000;
         console.log(`根据浏览器兼容性，配置检查延迟时间: ${delay}ms`);
-        
+
         // 延迟检查配置状态，给用户时间看到页面
         setTimeout(() => {
             this.checkConfigurationStatus();
@@ -61,19 +61,19 @@ class BicQAPopup {
     async clearCacheOnStartup() {
         try {
             console.log('开始清理缓存数据...');
-            
+
             // 清理本地存储（配置文件等）
             await chrome.storage.local.clear();
-            
+
             // 选择性清理同步存储（保留重要配置，清理历史数据）
             await chrome.storage.sync.remove([
                 'currentSessionHistory'
             ]);
-            
+
             // 清理localStorage和sessionStorage
             localStorage.clear();
             sessionStorage.clear();
-            
+
             console.log('启动时缓存清理完成');
         } catch (error) {
             console.error('缓存清理失败:', error);
@@ -101,6 +101,7 @@ class BicQAPopup {
         this.pageSummaryBtn = document.getElementById('pageSummaryBtn');
         this.translateBtn = document.getElementById('translateBtn');
         this.historyBtn = document.getElementById('historyBtn');
+        this.awrAnalysisBtn = document.getElementById('awrAnalysisBtn');
         this.newSessionBtn = document.getElementById('newSessionBtn');
         this.helpBtn = document.getElementById('helpBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
@@ -114,35 +115,58 @@ class BicQAPopup {
         this.stopIcon = this.askButton ? this.askButton.querySelector('.stop-icon') : null;
         this.abortController = null;
         this.hasBeenStopped = false;
-        
+
         // 历史记录对话框元素
         this.historyDialog = document.getElementById('historyDialog');
         this.closeHistoryDialog = document.getElementById('closeHistoryDialog');
         this.clearHistoryBtn = document.getElementById('clearHistoryBtn');
         this.exportHistoryBtn = document.getElementById('exportHistoryBtn');
         this.historyList = document.getElementById('historyList');
-        
+
+        // AWR分析对话框元素
+        this.awrAnalysisDialog = document.getElementById('awrAnalysisDialog');
+        this.closeAwrDialog = document.getElementById('closeAwrDialog');
+        this.awrAnalysisForm = document.getElementById('awrAnalysisForm');
+        this.awrProblemDescription = document.getElementById('awrProblemDescription');
+        this.awrEmail = document.getElementById('awrEmail');
+        this.awrUserName = document.getElementById('awrUserName');
+        this.awrFileInput = document.getElementById('awrFileInput');
+        this.awrFileDisplay = document.getElementById('awrFileDisplay');
+        this.awrFileUploadBtn = document.getElementById('awrFileUploadBtn');
+        this.awrLanguage = document.getElementById('awrLanguage');
+        this.awrCancelBtn = document.getElementById('awrCancelBtn');
+        this.awrSaveBtn = document.getElementById('awrSaveBtn');
+        this.selectedFile = null;
+        this.awrCountdownInterval = null; // 用于存储AWR分析按钮倒计时定时器
+
+        // AWR历史记录相关
+        this.awrHistoryCurrentPage = 1;
+        this.awrHistoryPageSize = 10;
+        this.awrHistoryTotal = 0;
+        this.awrHistoryList = [];
+        this.awrHistorySearchKeyword = '';
+
         // 回到顶部按钮
         this.backToTopBtn = document.getElementById('backToTopBtn');
-        
+
         // 布局控制元素
         this.contentArea = document.querySelector('.content-area');
-        
+
         // 计时相关
         this.startTime = null;
-        
+
         // 检测是否为弹出窗口模式
         this.isPopupMode = window.innerWidth <= 400 || window.innerHeight <= 600;
         this.initFullscreenMode();
-        
+
         // 初始化字符计数显示
-        this.updateCharacterCount();
+        // this.updateCharacterCount();
     }
 
     bindEvents() {
         // 添加用户交互监听
         this.addUserInteractionListeners();
-        
+
         // 提问按钮事件
         if (this.askButton) {
             this.askButton.addEventListener('click', () => {
@@ -155,12 +179,21 @@ class BicQAPopup {
                 }
             });
         }
-        
+
         // 输入框内容变化监听
         if (this.questionInput) {
             this.questionInput.addEventListener('input', () => {
                 this.updateButtonState();
                 this.updateCharacterCount();
+                // 如果输入字符超过5个，隐藏建议容器
+                // if (this.questionInput.value.length > 5) {
+                //     // 查找当前对话容器中的建议容器
+                //     const currentContainer = this.getCurrentConversationContainer();
+                //     const suggestionContainer = currentContainer ? currentContainer.querySelector('.suggestion-container') : null;
+                //     if (suggestionContainer && suggestionContainer.style.display === 'block') {
+                //         suggestionContainer.style.display = 'none';
+                //     }
+                // }
             });
             this.questionInput.addEventListener('keydown', (e) => {
                 // 处理回车键事件
@@ -170,60 +203,68 @@ class BicQAPopup {
                         // 不阻止默认行为，允许换行
                         return;
                     }
-                    
+
                     // 如果按下了Ctrl键，执行提问操作
                     if (e.ctrlKey) {
                         e.preventDefault();
                         this.handleAskQuestion();
                         return;
                     }
-                    
+
                     // 普通回车键，执行提问操作
                     e.preventDefault();
                     this.handleAskQuestion();
                 }
             });
-            
+
             // 添加粘贴事件监听，限制粘贴内容长度
             this.questionInput.addEventListener('paste', (e) => {
+                const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
+                const isUsingKnowledgeBase = selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库(None)';
+
+                // 如果不使用知识库(None)，不限制粘贴
+                if (!isUsingKnowledgeBase) {
+                    return;
+                }
+
                 const maxLength = 500;
                 const clipboardData = e.clipboardData || window.clipboardData;
                 const pastedText = clipboardData.getData('text');
-                
+
                 // 获取当前输入框的内容
                 const currentValue = this.questionInput.value;
                 const selectionStart = this.questionInput.selectionStart;
                 const selectionEnd = this.questionInput.selectionEnd;
-                
+
                 // 计算粘贴后的总长度
-                const newValue = currentValue.substring(0, selectionStart) + 
-                               pastedText + 
-                               currentValue.substring(selectionEnd);
-                
+                const newValue = currentValue.substring(0, selectionStart) +
+                    pastedText +
+                    currentValue.substring(selectionEnd);
+
                 // 如果粘贴后超过最大长度，阻止默认粘贴行为
                 if (newValue.length > maxLength) {
                     e.preventDefault();
-                    
+
                     // 计算可以粘贴的字符数
                     const availableSpace = maxLength - (currentValue.length - (selectionEnd - selectionStart));
-                    
+
                     if (availableSpace > 0) {
                         // 只粘贴能容纳的部分
                         const truncatedText = pastedText.substring(0, availableSpace);
-                        const finalValue = currentValue.substring(0, selectionStart) + 
-                                         truncatedText + 
-                                         currentValue.substring(selectionEnd);
-                        
+                        const finalValue = currentValue.substring(0, selectionStart) +
+                            truncatedText +
+                            currentValue.substring(selectionEnd);
+
                         // 手动设置值
                         this.questionInput.value = finalValue;
-                        
+
                         // 设置光标位置
                         const newCursorPos = selectionStart + truncatedText.length;
                         this.questionInput.setSelectionRange(newCursorPos, newCursorPos);
-                        
+
                         // 触发input事件更新按钮状态
                         this.questionInput.dispatchEvent(new Event('input'));
-                        
+
                         // 显示提示信息
                         this.showMessage(`粘贴内容已截断，最多只能输入${maxLength}个字符`, 'warning');
                     } else {
@@ -239,16 +280,16 @@ class BicQAPopup {
             this.resultContainer.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target) return;
-                
+
                 // 获取按钮所在的容器
                 const conversationContainer = target.closest('.conversation-container');
                 if (!conversationContainer) return;
-                
+
                 // 跳过第一个容器（conversation-default），因为它已经有直接绑定的事件
                 if (conversationContainer.id === 'conversation-default') {
                     return;
                 }
-                
+
                 // 根据按钮的class和ID判断操作类型
                 if (target.classList.contains('export-btn') || target.id.startsWith('export-')) {
                     e.preventDefault();
@@ -268,23 +309,23 @@ class BicQAPopup {
                 }
             });
         }
-        
+
         // 保留原有的固定ID按钮事件绑定（用于第一个容器）
         // 复制按钮
         if (this.copyButton) {
             this.copyButton.addEventListener('click', () => this.copyResult());
         }
-        
+
         // 导出按钮
         if (this.exportButton) {
             this.exportButton.addEventListener('click', () => this.exportResultAsHtml());
         }
-        
+
         // 清空按钮
         if (this.clearButton) {
             this.clearButton.addEventListener('click', () => this.clearResult());
         }
-        
+
         // 反馈按钮 - 修改这部分
         if (this.likeButton) {
             this.likeButton.addEventListener('click', () => {
@@ -300,7 +341,7 @@ class BicQAPopup {
                 this.handleFeedback('dislike', defaultContainer);
             });
         }
-        
+
         // 快捷操作按钮
         if (this.pageSummaryBtn) {
             this.pageSummaryBtn.addEventListener('click', () => this.getPageSummary());
@@ -312,23 +353,19 @@ class BicQAPopup {
         if (this.historyBtn) {
             this.historyBtn.addEventListener('click', () => this.showHistoryDialog());
         }
-        
+
+        if (this.awrAnalysisBtn) {
+            this.awrAnalysisBtn.addEventListener('click', () => this.showAwrAnalysisDialog());
+        }
+
         if (this.newSessionBtn) {
             this.newSessionBtn.addEventListener('click', () => this.startNewSession());
         }
-        
+
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => this.openSettings());
         }
-        
-        // 移除全屏按钮事件绑定，因为元素已删除
-        // this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
-        
-        // 知识库下拉框事件
-        if (this.knowledgeBaseSelect) {
-            this.knowledgeBaseSelect.addEventListener('change', () => this.handleKnowledgeBaseChange());
-        }
-        
+        // 在 bindEvents() 方法中添加（大约在第320行附近）
         // 历史记录对话框事件
         if (this.closeHistoryDialog) {
             this.closeHistoryDialog.addEventListener('click', () => this.hideHistoryDialog());
@@ -339,15 +376,158 @@ class BicQAPopup {
         if (this.exportHistoryBtn) {
             this.exportHistoryBtn.addEventListener('click', () => this.exportHistory());
         }
-        
+
+        // 添加历史记录事件委托
+        if (this.historyList) {
+            this.historyList.addEventListener('click', (e) => {
+                const target = e.target;
+
+                // 处理复制按钮点击
+                if (target.classList.contains('copy-btn')) {
+                    const id = target.dataset.id;
+                    this.copyHistoryItem(id);
+                }
+
+                // 处理删除按钮点击
+                if (target.classList.contains('delete-single-btn')) {
+                    const id = target.dataset.id;
+                    this.deleteHistoryItem(id);
+                }
+
+                // 处理批量导出按钮点击
+                if (target.id === 'batchExportBtn') {
+                    this.batchExportHistory();
+                }
+
+                // 处理批量删除按钮点击
+                if (target.id === 'batchDeleteBtn') {
+                    this.batchDeleteHistory();
+                }
+            });
+
+            // 处理复选框变化
+            this.historyList.addEventListener('change', (e) => {
+                const target = e.target;
+
+                // 处理全选复选框
+                if (target.id === 'selectAllCheckbox') {
+                    this.toggleSelectAll();
+                }
+
+                // 处理单个复选框
+                if (target.classList.contains('history-checkbox')) {
+                    this.updateBatchButtons();
+                }
+            });
+        }
+        // 移除全屏按钮事件绑定，因为元素已删除
+        // this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+
+        // 知识库下拉框事件
+        if (this.knowledgeBaseSelect) {
+            this.knowledgeBaseSelect.addEventListener('change', () => this.handleKnowledgeBaseChange());
+        }
+
+        // 历史记录对话框事件
+        if (this.closeHistoryDialog) {
+            this.closeHistoryDialog.addEventListener('click', () => this.hideHistoryDialog());
+        }
+        if (this.clearHistoryBtn) {
+            this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
+        }
+        if (this.exportHistoryBtn) {
+            this.exportHistoryBtn.addEventListener('click', () => this.exportHistory());
+        }
+
+        // AWR分析对话框事件
+        if (this.closeAwrDialog) {
+            this.closeAwrDialog.addEventListener('click', () => this.hideAwrAnalysisDialog());
+        }
+        if (this.awrCancelBtn) {
+            this.awrCancelBtn.addEventListener('click', () => this.hideAwrAnalysisDialog());
+        }
+        if (this.awrAnalysisForm) {
+            this.awrAnalysisForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAwrAnalysisSubmit();
+            });
+        }
+        if (this.awrFileUploadBtn) {
+            this.awrFileUploadBtn.addEventListener('click', () => {
+                if (this.awrFileInput) {
+                    this.awrFileInput.click();
+                }
+            });
+        }
+        if (this.awrFileInput) {
+            this.awrFileInput.addEventListener('change', (e) => {
+                this.handleFileSelect(e);
+            });
+        }
+
+        // AWR选项卡切换
+        document.querySelectorAll('.awr-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.switchAwrTab(btn.dataset.tab);
+            });
+        });
+
+        // 历史记录刷新按钮
+        // 搜索按钮事件
+        const searchBtn = document.getElementById('awrRefreshHistoryBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                this.handleAwrSearch();
+            });
+        }
+
+        // 重置按钮事件
+        const resetBtn = document.getElementById('awrResetBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                this.handleAwrReset();
+            });
+        }
+
+        // 分页按钮
+        const prevBtn = document.getElementById('awrPrevPageBtn');
+        const nextBtn = document.getElementById('awrNextPageBtn');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (this.awrHistoryCurrentPage > 1) {
+                    // 保持当前筛选条件
+                    const startTime = document.getElementById('awrStartTime')?.value || '';
+                    const endTime = document.getElementById('awrEndTime')?.value || '';
+                    const status = document.getElementById('awrStatusFilter')?.value || '';
+                    this.loadAwrHistoryList(this.awrHistoryCurrentPage - 1, this.awrHistoryPageSize, '', startTime, endTime, status);
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(this.awrHistoryTotal / this.awrHistoryPageSize);
+                if (this.awrHistoryCurrentPage < totalPages) {
+                    // 保持当前筛选条件
+                    const startTime = document.getElementById('awrStartTime')?.value || '';
+                    const endTime = document.getElementById('awrEndTime')?.value || '';
+                    const status = document.getElementById('awrStatusFilter')?.value || '';
+                    this.loadAwrHistoryList(this.awrHistoryCurrentPage + 1, this.awrHistoryPageSize, '', startTime, endTime, status);
+                }
+            });
+        }
+
+        // 搜索功能（防抖）
+        // 移除实时搜索，改为点击搜索按钮触发
+        // 搜索输入框的实时搜索已移除，现在需要点击搜索按钮
+
         // 回到顶部按钮事件
         if (this.backToTopBtn) {
             this.backToTopBtn.addEventListener('click', () => this.scrollToTop());
         }
-        
+
         // 监听滚动事件，控制回到顶部按钮的显示
         window.addEventListener('scroll', () => this.handleScroll());
-        
+
         // 监听存储变化，当设置发生变化时重新检查配置状态
         chrome.storage.onChanged.addListener((changes, namespace) => {
             if (namespace === 'sync' && (changes.providers || changes.models)) {
@@ -358,7 +538,7 @@ class BicQAPopup {
                 }, 500);
             }
         });
-        
+
         // 打开完整页面按钮
         const openFullPageBtn = document.getElementById('openFullPageBtn');
         if (openFullPageBtn) {
@@ -378,7 +558,7 @@ class BicQAPopup {
             this.providers = result.providers || [];
             this.models = result.models || [];
             this.conversationHistory = result.conversationHistory || [];
-            
+
             // 检查历史记录大小，如果过大则清理
             if (this.conversationHistory.length > 50) {
                 console.log('历史记录过多，自动清理...');
@@ -387,20 +567,20 @@ class BicQAPopup {
                     conversationHistory: this.conversationHistory
                 });
             }
-            
+
             this.loadModelOptions();
-            
+
             // 延迟加载知识库选项，确保知识库管理器有足够时间初始化
             setTimeout(() => {
                 this.loadKnowledgeBaseOptions();
             }, 100);
-            
+
             // 加载参数规则选项
             this.loadParameterRuleOptions();
-            
+
             // 加载知识库服务配置 - 修复：等待异步方法完成
             await this.loadKnowledgeServiceConfig();
-            
+
             // 移除自动调用checkConfigurationStatus，改为在initializeAfterLoad中统一处理
             // this.checkConfigurationStatus();
         } catch (error) {
@@ -413,14 +593,14 @@ class BicQAPopup {
             this.providers = [];
             this.models = [];
             this.conversationHistory = [];
-            
+
             // 移除自动调用checkConfigurationStatus，改为在initializeAfterLoad中统一处理
             // this.checkConfigurationStatus();
         }
-        
+
         // 初始化按钮状态
         this.updateButtonState();
-        
+
         // 设置初始布局状态
         this.updateLayoutState();
     }
@@ -428,7 +608,7 @@ class BicQAPopup {
     loadModelOptions() {
         const select = this.modelSelect;
         select.innerHTML = '';
-        
+
         if (this.models.length === 0) {
             const option = document.createElement('option');
             option.value = '';
@@ -437,7 +617,7 @@ class BicQAPopup {
             select.appendChild(option);
             return;
         }
-        
+
         this.models.forEach(model => {
             const option = document.createElement('option');
             option.value = JSON.stringify({ name: model.name, provider: model.provider });
@@ -451,11 +631,11 @@ class BicQAPopup {
 
     loadKnowledgeBaseOptions() {
         const select = this.knowledgeBaseSelect;
-        select.innerHTML = '<option value="">不使用知识库</option>';
-        
+        select.innerHTML = '<option value="">不使用知识库(None)</option>';
+
         console.log('开始加载知识库选项...');
         console.log('window.knowledgeBaseManager:', window.knowledgeBaseManager);
-        
+
         // 等待知识库管理器初始化完成
         if (window.knowledgeBaseManager && window.knowledgeBaseManager.getKnowledgeBases) {
             // 检查是否已初始化
@@ -473,14 +653,26 @@ class BicQAPopup {
             // 如果知识库管理器不可用，尝试直接加载配置文件
             this.loadKnowledgeBasesDirectly();
         }
+        // 知识库选项加载完成后，更新字符计数显示
+        this.updateCharacterCount();
     }
 
     // 从知识库管理器加载知识库
-    loadKnowledgeBasesFromManager() {
+    async loadKnowledgeBasesFromManager() {
         try {
+            // 优先尝试从API获取
+            console.log('尝试从API获取知识库列表...');
+            const apiResult = await this.loadKnowledgeBasesFromAPI();
+            if (apiResult.success) {
+                console.log('从API成功获取知识库列表:', apiResult.data);
+                this.renderKnowledgeBasesFromData(apiResult.data);
+                return;
+            }
+
+            // API失败，尝试从知识库管理器获取
+            console.log('API获取失败，尝试从知识库管理器获取...');
             const knowledgeBases = window.knowledgeBaseManager.getKnowledgeBases();
-            // console.log('获取到的知识库列表:', knowledgeBases);
-            
+
             if (knowledgeBases && knowledgeBases.length > 0) {
                 const select = this.knowledgeBaseSelect;
                 knowledgeBases.forEach(kb => {
@@ -496,40 +688,158 @@ class BicQAPopup {
             }
         } catch (error) {
             console.error('从知识库管理器加载失败:', error);
-            this.loadKnowledgeBasesDirectly();
+            await this.loadKnowledgeBasesDirectly();
         }
     }
 
     // 直接加载知识库配置（备用方案）
     async loadKnowledgeBasesDirectly() {
         try {
-            console.log('尝试直接加载知识库配置...');
+            console.log('尝试从API加载知识库列表...');
+
+            // 优先尝试调用接口获取知识库列表
+            const apiResult = await this.loadKnowledgeBasesFromAPI();
+            if (apiResult.success) {
+                console.log('从API成功获取知识库列表:', apiResult.data);
+                this.renderKnowledgeBasesFromData(apiResult.data);
+                return;
+            }
+
+            // API调用失败，尝试从配置文件加载
+            console.log('API调用失败，尝试从配置文件加载...');
+            await this.loadKnowledgeBasesFromConfig();
+
+        } catch (error) {
+            console.error('加载知识库列表失败:', error);
+            // 如果所有方法都失败，使用硬编码的默认值
+            this.loadDefaultKnowledgeBases();
+        }
+    }
+
+    // 新增：从API加载知识库列表
+    async loadKnowledgeBasesFromAPI() {
+        try {
+            console.log('正在调用知识库API...');
+            const apiUrl = 'http://www.dbaiops.cn/api/knowledge-datasets/list';
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                // 如果需要发送请求体，可以在这里添加
+                // body: JSON.stringify({})
+            });
+
+            console.log('API响应状态:', response.status, response.statusText);
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('API返回数据:', data);
+
+            // 根据API返回的数据结构进行适配
+            let knowledgeBases = [];
+
+            if (data.status === "success" && Array.isArray(data.data)) {
+                // 格式1: { status: "success", data: [...] }
+                knowledgeBases = data.data;
+            } else if (data.success && Array.isArray(data.data)) {
+                // 格式2: { success: true, data: [...] }
+                knowledgeBases = data.data;
+            } else if (Array.isArray(data)) {
+                // 格式3: 直接返回数组
+                knowledgeBases = data;
+            } else if (data.knowledge_bases && Array.isArray(data.knowledge_bases)) {
+                // 格式4: { knowledge_bases: [...] }
+                knowledgeBases = data.knowledge_bases;
+            } else {
+                throw new Error('API返回的数据格式不符合预期');
+            }
+
+            // 验证数据格式
+            if (!knowledgeBases.every(kb => (kb.id || kb.code) && kb.name)) {
+                throw new Error('API返回的知识库数据格式不正确');
+            }
+
+            // 数据格式标准化，确保id字段存在
+            knowledgeBases = knowledgeBases.map(kb => ({
+                ...kb,
+                id: kb.code || kb.id // 优先使用code字段作为id
+            }));
+
+            return {
+                success: true,
+                data: knowledgeBases
+            };
+
+        } catch (error) {
+            console.error('API调用失败:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    // 新增：从配置文件加载知识库列表
+    async loadKnowledgeBasesFromConfig() {
+        try {
+            console.log('从配置文件加载知识库列表...');
             const response = await fetch(chrome.runtime.getURL('config/knowledge_bases.json'));
             const config = await response.json();
             const knowledgeBases = config.knowledge_bases || [];
-            
-            console.log('直接加载的知识库列表:', knowledgeBases);
-            
-            const select = this.knowledgeBaseSelect;
-            knowledgeBases.forEach(kb => {
-                const option = document.createElement('option');
-                option.value = JSON.stringify(kb); // 存储完整的知识库对象
-                option.textContent = kb.name;
-                select.appendChild(option);
-            });
-            
-            console.log(`直接加载成功，添加了 ${knowledgeBases.length} 个知识库选项`);
+
+            console.log('从配置文件加载的知识库列表:', knowledgeBases);
+            this.renderKnowledgeBasesFromData(knowledgeBases);
+
         } catch (error) {
-            console.error('直接加载知识库配置失败:', error);
-            // 如果直接加载也失败，使用硬编码的默认值
-            this.loadDefaultKnowledgeBases();
+            console.error('从配置文件加载知识库列表失败:', error);
+            throw error; // 继续抛出错误，让上层处理
         }
+    }
+
+    // 新增：渲染知识库数据到下拉框
+    // 格式化知识库显示名称
+    formatKnowledgeBaseName(name) {
+        const nameMap = {
+            'MySQL兼容': 'MySQL',
+            'PG兼容生态': 'PostgreSQL',
+            '盘古数据库': '盘古(PanGu)',
+            'Mysql生态': 'MySQL',
+            'Mysql,PG兼容生态': 'PostgreSQL'
+        };
+
+        // 检查是否有映射
+        if (nameMap[name]) {
+            return nameMap[name];
+        }
+
+        // 如果没有映射，返回原名称
+        return name;
+    }
+
+    renderKnowledgeBasesFromData(knowledgeBases) {
+        const select = this.knowledgeBaseSelect;
+
+        knowledgeBases.forEach(kb => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify(kb); // 存储完整的知识库对象
+            option.textContent = this.formatKnowledgeBaseName(kb.name);
+            select.appendChild(option);
+        });
+
+        console.log(`成功加载 ${knowledgeBases.length} 个知识库选项`);
+        this.updateCharacterCount(); // 添加这行
     }
 
     // 加载硬编码的默认知识库（最终备用方案）
     loadDefaultKnowledgeBases() {
         console.log('使用硬编码的默认知识库列表');
-        
+
         const defaultKnowledgeBases = [
             { id: "2101", name: "Oracle", dataset_name: "Oracle 知识库" },
             { id: "2102", name: "MySQL兼容", dataset_name: "MySQL兼容 知识库" },
@@ -558,34 +868,35 @@ class BicQAPopup {
             { id: "2119", name: "虚谷数据库", dataset_name: "虚谷 知识库" },
             { id: "1111", name: "操作系统", dataset_name: "操作系统 知识库" }
         ];
-        
+
         const select = this.knowledgeBaseSelect;
         defaultKnowledgeBases.forEach(kb => {
             const option = document.createElement('option');
             option.value = JSON.stringify(kb); // 存储完整的知识库对象
-            option.textContent = kb.name;
+            option.textContent = this.formatKnowledgeBaseName(kb.name);
             select.appendChild(option);
         });
-        
+
         console.log(`使用默认值，添加了 ${defaultKnowledgeBases.length} 个知识库选项`);
+        this.updateCharacterCount(); // 添加这行
     }
 
     loadParameterRuleOptions() {
         try {
             const select = this.parameterRuleSelect;
-            
+
             // 从Chrome存储中获取所有规则
             chrome.storage.sync.get(['rules', 'defaultRulesModified'], (result) => {
                 const savedRules = result.rules || [];
                 const defaultRulesModified = result.defaultRulesModified || false;
-                
+
                 // 获取默认规则
                 const defaultRules = [
                     {
                         "description": "适用于快速检索场景，返回更多相关结果",
                         "id": "default-fast-search",
                         "isDefault": true,
-                        "name": "精准检索",
+                        "name": "精准检索(Precise search)",
                         "similarity": 0.7,
                         "topN": 6,
                         "temperature": 0.7,
@@ -595,21 +906,21 @@ class BicQAPopup {
                         "description": "适用于创新思维场景，提供多角度分析和创新解决方案",
                         "id": "default-flexible-search",
                         "isDefault": false,
-                        "name": "灵活检索",
+                        "name": "灵活检索(Flexible search)",
                         "similarity": 0.6,
                         "topN": 8,
                         "temperature": 1.0,
                         "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供创新、全面的解答。\n\n## 回答要求\n1. 创新思维：\n   - 基于知识库内容进行多角度分析\n   - 提供创新的解决方案和思路\n   - 结合行业趋势和最佳实践\n   - 鼓励探索性思维\n\n2. 全面性：\n   - 不仅回答直接问题，还要考虑相关因素\n   - 提供多种可能的解决方案\n   - 分析不同场景下的适用性\n   - 包含风险评估和优化建议\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 提供多种思路和方案\n   - 包含创新性建议和未来趋势\n\n5. 特殊情况处理：\n   - 如果信息不完整，提供多种可能的解决方案\n   - 如果存在版本差异，分析各版本的优劣势\n   - 可以适度提供创新性建议和未来发展方向\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、创新、全面，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
                     }
                 ];
-                
+
                 // 使用与settings.js相同的逻辑来合并规则
                 let allRules;
                 if (defaultRulesModified) {
                     // 如果内置规则被修改过，需要特殊处理
                     // 先合并默认规则和保存的规则
                     allRules = this.mergeRulesWithBuiltInSupport(defaultRules, savedRules);
-                    
+
                     // 然后检查是否有内置规则被修改，如果有，使用保存的版本
                     savedRules.forEach(savedRule => {
                         if (this.isBuiltInRule(savedRule.id)) {
@@ -619,13 +930,13 @@ class BicQAPopup {
                                 const defaultRule = defaultRules.find(r => r.id === savedRule.id);
                                 if (defaultRule) {
                                     const isModified = savedRule.temperature !== defaultRule.temperature ||
-                                                     savedRule.similarity !== defaultRule.similarity ||
-                                                     savedRule.topN !== defaultRule.topN ||
-                                                     savedRule.prompt !== defaultRule.prompt ||
-                                                     savedRule.name !== defaultRule.name ||
-                                                     savedRule.description !== defaultRule.description ||
-                                                     savedRule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
-                                    
+                                        savedRule.similarity !== defaultRule.similarity ||
+                                        savedRule.topN !== defaultRule.topN ||
+                                        savedRule.prompt !== defaultRule.prompt ||
+                                        savedRule.name !== defaultRule.name ||
+                                        savedRule.description !== defaultRule.description ||
+                                        savedRule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
+
                                     if (isModified) {
                                         // 使用修改后的版本
                                         allRules[existingIndex] = { ...savedRule };
@@ -638,10 +949,10 @@ class BicQAPopup {
                     // 首次加载，使用默认规则并合并用户自定义规则
                     allRules = this.mergeRulesWithBuiltInSupport(defaultRules, savedRules);
                 }
-                
+
                 // 移除"使用默认参数"选项，直接开始添加规则选项
                 select.innerHTML = '';
-                
+
                 if (allRules.length === 0) {
                     // 如果没有配置规则，显示引导提示
                     const option = document.createElement('option');
@@ -656,7 +967,7 @@ class BicQAPopup {
                         option.value = JSON.stringify(rule);
                         option.textContent = `${rule.name} `;
                         if (rule.isDefault) {
-                            option.textContent += ' [默认]';
+                            option.textContent += '';
                             option.selected = true; // 默认选中默认规则
                         }
                         select.appendChild(option);
@@ -668,7 +979,7 @@ class BicQAPopup {
             // 加载默认选项时也不添加"使用默认参数"选项
             const select = this.parameterRuleSelect;
             select.innerHTML = '';
-            
+
             // 显示错误提示
             const option = document.createElement('option');
             option.value = '';
@@ -681,10 +992,10 @@ class BicQAPopup {
     // 合并规则并支持内置规则修改的方法
     mergeRulesWithBuiltInSupport(defaultRules, savedRules) {
         const mergedRules = [...defaultRules]; // 复制内置规则
-        
+
         // 清理用户规则中的重复项
         const cleanedSavedRules = this.cleanDuplicateRulesWithBuiltInSupport(savedRules);
-        
+
         // 处理所有保存的规则
         cleanedSavedRules.forEach(savedRule => {
             if (!this.isBuiltInRule(savedRule.id)) {
@@ -704,13 +1015,13 @@ class BicQAPopup {
                     if (defaultRule) {
                         // 检查保存的规则是否与默认规则不同
                         const isModified = savedRule.temperature !== defaultRule.temperature ||
-                                         savedRule.similarity !== defaultRule.similarity ||
-                                         savedRule.topN !== defaultRule.topN ||
-                                         savedRule.prompt !== defaultRule.prompt ||
-                                         savedRule.name !== defaultRule.name ||
-                                         savedRule.description !== defaultRule.description ||
-                                         savedRule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
-                        
+                            savedRule.similarity !== defaultRule.similarity ||
+                            savedRule.topN !== defaultRule.topN ||
+                            savedRule.prompt !== defaultRule.prompt ||
+                            savedRule.name !== defaultRule.name ||
+                            savedRule.description !== defaultRule.description ||
+                            savedRule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
+
                         if (isModified) {
                             // 使用修改后的版本
                             mergedRules[existingIndex] = { ...savedRule };
@@ -723,22 +1034,22 @@ class BicQAPopup {
                 }
             }
         });
-        
+
         return mergedRules;
     }
 
     // 合并规则并去重的方法（保留原有方法以兼容）
     mergeRulesWithoutDuplicates(defaultRules, userRules) {
         const mergedRules = [...defaultRules]; // 复制内置规则
-        
+
         // 清理用户规则中的重复项
         const cleanedUserRules = this.cleanDuplicateRules(userRules);
-        
+
         // 添加用户自定义规则（非内置规则）
         cleanedUserRules.forEach(userRule => {
             // 检查是否为内置规则
             const isBuiltIn = this.isBuiltInRule(userRule.id);
-            
+
             if (!isBuiltIn) {
                 // 检查是否已存在相同的规则ID
                 const existingIndex = mergedRules.findIndex(rule => rule.id === userRule.id);
@@ -751,7 +1062,7 @@ class BicQAPopup {
                 }
             }
         });
-        
+
         return mergedRules;
     }
 
@@ -760,14 +1071,14 @@ class BicQAPopup {
         const cleanedRules = [];
         const seenIds = new Set();
         const seenNames = new Set();
-        
+
         savedRules.forEach(rule => {
             // 对于内置规则，直接添加（因为可能被修改过）
             if (this.isBuiltInRule(rule.id)) {
                 cleanedRules.push(rule);
                 return;
             }
-            
+
             // 对于用户自定义规则，检查ID和名称是否重复
             if (!seenIds.has(rule.id) && !seenNames.has(rule.name)) {
                 cleanedRules.push(rule);
@@ -777,7 +1088,7 @@ class BicQAPopup {
                 console.log(`清理重复规则: ${rule.name} (ID: ${rule.id})`);
             }
         });
-        
+
         return cleanedRules;
     }
 
@@ -786,13 +1097,13 @@ class BicQAPopup {
         const cleanedRules = [];
         const seenIds = new Set();
         const seenNames = new Set();
-        
+
         userRules.forEach(rule => {
             // 跳过内置规则ID
             if (this.isBuiltInRule(rule.id)) {
                 return;
             }
-            
+
             // 检查ID和名称是否重复
             if (!seenIds.has(rule.id) && !seenNames.has(rule.name)) {
                 cleanedRules.push(rule);
@@ -802,14 +1113,14 @@ class BicQAPopup {
                 console.log(`清理重复规则: ${rule.name} (ID: ${rule.id})`);
             }
         });
-        
+
         // 如果清理了规则，更新存储
         if (cleanedRules.length !== userRules.length) {
             chrome.storage.sync.set({ rules: cleanedRules }, () => {
                 console.log('已清理重复规则并更新存储');
             });
         }
-        
+
         return cleanedRules;
     }
 
@@ -822,18 +1133,21 @@ class BicQAPopup {
     async loadKnowledgeServiceConfig() {
         try {
             console.log('开始加载知识库服务配置...');
-            
+
             // 从Chrome存储中加载知识库服务配置
             const result = await chrome.storage.sync.get(['knowledgeServiceConfig']);
+
             console.log('从chrome.storage.sync获取的结果:', result);
-            
+
             this.knowledgeServiceConfig = result.knowledgeServiceConfig || null;
-            
+
             if (this.knowledgeServiceConfig) {
                 console.log('成功加载知识库服务配置:', {
                     default_url: this.knowledgeServiceConfig.default_url,
                     api_key: this.knowledgeServiceConfig.api_key ? '已配置' : '未配置',
                     enabled: this.knowledgeServiceConfig.enabled,
+                    letter_limit: this.knowledgeServiceConfig.letter_limit,
+                    isOpenLetterLimit: this.knowledgeServiceConfig.isOpenLetterLimit,
                     updated_at: this.knowledgeServiceConfig.updated_at
                 });
             } else {
@@ -856,6 +1170,64 @@ class BicQAPopup {
                 updated_at: new Date().toISOString()
             };
         }
+        // 在方法最后添加同步调用
+        await this.syncConfigFromFile();
+    }
+    async syncConfigFromFile() {
+        try {
+            // 读取配置文件
+            const timestamp = new Date().getTime();
+            const response = await fetch(chrome.runtime.getURL(`config/knowledge_service.json?t=${timestamp}`));
+            if (!response.ok) {
+                throw new Error('配置文件加载失败');
+            }
+
+            const configFile = await response.json();
+            const fileConfig = configFile.knowledge_service;
+
+            // 读取当前存储的配置
+            const result = await chrome.storage.sync.get(['knowledgeServiceConfig']);
+            const currentConfig = result.knowledgeServiceConfig || {};
+
+            // 定义字段类型
+            const userConfigFields = ['api_key', 'default_url', 'enabled']; // 用户可配置字段
+            const systemConfigFields = ['letter_limit', 'isOpenLetterLimit', 'updated_at']; // 系统配置字段
+
+            // 合并配置
+            const mergedConfig = {
+                // 1. 先使用文件配置作为基础
+                ...fileConfig,
+                // 2. 保留用户的个人配置字段
+                ...Object.fromEntries(
+                    userConfigFields.map(field => [field, currentConfig[field] !== undefined ? currentConfig[field] : fileConfig[field]])
+                ),
+                // 3. 系统配置字段始终使用文件配置（如果文件中有的话）
+                ...Object.fromEntries(
+                    systemConfigFields.map(field => [field, fileConfig[field] !== undefined ? fileConfig[field] : currentConfig[field]])
+                )
+            };
+
+            // 检查是否有变化
+            const hasChanges = this.hasConfigChanges(currentConfig, mergedConfig);
+
+            if (hasChanges) {
+                // 更新存储
+                await chrome.storage.sync.set({ knowledgeServiceConfig: mergedConfig });
+
+                // 更新当前配置
+                this.knowledgeServiceConfig = mergedConfig;
+
+                console.log('配置已从文件同步到存储:', mergedConfig);
+            } else {
+                console.log('配置无变化，跳过同步');
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('配置同步失败:', error);
+            return false;
+        }
     }
 
     async handleAskQuestion() {
@@ -864,29 +1236,47 @@ class BicQAPopup {
             console.log('正在处理中，忽略重复请求');
             return;
         }
-        
+
         this.isProcessing = true;
         this.hasBeenStopped = false;
-        
+        // 保存当前标志状态，在字符长度判断后重置
+        const shouldSkipCheck = this._skipLetterLimitCheck;
         // 记录开始时间
         this.startTime = Date.now();
-        
+
         // 获取问题内容
         const question = this.questionInput.value.trim();
         if (!question) {
             this.showMessage('请输入问题', 'error');
             this.isProcessing = false;
-            
             return;
-        }else{
+        }
+
+        // 检查是否选择了知识库且输入字符少于等于5个
+        const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
+        debugger
+        if (selectedKnowledgeBase && this.shouldCheckLetterLimit() && question.length <= this.getLetterLimit() && !shouldSkipCheck) {
+
+
+            // 强制创建新的对话容器
+            const conversationContainer = this.forceCreateNewConversationContainer();
+            this.updateLayoutState();
+
+            this.setLoading(true);
+            // 显示建议问题
+            await this.generateQuestionSuggestions(question, selectedKnowledgeBase, conversationContainer);
+            this.isProcessing = false;
+            return;
+        } else {
             //清空操作
             this.questionInput.value = '';
             this.updateCharacterCount();
         }
-        
+        // 重置跳过字符限制检查的标志
+        this._skipLetterLimitCheck = false;
         // 强制创建新的对话容器，确保每次对话都独立
         const conversationContainer = this.forceCreateNewConversationContainer();
-        
+
         // 检查是否有配置的服务商和模型
         if (this.providers.length === 0) {
             this.showErrorResult('请先在设置页面配置服务商和模型', 'model', conversationContainer);
@@ -908,18 +1298,18 @@ class BicQAPopup {
         if (this.resultContainer) {
             this.resultContainer.style.display = 'block';
         }
-        
+
         // 先清空内容容器（保持提示与内容独立）
         // 注意：这里不再直接操作this.resultText，让具体的API调用方法处理
         // 因为现在有多轮对话，需要让每个对话在自己的容器中处理
-        
+
         // 更新标题为生成中状态
         // 注意：这里不再直接操作全局的result-title，让具体的API调用方法处理
-        
+
         this.updateLayoutState();
 
         this.setLoading(true);
-        
+
         try {
             // 获取用户选择的模型
             const selectedModelValue = this.modelSelect.value;
@@ -928,7 +1318,7 @@ class BicQAPopup {
                 this.isProcessing = false;
                 return;
             }
-            
+
             // 解析选中的模型（模型名 + 服务商）
             let selectedKey;
             try {
@@ -936,11 +1326,11 @@ class BicQAPopup {
             } catch (_) {
                 selectedKey = { name: selectedModelValue };
             }
-            
+
             // 获取选中的模型和服务商
             const selectedModel = this.models.find(m => m.name === selectedKey.name && (!selectedKey.provider || m.provider === selectedKey.provider));
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
-            
+
             if (!selectedModel || !provider) {
                 this.showErrorResult('配置的模型或服务商不存在，请检查设置。', 'model', conversationContainer);
                 this.isProcessing = false;
@@ -952,27 +1342,27 @@ class BicQAPopup {
             const useStreamChatByKeyword = question.includes('[stream]') || question.includes('[流式]');
             // 2. 通过模型配置判断（使用模型名称/展示名）
             const nameForCheck = (selectedModel.displayName || selectedModel.name).toLowerCase();
-            const useStreamChatByModel = nameForCheck.includes('stream') || 
-                                       nameForCheck.includes('流式') ||
-                                       (selectedModel.streamEnabled === true);
+            const useStreamChatByModel = nameForCheck.includes('stream') ||
+                nameForCheck.includes('流式') ||
+                (selectedModel.streamEnabled === true);
             // 3. 通过服务商判断（如果服务商是佰晟智算）
-            const useStreamChatByProvider = provider.name === '佰晟智算' || 
-                                          provider.name.toLowerCase().includes('佰晟智算');
-            
+            const useStreamChatByProvider = provider.name === '佰晟智算' ||
+                provider.name.toLowerCase().includes('佰晟智算');
+
             const useStreamChat = useStreamChatByKeyword || useStreamChatByModel || useStreamChatByProvider;
-            
+
             if (useStreamChat) {
                 // 使用流式聊天 - 不在这里设置初始内容，让streamChat方法处理
                 let cleanQuestion = question;
                 if (useStreamChatByKeyword) {
                     cleanQuestion = question.replace(/\[stream\]|\[流式\]/g, '').trim();
                 }
-                
+
                 // 获取选中的知识库和参数规则
                 const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
                 const selectedParameterRule = this.parameterRuleSelect.value;
                 let parameterRule = null;
-                
+
                 if (selectedParameterRule) {
                     try {
                         parameterRule = JSON.parse(selectedParameterRule);
@@ -980,16 +1370,16 @@ class BicQAPopup {
                         console.error('解析参数规则失败:', error);
                     }
                 }
-                
+
                 // 显示问题和AI助手
                 this.updateQuestionDisplay(cleanQuestion || question, conversationContainer);
                 this.updateAIDisplay(conversationContainer);
-                
+
                 // 重置知识库相关状态变量（在流式聊天开始前）
                 this._useKnowledgeBaseThisTime = false;
                 this._kbMatchCount = 0;
                 this._kbItems = [];
-                
+
                 if (cleanQuestion) {
                     await this.streamChatWithConfig(cleanQuestion, selectedModel, provider, selectedKnowledgeBase, parameterRule, conversationContainer);
                 } else {
@@ -997,19 +1387,19 @@ class BicQAPopup {
                 }
                 return;
             }
-            
+
             // 非流式聊天 - 重置知识库相关状态变量
             this._useKnowledgeBaseThisTime = false;
             this._kbMatchCount = 0;
             this._kbItems = [];
-            
+
             // 非流式聊天 - 设置初始内容
             // 注意：这里不再直接操作this.resultText，让具体的API调用方法处理
             // 因为现在有多轮对话，需要让每个对话在自己的容器中处理
-            
+
             // 获取当前标签页信息
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
+
             // 检查标签页是否支持content script
             if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
                 // 对于不支持的页面，直接处理问题而不获取页面内容
@@ -1017,7 +1407,7 @@ class BicQAPopup {
                 // 注意：这里不再直接调用showResult，让processQuestion内部处理
                 return;
             }
-            
+
             try {
                 // 尝试发送消息到content script获取页面内容
                 console.log('尝试与content script通信...');
@@ -1039,7 +1429,7 @@ class BicQAPopup {
                 }
             } catch (contentScriptError) {
                 console.log('Content script通信失败，使用备用方案:', contentScriptError);
-                
+
                 // 尝试重新注入content script
                 try {
                     await chrome.scripting.executeScript({
@@ -1050,26 +1440,446 @@ class BicQAPopup {
                 } catch (injectionError) {
                     console.log('Content script重新注入失败:', injectionError);
                 }
-                
+
                 // 如果content script通信失败，直接处理问题
                 const answer = await this.processQuestion(question, '', tab.url, conversationContainer);
                 // 注意：这里不再直接调用showResult，让processQuestion内部处理
             }
         } catch (error) {
             console.error('处理问题失败:', error);
-            
+
             this.showErrorResult(`处理问题时发生错误: ${error.message}`, 'model', conversationContainer);
         } finally {
             this.setLoading(false);
             this.isProcessing = false; // 重置处理状态
         }
     }
+    // 生成问题建议
+    async generateQuestionSuggestions(shortQuestion, knowledgeBase, conversationContainer) {
+        try {
 
+            // 显示问题和AI助手
+            this.updateQuestionDisplay(shortQuestion, conversationContainer);
+
+            // 更新标题为生成建议状态
+            const resultTitle = conversationContainer.querySelector('.result-title');
+            if (resultTitle) {
+                resultTitle.textContent = '正在生成建议问题...';
+            }
+
+            // 根据知识库类型确定专家类型
+            const expertType = this.getExpertTypeFromKnowledgeBase(knowledgeBase);
+
+            // 构建提示词
+            const prompt = `你是一个${expertType}专家，你的任务是补全上述意图生成三条意思相近的用户查询，要求每条生成字数不能少于10字，返回的结果以数组形式放在固定字段。用户输入：${shortQuestion}`;
+
+            // 调用API生成建议
+            const suggestions = await this.callAPIForSuggestions(prompt);
+
+            // 显示建议问题
+            this.displaySuggestions(suggestions, conversationContainer);
+
+        } catch (error) {
+            console.error('生成建议问题失败:', error);
+            this.showErrorResult('生成建议问题失败，请重试', 'error', conversationContainer);
+        }
+        // 更新会话历史，标记这不是第一次对话
+        this.addToCurrentSessionHistory(shortQuestion, "已生成建议问题");
+    }
+    // 添加配置变化检查方法
+    hasConfigChanges(oldConfig, newConfig) {
+        const allFields = ['api_key', 'default_url', 'enabled', 'letter_limit', 'isOpenLetterLimit', 'updated_at'];
+        return allFields.some(field => oldConfig[field] !== newConfig[field]);
+    }
+    // 根据知识库获取专家类型
+    getExpertTypeFromKnowledgeBase(knowledgeBase) {
+        const kbLower = knowledgeBase.toLowerCase();
+        if (kbLower.includes('oracle')) {
+            return 'Oracle数据库';
+        } else if (kbLower.includes('mysql')) {
+            return 'MySQL数据库';
+        } else if (kbLower.includes('postgresql') || kbLower.includes('postgres')) {
+            return 'PostgreSQL数据库';
+        } else if (kbLower.includes('sqlserver') || kbLower.includes('sql server')) {
+            return 'SQL Server数据库';
+        } else if (kbLower.includes('mongodb') || kbLower.includes('mongo')) {
+            return 'MongoDB数据库';
+        } else {
+            return '数据库';
+        }
+    }
+
+    // 调用API生成建议
+    async callAPIForSuggestions(prompt) {
+        // 获取选中的模型
+        const selectedModelValue = this.modelSelect.value;
+        if (!selectedModelValue) {
+            throw new Error('请先选择一个模型');
+        }
+
+        let selectedKey;
+        try {
+            selectedKey = JSON.parse(selectedModelValue);
+        } catch (_) {
+            selectedKey = { name: selectedModelValue };
+        }
+
+        const selectedModel = this.models.find(m => m.name === selectedKey.name && (!selectedKey.provider || m.provider === selectedKey.provider));
+        const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
+
+        if (!selectedModel || !provider) {
+            throw new Error('配置的模型或服务商不存在');
+        }
+
+        // 构建请求头
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        // 使用现有的认证头设置方法
+        this.setAuthHeaders(headers, provider);
+
+        // 构建请求体 - 使用与现有代码相同的结构
+        const requestBody = {
+            model: selectedModel.name,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            max_tokens: 500,
+            temperature: 0.7
+        };
+
+        // 确保API端点正确
+        let apiEndpoint = provider.apiEndpoint;
+        if (apiEndpoint.indexOf("/chat/completions") === -1) {
+            apiEndpoint = apiEndpoint + "/chat/completions";
+        }
+
+        try {
+            // 调用API - 使用正确的属性名
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                let errorText;
+                try {
+                    errorText = await response.text();
+                    console.error('API错误响应体:', errorText);
+                } catch (e) {
+                    errorText = '无法读取错误响应';
+                }
+
+                // 提供更详细的错误信息
+                let errorMessage = `API请求失败: ${response.status} ${response.statusText}`;
+
+                if (response.status === 400) {
+                    errorMessage += '\n请求格式错误，请检查模型配置';
+                } else if (response.status === 401) {
+                    errorMessage += '\n认证失败，请检查API Key配置';
+                } else if (response.status === 403) {
+                    errorMessage += '\n权限不足，请检查API Key权限';
+                } else if (response.status === 404) {
+                    errorMessage += '\nAPI端点不存在，请检查API地址';
+                } else if (response.status === 429) {
+                    errorMessage += '\n请求频率过高，请稍后重试';
+                }
+
+                if (errorText) {
+                    errorMessage += `\n\n服务器错误详情：${errorText}`;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const result = await response.json();
+            const content = result.choices[0].message.content;
+
+            // 解析返回的建议问题
+            return this.parseSuggestions(content);
+
+        } catch (error) {
+            console.error('API调用失败:', error);
+            throw error;
+        }
+    }
+    // 检查是否应该进行字符限制检查
+    shouldCheckLetterLimit() {
+        return this.knowledgeServiceConfig && this.knowledgeServiceConfig.isOpenLetterLimit === true;
+    }
+
+    // 获取字符限制数量
+    getLetterLimit() {
+        return this.knowledgeServiceConfig && this.knowledgeServiceConfig.letter_limit ?
+            this.knowledgeServiceConfig.letter_limit : 5;
+    }
+    // 解析建议问题
+    parseSuggestions(content) {
+        try {
+            // 尝试解析 JSON 格式的 content
+            const parsedContent = JSON.parse(content);
+
+            // 如果包含 queries 数组，直接使用
+            if (parsedContent.queries && Array.isArray(parsedContent.queries)) {
+                return parsedContent.queries.slice(0, 3); // 最多返回3个建议
+            }
+        } catch (error) {
+            // JSON 解析失败，使用原来的逻辑
+            console.log('JSON解析失败，使用原有解析逻辑:', error);
+        }
+
+        // 原有的解析逻辑（作为备用）
+        const suggestions = [];
+        const lines = content.split('\n');
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed && (trimmed.startsWith('1.') || trimmed.startsWith('2.') || trimmed.startsWith('3.') ||
+                trimmed.startsWith('1、') || trimmed.startsWith('2、') || trimmed.startsWith('3、'))) {
+                const suggestion = trimmed.replace(/^[123][\.、]\s*/, '').trim();
+                if (suggestion.length >= 10) {
+                    suggestions.push(suggestion);
+                }
+            }
+        }
+
+        // 如果解析失败，生成默认建议
+        if (suggestions.length === 0) {
+            suggestions.push(
+                "请详细说明您遇到的具体问题",
+                "请提供更多关于您需求的详细信息",
+                "请描述您希望实现的具体功能"
+            );
+        }
+
+        return suggestions.slice(0, 3); // 最多返回3个建议
+    }
+
+    displaySuggestions(suggestions, conversationContainer) {
+        // 更新标题
+        const resultTitle = conversationContainer.querySelector('.result-title');
+        if (resultTitle) {
+            resultTitle.textContent = '建议问题：';
+        }
+        // 显示结果容器
+        if (this.resultContainer) {
+            this.resultContainer.style.display = 'block';
+        }
+        debugger
+        // 判断是否是第一次对话（使用默认容器）
+        const isFirstConversation = conversationContainer.id === 'conversation-default';
+
+        let suggestionContainer;
+        let suggestionList;
+
+        if (isFirstConversation) {
+            // 第一次对话：使用HTML中现有的固定ID结构
+            suggestionContainer = conversationContainer.querySelector('#suggestionContainer');
+            suggestionList = conversationContainer.querySelector('#suggestionList');
+            debugger;
+            if (suggestionContainer && suggestionList) {
+                // 清空现有内容
+                suggestionList.innerHTML = '';
+                suggestionContainer.style.display = 'block';
+            } else {
+                // 如果HTML结构不存在，创建新的（备用方案）
+                suggestionContainer = document.createElement('div');
+                suggestionContainer.id = 'suggestionContainer';
+                suggestionContainer.className = 'suggestion-container';
+                suggestionContainer.style.display = 'block';
+
+                const suggestionHeader = document.createElement('div');
+                suggestionHeader.className = 'suggestion-header';
+                suggestionHeader.innerHTML = '<h4 class="suggestion-title">根据您的输入，为您推荐以下问题：</h4>';
+
+                suggestionList = document.createElement('div');
+                suggestionList.id = 'suggestionList';
+                suggestionList.className = 'suggestion-list';
+
+                suggestionContainer.appendChild(suggestionHeader);
+                suggestionContainer.appendChild(suggestionList);
+
+                const resultText = conversationContainer.querySelector('.result-text');
+                if (resultText) {
+                    resultText.appendChild(suggestionContainer);
+                }
+            }
+        } else {
+            // 后续对话：使用时间戳ID，避免冲突
+            // 先移除现有的建议容器
+            const existingSuggestion = conversationContainer.querySelector('.suggestion-container');
+            if (existingSuggestion) {
+                existingSuggestion.remove();
+            }
+
+            // 创建新的建议容器
+            suggestionContainer = document.createElement('div');
+            suggestionContainer.id = `suggestionContainer-${Date.now()}`;
+            suggestionContainer.className = 'suggestion-container';
+            suggestionContainer.style.display = 'block';
+
+            // 创建建议头部
+            const suggestionHeader = document.createElement('div');
+            suggestionHeader.className = 'suggestion-header';
+            suggestionHeader.innerHTML = '<h4 class="suggestion-title">根据您的输入，为您推荐以下问题：</h4>';
+
+            // 创建建议列表
+            suggestionList = document.createElement('div');
+            suggestionList.className = 'suggestion-list';
+
+            // 组装建议容器
+            suggestionContainer.appendChild(suggestionHeader);
+            suggestionContainer.appendChild(suggestionList);
+
+            // 添加到结果区域
+            const resultText = conversationContainer.querySelector('.result-text');
+            if (resultText) {
+                resultText.appendChild(suggestionContainer);
+            }
+        }
+
+        // 添加建议项（两种情况下都执行）
+        suggestions.forEach((suggestion, index) => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.className = 'suggestion-item';
+
+            suggestionItem.innerHTML = `
+            <div class="suggestion-text">${suggestion}</div>
+            <button class="suggestion-select-btn" data-suggestion="${suggestion}">选择此问题</button>
+        `;
+
+            // 添加点击事件
+            const selectBtn = suggestionItem.querySelector('.suggestion-select-btn');
+            selectBtn.addEventListener('click', () => {
+                this.selectSuggestion(suggestion);
+            });
+
+            suggestionList.appendChild(suggestionItem);
+
+        });
+        // 在建议问题列表后添加"保持原问题"选项
+        const keepOriginalItem = document.createElement('div');
+        keepOriginalItem.className = 'suggestion-item keep-original-item';
+        keepOriginalItem.innerHTML = `
+        <div class="suggestion-text">生成的建议问题中没有我想要的</div>
+        <div class="suggestion-buttons">
+        <button class="suggestion-select-btn keep-original-btn">直接问答</button>
+        <button class="suggestion-select-btn regenerate-btn">重新生成</button>
+    </div>
+    `;
+        // 添加重新生成按钮的点击事件
+        const regenerateBtn = keepOriginalItem.querySelector('.regenerate-btn');
+        regenerateBtn.addEventListener('click', () => {
+            this.regenerateSuggestions();
+        });
+        // 添加点击事件
+        const keepOriginalBtn = keepOriginalItem.querySelector('.keep-original-btn');
+        keepOriginalBtn.addEventListener('click', () => {
+            this.keepOriginalQuestion();
+        });
+
+        suggestionList.appendChild(keepOriginalItem);
+        this.setLoading(false);
+        const resultActions = conversationContainer.querySelector('.result-actions');
+        if (resultActions) {
+            resultActions.style.display = 'block';
+            setTimeout(() => {
+                resultActions.style.opacity = '1';
+            }, 100);
+        }
+    }
+
+    // 选择建议问题
+    selectSuggestion(suggestion) {
+        debugger;
+        // 将建议问题填入输入框
+        this.questionInput.value = suggestion;
+        this.updateCharacterCount();
+
+        // 清空结果容器
+        if (this.resultContainer) {
+            // this.resultContainer.style.display = 'none';
+        }
+
+        // 自动触发问答
+        this.handleAskQuestion();
+    }
+    // 保持原问题继续问答
+    keepOriginalQuestion() {
+        // 获取原始问题（从当前对话容器中获取）
+        const currentContainer = this.getCurrentConversationContainer();
+        if (!currentContainer) {
+            console.error('无法获取当前对话容器');
+            return;
+        }
+
+        // 从对话容器中获取原始问题
+        const questionDisplay = currentContainer.querySelector('.question-display .question-text');
+        if (!questionDisplay) {
+            console.error('无法获取原始问题');
+            return;
+        }
+
+        const originalQuestion = questionDisplay.textContent.trim();
+
+        // 将原始问题填入输入框
+        this.questionInput.value = originalQuestion;
+        this.updateCharacterCount();
+
+        // 设置标志，跳过字符长度检查
+        this._skipLetterLimitCheck = true;
+
+        // 清空结果容器
+        if (this.resultContainer) {
+            // 可以选择清空或保留当前容器
+        }
+
+        // 自动触发问答
+        this.handleAskQuestion();
+    }
+    // 重新生成建议问题
+    async regenerateSuggestions() {
+        // 获取原始问题（从当前对话容器中获取）
+        const currentContainer = this.getCurrentConversationContainer();
+        if (!currentContainer) {
+            console.error('无法获取当前对话容器');
+            return;
+        }
+
+        // 从对话容器中获取原始问题
+        const questionDisplay = currentContainer.querySelector('.question-display .question-text');
+        if (!questionDisplay) {
+            console.error('无法获取原始问题');
+            return;
+        }
+
+        const originalQuestion = questionDisplay.textContent.trim();
+
+        // 将原始问题填入输入框
+        this.questionInput.value = originalQuestion;
+        this.updateCharacterCount();
+
+        // 设置标志，跳过字符长度检查
+        this._skipLetterLimitCheck = false;
+
+        // 清空结果容器
+        if (this.resultContainer) {
+            // 可以选择清空或保留当前容器
+        }
+
+        // 自动触发问答
+        this.handleAskQuestion();
+    }
     // 获取或创建对话容器的辅助方法（用于新的对话）
     getOrCreateConversationContainer() {
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+
         if (isFirstConversation) {
             // 第一次对话，使用默认容器
             conversationContainer = this.resultContainer.querySelector('#conversation-default');
@@ -1080,7 +1890,7 @@ class BicQAPopup {
             // 后续对话，创建新容器
             conversationContainer = this.createNewConversationContainer();
         }
-        
+
         return conversationContainer;
     }
 
@@ -1089,7 +1899,7 @@ class BicQAPopup {
         // 总是创建新的对话容器，除非是第一次对话且默认容器存在
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+        debugger;
         if (isFirstConversation) {
             // 第一次对话，检查默认容器是否存在
             conversationContainer = this.resultContainer.querySelector('#conversation-default');
@@ -1114,31 +1924,31 @@ class BicQAPopup {
     // 清空对话容器的辅助方法
     clearConversationContainer(container) {
         if (!container) return;
-        
+
         // 保存反馈按钮状态
         const likeBtn = container.querySelector('.like-btn');
         const dislikeBtn = container.querySelector('.dislike-btn');
         const isLiked = likeBtn ? likeBtn.classList.contains('active') : false;
         const isDisliked = dislikeBtn ? dislikeBtn.classList.contains('active') : false;
-        
+
         // 清空问题显示
         const questionDisplay = container.querySelector('.question-display');
         if (questionDisplay) {
             questionDisplay.style.display = 'none';
         }
-        
+
         // 清空AI显示
         const aiDisplay = container.querySelector('.ai-display');
         if (aiDisplay) {
             aiDisplay.style.display = 'none';
         }
-        
+
         // 重置标题
         const resultTitle = container.querySelector('.result-title');
         if (resultTitle) {
             resultTitle.textContent = '回答：';
         }
-        
+        debugger;
         // 清空结果文本
         const resultText = container.querySelector('.result-text');
         if (resultText) {
@@ -1146,9 +1956,11 @@ class BicQAPopup {
                 <p class="result-text-tips"></p>
                 <div class="result-text-content"></div>
                 <div class="result-text-knowlist"></div>
+                 <!-- 建议问题显示区域 -->
+                
             `;
         }
-        
+
         // 恢复反馈按钮状态
         if (likeBtn) {
             if (isLiked) {
@@ -1171,32 +1983,32 @@ class BicQAPopup {
         // 获取目标容器
         const targetContainer = container || this.resultContainer;
         const targetResultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
-        
+
         if (targetContainer && targetResultText) {
             targetContainer.style.display = 'block';
-            
+
             // 更新标题为错误状态
             const resultTitle = targetContainer ? targetContainer.querySelector('.result-title') : document.querySelector('.result-title');
             if (resultTitle) {
                 resultTitle.textContent = '❌ 处理失败';
             }
-            
+
             // 清空其他区域的内容
             const tipsEl = targetResultText.querySelector('.result-text-tips');
             if (tipsEl) {
                 tipsEl.innerHTML = '';
             }
-            
+
             const contentEl = targetResultText.querySelector('.result-text-content');
             if (contentEl) {
                 contentEl.innerHTML = '';
             }
-            
+
             const knowlistEl = targetResultText.querySelector('.result-text-knowlist');
             if (knowlistEl) {
                 knowlistEl.innerHTML = '';
             }
-            
+
             // 根据错误类型确定解决方案
             let solutions = [];
             if (errorType === 'knowledge') {
@@ -1215,10 +2027,10 @@ class BicQAPopup {
                     '尝试重新配置服务商信息'
                 ];
             }
-            
+
             // 创建解决方案HTML
             const solutionsHtml = solutions.map(solution => `<li>${solution}</li>`).join('');
-            
+
             // 创建错误显示内容
             const errorHtml = `
                 <div class="errormsgDiv" style="
@@ -1261,25 +2073,25 @@ class BicQAPopup {
                     </div>
                 </div>
             `;
-            
+
             // 将错误信息添加到targetResultText中，而不是替换整个innerHTML
             // 这样可以保持原有的DOM结构
             targetResultText.innerHTML = errorHtml;
-            
+
             // 更新布局状态
             this.updateLayoutState();
-            
+
             // 滚动到结果区域
             setTimeout(() => {
-                targetContainer.scrollIntoView({ 
+                targetContainer.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
                 });
             }, 100);
-            
+
             // 重置反馈按钮状态
             this.resetFeedbackButtons();
-            
+
             // 同时显示消息提示
             this.showMessage(errorMessage, 'error');
         }
@@ -1291,14 +2103,14 @@ class BicQAPopup {
             if (!conversationContainer) {
                 conversationContainer = this.getCurrentConversationContainer();
             }
-            
+
             // 获取用户选择的模型
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
                 this.showErrorResult('请先选择一个模型。', 'model', conversationContainer);
                 return;
             }
-            
+
             // 解析选中的模型（模型名 + 服务商）
             let selectedKey;
             try {
@@ -1306,23 +2118,23 @@ class BicQAPopup {
             } catch (_) {
                 selectedKey = { name: selectedModelValue };
             }
-            
+
             // 获取选中的模型和服务商
             const selectedModel = this.models.find(m => m.name === selectedKey.name && (!selectedKey.provider || m.provider === selectedKey.provider));
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
-            
+
             if (!selectedModel || !provider) {
                 this.showErrorResult('配置的模型或服务商不存在，请检查设置。', 'model', conversationContainer);
                 return;
             }
-            
+
             // 获取选中的知识库
             const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
-            
+
             // 获取选中的参数规则
             const selectedParameterRule = this.parameterRuleSelect.value;
             let parameterRule = null;
-            
+
             if (selectedParameterRule) {
                 try {
                     parameterRule = JSON.parse(selectedParameterRule);
@@ -1331,13 +2143,13 @@ class BicQAPopup {
                     console.error('解析参数规则失败:', error);
                 }
             }
-            
+
             // 如果选择了知识库，检查知识库服务配置
-            if (selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库') {
+            if (selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库(None)') {
                 // 重新加载知识库服务配置，确保获取最新配置
                 console.log('处理问题，重新加载知识库服务配置...');
                 await this.loadKnowledgeServiceConfig();
-                
+
                 // 添加详细的调试信息
                 console.log('=== 知识库服务配置检查 ===');
                 console.log('selectedKnowledgeBase:', selectedKnowledgeBase);
@@ -1348,29 +2160,29 @@ class BicQAPopup {
                     console.log('enabled:', this.knowledgeServiceConfig.enabled);
                 }
                 console.log('========================');
-                
+
                 // 检查知识库服务配置
                 if (!this.knowledgeServiceConfig) {
                     this.showErrorResult('请先配置知识库服务连接信息。', 'knowledge', conversationContainer);
                     return;
                 }
-                
+
                 // 检查知识库服务URL和API密钥
                 if (!this.knowledgeServiceConfig.default_url || !this.knowledgeServiceConfig.api_key) {
                     console.log('配置检查失败:');
                     console.log('- default_url:', this.knowledgeServiceConfig.default_url);
                     console.log('- api_key:', this.knowledgeServiceConfig.api_key ? '已配置' : '未配置');
-                    
+
                     this.showErrorResult('知识库服务配置不完整，请检查URL和API密钥配置。', 'knowledge', conversationContainer);
                     return;
                 }
-                
+
                 // 使用知识库服务
                 try {
                     // 先显示用户界面元素，与没有选择知识库时的模式保持一致
                     this.updateQuestionDisplay(question, conversationContainer);
                     this.updateAIDisplay(conversationContainer);
-                    
+
                     // 使用提示容器设置提示语
                     const resultText = conversationContainer.querySelector('.result-text');
                     if (resultText) {
@@ -1390,15 +2202,15 @@ class BicQAPopup {
                         }
                         // 不清空tips；仅在渲染时写入contentEl
                     }
-                    
+
                     // 更新标题为生成中状态
                     const resultTitle = conversationContainer.querySelector('.result-title');
                     if (resultTitle) {
                         resultTitle.textContent = '生成回答中...';
                     }
-                    
+
                     this.updateLayoutState();
-                    
+
                     const answer = await this.streamChat(
                         question,
                         this.knowledgeServiceConfig.default_url,
@@ -1409,21 +2221,22 @@ class BicQAPopup {
                         provider,
                         conversationContainer // 传递对话容器
                     );
-                    
+
                     // 保存对话历史
                     this.saveConversationHistory(question, answer, `${selectedModel.displayName || selectedModel.name}（${selectedModel.provider}）`, selectedKnowledgeBase, pageUrl);
-                    
+
                     return answer;
                 } catch (streamError) {
+                    debugger;
                     console.error('服务调用失败:', streamError);
                     console.error('错误详情:', streamError.stack);
-                    
+
                     // 根据错误发生的阶段来判断错误来源
                     let errorMessage = '';
                     let errorType = 'model'; // 默认为大模型服务错误
-                    
+
                     // 检查错误是否发生在知识库查询阶段
-                    if (streamError.message.includes('知识库查询') || 
+                    if (streamError.message.includes('知识库查询') ||
                         streamError.message.includes('知识库服务') ||
                         streamError.message.includes('dataset_name') ||
                         streamError.message.includes('知识库查询失败:') ||
@@ -1432,7 +2245,7 @@ class BicQAPopup {
                         // 知识库服务错误
                         errorType = 'knowledge';
                         if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                            errorMessage = '知识库服务网络连接失败'+streamError.message;
+                            errorMessage = '知识库服务网络连接失败' + streamError.message;
                         } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
                             errorMessage = '知识库服务认证失败，请检查API密钥配置';
                         } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
@@ -1448,13 +2261,14 @@ class BicQAPopup {
                             const originalError = streamError.message.replace(/知识库服务调用失败:|知识库查询失败:|知识库服务网络请求失败:/g, '').trim();
                             errorMessage = `知识库服务调用失败: ${originalError || '未知错误'}`;
                         }
-                    } else if (streamError.message.includes('大模型服务调用失败:') || 
-                               streamError.message.includes('模型服务调用失败:') ||
-                               streamError.message.includes('API调用失败:')) {
+                    } else if (streamError.message.includes('大模型服务调用失败:') ||
+                        streamError.message.includes('模型服务调用失败:') ||
+                        streamError.message.includes('API调用失败:')) {
+                        debugger;
                         // 大模型服务错误
                         errorType = 'model';
                         if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                            errorMessage = '大模型服务连接失败'+streamError.message;
+                            errorMessage = '大模型服务连接失败' + streamError.message;
                         } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
                             errorMessage = '大模型服务认证失败';
                         } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
@@ -1462,7 +2276,7 @@ class BicQAPopup {
                         } else if (streamError.message.includes('未配置')) {
                             errorMessage = '大模型服务配置不完整';
                         } else if (streamError.message.includes('404')) {
-                            errorMessage = '大模型服务不存在'+streamError.message;
+                            errorMessage = '大模型服务不存在' + streamError.message;
                         } else if (streamError.message.includes('400')) {
                             errorMessage = '大模型服务请求格式错误';
                         } else if (streamError.message.includes('429')) {
@@ -1476,10 +2290,10 @@ class BicQAPopup {
                         }
                     } else {
                         // 其他错误，默认为大模型服务错误
-                        if(streamError.message.includes("知识库")){
+                        if (streamError.message.includes("知识库")) {
                             errorType = 'knowledge';
                             if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                                errorMessage = '知识库服务网络连接失败'+streamError.message;
+                                errorMessage = '知识库服务网络连接失败' + streamError.message;
                             } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
                                 errorMessage = '知识库服务认证失败，请检查API密钥配置';
                             } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
@@ -1495,10 +2309,12 @@ class BicQAPopup {
                                 const originalError = streamError.message.replace(/知识库服务调用失败:|知识库查询失败:|知识库服务网络请求失败:/g, '').trim();
                                 errorMessage = `知识库服务调用失败: ${originalError || '未知错误'}`;
                             }
-                        }else{
+                        } else {
+
+                            debugger;
                             errorType = 'model';
                             if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                                errorMessage = '大模型服务连接失败'+streamError.message;
+                                errorMessage = '大模型服务连接失败' + streamError.message;
                             } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
                                 errorMessage = '大模型服务认证失败';
                             } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
@@ -1506,9 +2322,9 @@ class BicQAPopup {
                             } else if (streamError.message.includes('未配置')) {
                                 errorMessage = '大模型服务配置不完整';
                             } else if (streamError.message.includes('404')) {
-                                errorMessage = '大模型服务不存在'+streamError.message;
+                                errorMessage = '大模型服务不存在' + streamError.message;
                             } else if (streamError.message.includes('400')) {
-                                errorMessage = '大模型服务请求格式错误'+streamError.message;
+                                errorMessage = '大模型服务请求格式错误' + streamError.message;
                             } else if (streamError.message.includes('429')) {
                                 errorMessage = '大模型服务请求频率过高';
                             } else if (streamError.message.includes('500')) {
@@ -1519,38 +2335,40 @@ class BicQAPopup {
                                 errorMessage = `大模型服务调用失败: ${originalError || '未知错误'}`;
                             }
                         }
-                        
+
                     }
-                    
+
                     this.showErrorResult(errorMessage, errorType, conversationContainer);
                     return;
                 }
             } else {
-                // 不使用知识库，直接调用AI API
+                debugger;
+                // 不使用知识库(None)，直接调用AI API
                 try {
                     let answer;
-                    console.log("-----provider------",provider);
+                    console.log("-----provider------", provider);
                     // 检查是否为Ollama服务
                     if (this.isOllamaService(provider)) {
                         answer = await this.callOllamaAPI(question, pageContent, pageUrl, provider, selectedModel, null, parameterRule, conversationContainer);
                     } else {
                         answer = await this.callAIAPI(question, pageContent, pageUrl, provider, selectedModel, null, parameterRule, conversationContainer);
                     }
-                    
+
                     // 保存对话历史
                     this.saveConversationHistory(question, answer, `${selectedModel.displayName || selectedModel.name}（${selectedModel.provider}）`, '', pageUrl);
-                    
+
                     return answer;
                 } catch (apiError) {
                     console.error('AI API调用失败:', apiError);
                     console.error('错误详情:', apiError.stack);
-                    
+
                     // 统一大模型服务错误信息
                     let errorMessage = '大模型服务调用失败';
-                    
+
+                    debugger;
                     // 根据具体错误类型提供更精准的信息
                     if (apiError.message.includes('网络') || apiError.message.includes('连接') || apiError.message.includes('Failed to fetch')) {
-                        errorMessage = '大模型服务连接失败'+apiError.message;
+                        errorMessage = '大模型服务连接失败' + apiError.message;
                     } else if (apiError.message.includes('认证') || apiError.message.includes('401')) {
                         errorMessage = '大模型服务认证失败';
                     } else if (apiError.message.includes('权限') || apiError.message.includes('403')) {
@@ -1558,9 +2376,9 @@ class BicQAPopup {
                     } else if (apiError.message.includes('未配置')) {
                         errorMessage = '大模型服务配置不完整';
                     } else if (apiError.message.includes('404')) {
-                        errorMessage = '大模型服务不存在'+apiError.message;
+                        errorMessage = '大模型服务不存在' + apiError.message;
                     } else if (apiError.message.includes('400')) {
-                        errorMessage = '大模型服务请求格式错误'+apiError.message;
+                        errorMessage = '大模型服务请求格式错误' + apiError.message;
                     } else if (apiError.message.includes('429')) {
                         errorMessage = '大模型服务请求频率过高';
                     } else if (apiError.message.includes('500')) {
@@ -1570,7 +2388,7 @@ class BicQAPopup {
                         const originalError = apiError.message.replace(/模型服务调用失败:|API调用失败:|大模型服务调用失败:/g, '').trim();
                         errorMessage = `大模型服务调用失败: ${originalError || '未知错误'}`;
                     }
-                    
+
                     this.showErrorResult(errorMessage, 'model', conversationContainer);
                     return;
                 }
@@ -1586,11 +2404,11 @@ class BicQAPopup {
         // 重置提示相关状态（非知识库流程）
         this._useKnowledgeBaseThisTime = false;
         this._kbMatchCount = 0;
-        
+
         // 检查是否是第一次对话
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+
         if (container) {
             // 如果传入了容器，直接使用
             conversationContainer = container;
@@ -1605,19 +2423,19 @@ class BicQAPopup {
             // 后续对话，创建新容器
             conversationContainer = this.createNewConversationContainer();
         }
-        
-        console.log("-----question",question);
-        console.log("-----pageContent",pageContent);
-        console.log("-----pageUrl",pageUrl);
-        console.log("-----provider",provider);
-        console.log("-----model",model);
-        
+
+        console.log("-----question", question);
+        console.log("-----pageContent", pageContent);
+        console.log("-----pageUrl", pageUrl);
+        console.log("-----provider", provider);
+        console.log("-----model", model);
+
         // 显示问题
         this.updateQuestionDisplay(question, conversationContainer);
-        
+
         // 显示AI助手
         this.updateAIDisplay(conversationContainer);
-        
+
         // 使用提示容器设置提示语
         const resultText = conversationContainer.querySelector('.result-text');
         if (resultText) {
@@ -1637,20 +2455,20 @@ class BicQAPopup {
             }
             // 不清空tips；仅在渲染时写入contentEl
         }
-        
+
         // 更新标题为生成中状态
         const resultTitle = conversationContainer.querySelector('.result-title');
         if (resultTitle) {
             resultTitle.textContent = '生成回答中...';
         }
-        
+
         this.updateLayoutState();
-        
+
         var context = `页面URL: ${pageUrl}\n页面内容: ${pageContent.substring(0, 2000)}...`;
-        
+
         // 构建系统提示词
         let systemContent = "你是一个智能问答助手，基于用户提供的页面内容来回答问题。请提供准确、有用的回答。";
-        
+
         // 添加参数规则调试信息
         console.log('=== 参数规则调试信息 ===');
         console.log('parameterRule:', parameterRule);
@@ -1666,7 +2484,7 @@ class BicQAPopup {
             systemContent = parameterRule.prompt;
             // console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
         }
-        
+
         // 如果选择了知识库，添加知识库信息
         if (knowledgeBaseId) {
             try {
@@ -1683,13 +2501,13 @@ class BicQAPopup {
                 }
             }
             context = `基于以下内容回答问题：\n\n${context}\n\n问题：${question}`
-        }else{
+        } else {
             systemContent = "你是一个智能问答助手，基于用户提供的页面内容来回答问题。请提供准确、有用的回答。";
             context = `${question}`
         }
-        
+
         console.log('知识库处理后的systemContent:', systemContent);
-        
+
         // 构建对话历史消息
         const messages = [
             {
@@ -1697,7 +2515,7 @@ class BicQAPopup {
                 content: systemContent
             }
         ];
-        
+
         // 添加当前用户问题
         // 注意：历史记录中存储的是原始问题，而这里需要的是处理后的context
         // 所以每次都需要添加当前问题，避免重复的逻辑在这里不适用
@@ -1705,7 +2523,7 @@ class BicQAPopup {
             role: "user",
             content: context
         });
-        
+
         const requestBody = {
             model: model.name,
             messages: messages,
@@ -1729,11 +2547,11 @@ class BicQAPopup {
         // 如果选择了知识库，在请求体中添加知识库ID
         if (knowledgeBaseId) {
             requestBody.knowledge_base_id = knowledgeBaseId;
-        }else{
-            requestBody.temperature  = 0.7;
+        } else {
+            requestBody.temperature = 0.7;
         }
-        
-        
+
+
 
         const headers = {
             'Content-Type': 'application/json'
@@ -1741,12 +2559,12 @@ class BicQAPopup {
 
         // 设置认证头
         this.setAuthHeaders(headers, provider);
-        
+
         // 其他服务商使用标准的chat/completions接口
-        if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
-            provider.apiEndpoint=provider.apiEndpoint
-        }else{
-            provider.apiEndpoint=provider.apiEndpoint+"/chat/completions"
+        if (provider.apiEndpoint.indexOf("/chat/completions") > -1) {
+            provider.apiEndpoint = provider.apiEndpoint
+        } else {
+            provider.apiEndpoint = provider.apiEndpoint + "/chat/completions"
         }
         try {
             const response = await fetch(provider.apiEndpoint, {
@@ -1765,7 +2583,7 @@ class BicQAPopup {
 
                 // 根据HTTP状态码提供更精准的错误信息
                 let errorMessage = '模型服务请求失败';
-                
+
                 if (response.status === 400) {
                     errorMessage = '模型服务请求格式错误，请检查模型配置和请求参数';
                 } else if (response.status === 401) {
@@ -1783,26 +2601,26 @@ class BicQAPopup {
                 } else {
                     errorMessage = `模型服务请求失败: ${response.status} ${response.statusText}`;
                 }
-                
+
                 if (errorText && errorText !== '无法读取错误响应') {
                     errorMessage += `\n\n服务器错误详情：${errorText}`;
                 }
-                
+
                 throw new Error(errorMessage);
             }
 
             // 处理流式响应
             if (requestBody.stream) {
                 const result = await this.handleStreamResponse(response, conversationContainer, question);
-                
+
                 // 将当前对话添加到会话历史中
                 this.addToCurrentSessionHistory(question, result);
-                
+
                 return result;
             } else {
                 // 处理非流式响应
                 const data = await response.json();
-                
+
                 let result = '';
                 // 根据不同的API格式解析响应
                 if (data.choices && data.choices[0] && data.choices[0].message) {
@@ -1814,7 +2632,7 @@ class BicQAPopup {
                 } else {
                     result = JSON.stringify(data);
                 }
-                
+
                 // 更新标题显示完成状态和用时
                 if (this.startTime) {
                     const endTime = Date.now();
@@ -1824,13 +2642,13 @@ class BicQAPopup {
                         resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
                     }
                 }
-                
+
                 return result;
             }
-            
+
         } catch (error) {
             console.error('API调用失败:', error);
-            
+
             // 直接抛出原始错误，由上层统一处理
             throw error;
         }
@@ -1838,17 +2656,17 @@ class BicQAPopup {
     async callOllamaAPI(question, pageContent, pageUrl, provider, model, knowledgeBaseId = null, parameterRule, container = null) {
         // 重新设置开始时间，确保每次对话都有正确的计时
         this.startTime = Date.now();
-        
+
         // 重置停止状态，确保每次对话都有正确的状态
         this.hasBeenStopped = false;
-        
+
         // 注意：不要重置知识库使用状态，保持streamChat中设置的状态
         // this._useKnowledgeBaseThisTime = false; // 注释掉这行，保持streamChat中设置的状态
-        
+
         // 检查是否是第一次对话
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+
         if (container) {
             // 如果传入了容器，直接使用
             conversationContainer = container;
@@ -1863,19 +2681,19 @@ class BicQAPopup {
             // 后续对话，创建新容器
             conversationContainer = this.createNewConversationContainer();
         }
-        
-        console.log("-----question",question);
-        console.log("-----pageContent",pageContent);
-        console.log("-----pageUrl",pageUrl);
-        console.log("-----provider",provider);
-        console.log("-----model",model);
-        
+
+        console.log("-----question", question);
+        console.log("-----pageContent", pageContent);
+        console.log("-----pageUrl", pageUrl);
+        console.log("-----provider", provider);
+        console.log("-----model", model);
+
         // 显示问题
         this.updateQuestionDisplay(question, conversationContainer);
-        
+
         // 显示AI助手
         this.updateAIDisplay(conversationContainer);
-        
+
         // 使用提示容器设置提示语
         const resultText = conversationContainer.querySelector('.result-text');
         if (resultText) {
@@ -1897,18 +2715,18 @@ class BicQAPopup {
                 resultText.appendChild(contentEl);
             }
         }
-        
+
         // 更新标题为生成中状态
         const resultTitle = conversationContainer.querySelector('.result-title');
         if (resultTitle) {
             resultTitle.textContent = '生成回答中...';
         }
-        
+
         this.updateLayoutState();
-        
+
         // 构建上下文内容
         var context = '';
-        
+
         // 检查 pageContent 是否包含知识库查询结果（通常包含相似度信息）
         if (pageContent.includes('相似度：') || pageContent.includes('版本：')) {
             // 这是知识库查询结果，直接使用
@@ -1919,10 +2737,10 @@ class BicQAPopup {
             context = `页面URL: ${pageUrl}\n页面内容: ${pageContent.substring(0, 2000)}...`;
             console.log('使用页面内容作为上下文');
         }
-        
+
         // 构建系统提示词
         let systemContent = "你是一个智能问答助手，基于用户提供的内容来回答问题。请提供准确、有用的回答。";
-        
+
         // 添加参数规则调试信息
         console.log('=== 参数规则调试信息 ===');
         console.log('parameterRule:', parameterRule);
@@ -1934,7 +2752,7 @@ class BicQAPopup {
         }
         console.log('========================');
         console.log('知识库处理后的systemContent:', systemContent);
-        
+
         // 如果选择了参数规则，使用规则中的提示词
         if (parameterRule && parameterRule.prompt) {
             systemContent = parameterRule.prompt;
@@ -1956,13 +2774,13 @@ class BicQAPopup {
                 }
             }
             context = `基于以下内容回答问题：\n\n${context}\n\n问题：${question}`
-        }else{
+        } else {
             systemContent = "你是一个智能问答助手，基于用户提供的页面内容来回答问题。请提供准确、有用的回答。";
             context = `${question}`
         }
-        
+
         console.log('知识库处理后的systemContent:', systemContent);
-        
+
         // 构建对话历史消息
         const messages = [
             {
@@ -1970,22 +2788,22 @@ class BicQAPopup {
                 content: systemContent
             }
         ];
-        
+
         // 添加当前会话的历史对话（最多3轮）
         // const recentHistory = this.currentSessionHistory.slice(-6); // 取最近6条消息（3轮对话）
         // messages.push(...recentHistory);
-        
+
         // // 添加当前用户问题（避免重复添加）
         // // 检查历史记录中是否已经包含了当前问题，避免重复
         // const currentQuestionExists = recentHistory.some(msg => 
         //     msg.role === "user" && msg.content === question
         // );
-        
+
         messages.push({
             role: "user",
             content: context
         });
-        
+
         const requestBody = {
             model: model.name,
             messages: messages,
@@ -1993,7 +2811,7 @@ class BicQAPopup {
             temperature: model.temperature || 0.7,
             stream: true
         };
-        
+
         // 如果选择了参数规则，在请求体中添加参数
         if (parameterRule) {
             if (parameterRule.similarity !== undefined) {
@@ -2010,10 +2828,10 @@ class BicQAPopup {
         // 如果选择了知识库，在请求体中添加知识库ID
         if (knowledgeBaseId) {
             requestBody.knowledge_base_id = knowledgeBaseId;
-        }else{
-            requestBody.temperature  = 0.7;
+        } else {
+            requestBody.temperature = 0.7;
         }
-        
+
 
         const headers = {
             'Content-Type': 'application/json'
@@ -2040,10 +2858,10 @@ class BicQAPopup {
         //     }
         // }
         // 其他服务商使用标准的chat/completions接口
-        if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
-            provider.apiEndpoint=provider.apiEndpoint
-        }else{
-            provider.apiEndpoint=provider.apiEndpoint+"/chat/completions"
+        if (provider.apiEndpoint.indexOf("/chat/completions") > -1) {
+            provider.apiEndpoint = provider.apiEndpoint
+        } else {
+            provider.apiEndpoint = provider.apiEndpoint + "/chat/completions"
         }
         // if(provider.apiEndpoint.indexOf("/chat/completions")>-1){
         //     provider.apiEndpoint=provider.apiEndpoint
@@ -2070,7 +2888,7 @@ class BicQAPopup {
 
                 // 提供更详细的错误信息
                 let errorMessage = `API请求失败: ${response.status} ${response.statusText}`;
-                
+
                 if (response.status === 400) {
                     errorMessage += '\n请求格式错误，请检查模型配置';
                 } else if (response.status === 401) {
@@ -2082,26 +2900,26 @@ class BicQAPopup {
                 } else if (response.status === 429) {
                     errorMessage += '\n请求频率过高，请稍后重试';
                 }
-                
+
                 if (errorText) {
                     errorMessage += `\n\n服务器错误详情：${errorText}`;
                 }
-                
+
                 throw new Error(errorMessage);
             }
 
             // 处理流式响应
             if (requestBody.stream) {
                 const result = await this.handleStreamResponse(response, conversationContainer, question);
-                
+
                 // 将当前对话添加到会话历史中
                 this.addToCurrentSessionHistory(question, result);
-                
+
                 return result;
             } else {
                 // 处理非流式响应
                 const data = await response.json();
-                
+
                 let result = '';
                 if (data.choices && data.choices[0] && data.choices[0].message) {
                     result = data.choices[0].message.content;
@@ -2110,7 +2928,7 @@ class BicQAPopup {
                 } else {
                     result = JSON.stringify(data);
                 }
-                
+
                 // 显示结果
                 this.showResult(result, conversationContainer);
                 // 显示result-actions
@@ -2130,23 +2948,23 @@ class BicQAPopup {
                         resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
                     }
                 }
-                
+
                 // 将当前对话添加到会话历史中
                 // this.addToCurrentSessionHistory(question, result);
-                
+
                 return result;
             }
-            
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.log('流式回答请求已中止');
                 return '';
             }
             console.error('API调用失败:', error);
-            
+
             // 根据错误类型提供更精准的错误信息
             let errorMessage = '模型服务调用失败';
-            
+
             if (error.message.includes('API请求失败:')) {
                 // HTTP请求失败
                 const detail = error.message.replace('API请求失败:', '').trim();
@@ -2162,7 +2980,7 @@ class BicQAPopup {
                 // 其他错误 - 直接使用原始错误信息，避免重复添加前缀
                 errorMessage = error.message;
             }
-            
+
             throw new Error(errorMessage);
         }
     }
@@ -2170,7 +2988,7 @@ class BicQAPopup {
     async handleStreamResponse(response, container = null, question = '') {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        
+
         let buffer = '';
         let fullContent = '';
         let lastUpdateTime = 0;
@@ -2203,15 +3021,15 @@ class BicQAPopup {
 
             // 保留已存在的内容，不在此处清空，避免"停止"后内容被清除
         }
-        
+
         if (targetContainer) {
             targetContainer.style.display = 'block';
         }
-        
+
         // 清理格式缓存和表格状态
         this.clearFormatCache();
         this.resetTableState();
-        
+
         // 确保resultText可见
         if (resultText) {
             resultText.style.display = 'block';
@@ -2233,17 +3051,17 @@ class BicQAPopup {
                 return;
             }
             lastUpdateTime = now;
-            
+
             if (isUpdating) {
                 updateQueue.push(content);
                 return;
             }
-            
+
             isUpdating = true;
             try {
                 // 在格式化之前检查是否需要更新提示信息
                 this.updateProgressMessagesBeforeFormat(content);
-                
+
                 const formattedContent = this.formatContent(content);
                 if (contentEl) {
                     contentEl.innerHTML = formattedContent;
@@ -2252,14 +3070,14 @@ class BicQAPopup {
                     // this.resultText.innerHTML = formattedContent;
                     console.warn('未能获取到contentEl，跳过最终内容更新');
                 }
-                
+
                 // 平滑滚动到底部
                 if (this.resultContainer) {
                     this.resultContainer.scrollTop = this.resultContainer.scrollHeight;
                 }
             } finally {
                 isUpdating = false;
-                
+
                 // 处理队列中的更新
                 if (updateQueue.length > 0) {
                     const nextContent = updateQueue.pop();
@@ -2285,17 +3103,17 @@ class BicQAPopup {
             const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
             // console.log('接收到数据块，长度:', chunk.length, 'buffer总长度:', buffer.length);
-            
+
             // 处理每一行（SSE每行以data: 开头）
             let lines = buffer.split('\n');
             buffer = lines.pop(); // 可能最后一行不完整，留到下次
 
             for (const line of lines) {
                 if (line.trim() === '') continue;
-                
+
                 if (line.startsWith('data: ')) {
                     const dataStr = line.slice(6); // 移除 'data: ' 前缀
-                    
+
                     // 检查是否是结束标记
                     if (dataStr.trim() === '[DONE]') {
                         console.log('流式响应结束');
@@ -2307,7 +3125,7 @@ class BicQAPopup {
                             // this.resultText.innerHTML = finalFormattedContent;
                             console.warn('未能获取到contentEl，跳过最终内容更新');
                         }
-                        
+
                         // 设置最终提示
                         if (tipsEl) {
                             if (this._useKnowledgeBaseThisTime) {
@@ -2322,7 +3140,7 @@ class BicQAPopup {
                                 tipsEl.textContent = '处理完成，结果如下：';
                             }
                         }
-                        
+
                         // 在流式输出结束后，如果使用了知识库且有条目，展示"参考知识库"列表
                         if (!this.hasBeenStopped && this._useKnowledgeBaseThisTime && Array.isArray(this._kbItems) && this._kbItems.length > 0) {
                             console.log('=== 准备渲染知识库列表 ===');
@@ -2343,12 +3161,12 @@ class BicQAPopup {
                             console.log('_kbItemsLength:', Array.isArray(this._kbItems) ? this._kbItems.length : 'not array');
                             console.log('流式处理完成，不渲染知识库列表');
                         }
-                        
+
                         // 延迟执行提示信息替换，确保DOM更新完成
                         setTimeout(() => {
                             this.replaceProgressMessagesAfterStream();
                         }, 100);
-                        
+
                         // 重置反馈按钮状态
                         this.resetFeedbackButtons(targetContainer);
                         const resultActions = targetContainer ? targetContainer.querySelector('.result-actions') : null;
@@ -2368,23 +3186,23 @@ class BicQAPopup {
                                 resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
                             }
                         }
-                        
+
                         // 将当前对话添加到会话历史中
                         this.addToCurrentSessionHistory(question, fullContent);
-                        
+
                         return fullContent;
                     }
-                    
+
                     try {
                         const data = JSON.parse(dataStr);
-                        
+
                         // 处理OpenAI格式的流式响应
                         if (data.choices && data.choices[0] && data.choices[0].delta) {
                             const delta = data.choices[0].delta;
                             if (delta.content) {
                                 // console.log('接收到内容:', delta.content);
                                 fullContent += delta.content;
-                                
+
                                 // 使用防抖更新显示内容
                                 await debouncedUpdate(fullContent);
                             }
@@ -2393,30 +3211,30 @@ class BicQAPopup {
                         else if (data.content) {
                             // console.log('接收到内容:', data.content);
                             fullContent += data.content;
-                            
+
                             // 使用防抖更新显示内容
                             await debouncedUpdate(fullContent);
                         }
-                        
+
                     } catch (parseError) {
                         console.error('解析流式数据失败:', parseError, '原始数据:', line);
                     }
                 }
             }
         }
-        
+
         console.log('流式读取循环结束');
         if (this.hasBeenStopped) {
             // 停止时不继续后续完成逻辑
             return fullContent;
         }
         console.log('最终累积内容长度:', fullContent.length);
-        
+
         // 延迟执行提示信息替换，确保DOM更新完成
         setTimeout(() => {
             this.replaceProgressMessagesAfterStream();
         }, 100);
-        
+
         // 返回完整的累积内容
         return fullContent;
     }
@@ -2427,21 +3245,21 @@ class BicQAPopup {
             // 重新加载知识库服务配置，确保获取最新配置
             console.log('开始流式聊天，重新加载知识库服务配置...');
             await this.loadKnowledgeServiceConfig();
-            
+
             // 从知识库服务配置中获取streamUrl和apiKey
             let streamUrl = '';
             let apiKey = '';
             let apiKeySource = '未配置'; // 记录API Key的来源
-            
+
             console.log('开始配置流式聊天参数...');
             console.log('知识库服务配置:', this.knowledgeServiceConfig);
-            
+
             // 1. 优先从知识库服务配置中获取
             if (this.knowledgeServiceConfig) {
                 console.log('检查知识库服务配置...');
                 console.log('enabled:', this.knowledgeServiceConfig.enabled);
                 console.log('api_key:', this.knowledgeServiceConfig.api_key ? '已配置' : '未配置');
-                
+
                 // 使用知识库服务URL作为streamUrl的基础
                 const baseUrl = this.knowledgeServiceConfig.default_url;
                 if (baseUrl) {
@@ -2449,7 +3267,7 @@ class BicQAPopup {
                     streamUrl = baseUrl.replace('/knowledge', '/chat/stream');
                     console.log('从知识库服务配置生成streamUrl:', streamUrl);
                 }
-                
+
                 // 优先使用知识库服务的API密钥（无论是否启用）
                 if (this.knowledgeServiceConfig.api_key && this.knowledgeServiceConfig.api_key.trim()) {
                     apiKey = this.knowledgeServiceConfig.api_key.trim();
@@ -2461,44 +3279,44 @@ class BicQAPopup {
             } else {
                 console.log('知识库服务配置不存在');
             }
-            
+
             // 2. 如果知识库服务配置中没有API Key，从模型配置中获取
             if (!apiKey && model && model.apiKey) {
                 apiKey = model.apiKey;
                 apiKeySource = '模型配置';
                 console.log('使用模型配置的apiKey');
             }
-            
+
             if (!streamUrl && model && model.streamUrl) {
                 streamUrl = model.streamUrl;
                 console.log('使用模型配置的streamUrl:', streamUrl);
             }
-            
+
             // 3. 如果模型配置中没有，从服务商配置中获取
             if (!apiKey && provider && provider.apiKey) {
                 apiKey = provider.apiKey;
                 apiKeySource = '服务商配置';
                 console.log('使用服务商配置的apiKey');
             }
-            
+
             if (!streamUrl && provider && provider.streamUrl) {
                 streamUrl = provider.streamUrl;
                 console.log('使用服务商配置的streamUrl:', streamUrl);
             }
-            
+
             // 4. 如果都没有配置，提示用户配置
             if (!streamUrl) {
                 this.showMessage('请先在设置页面配置流式聊天URL', 'error');
                 // this.openSettings();
                 throw new Error('未配置流式聊天URL，请先在设置页面配置');
             }
-            
+
             // if (!apiKey) {
             //     this.showMessage('请先在设置页面配置API密钥', 'error');
             //     // 移除自动跳转，让用户自己决定是否去设置
             //     throw new Error('未配置API密钥，请先在设置页面配置');
             // }
-            
+
             console.log('=== 流式聊天配置总结 ===');
             console.log('streamUrl:', streamUrl);
             console.log('apiKey来源:', apiKeySource);
@@ -2510,10 +3328,10 @@ class BicQAPopup {
             console.log('parameterRule:', parameterRule);
             console.log('知识库服务配置:', this.knowledgeServiceConfig);
             console.log('========================');
-            
+
             // 调用更新后的streamChat方法，传入配置的参数和模型信息
             return await this.streamChat(message, streamUrl, apiKey, knowledgeBaseId, parameterRule, model, provider, container);
-            
+
         } catch (error) {
             console.error('流式聊天配置失败:', error);
             throw new Error(`流式聊天配置失败: ${error.message}`);
@@ -2524,13 +3342,13 @@ class BicQAPopup {
     async streamChat(message, streamUrl = null, apiKey = null, knowledgeBaseId = null, parameterRule = null, model = null, provider = null, container = null) {
         // 重新设置开始时间，确保每次对话都有正确的计时
         this.startTime = Date.now();
-        
+
         // 重置停止状态，确保每次对话都有正确的状态
         this.hasBeenStopped = false;
-        
+
         // 重置知识库使用状态，确保每次对话都有正确的状态
         this._useKnowledgeBaseThisTime = false;
-        
+
         // 检查必要参数
         if (!streamUrl) {
             this.showMessage('请先在设置页面配置流式聊天URL', 'error');
@@ -2542,9 +3360,9 @@ class BicQAPopup {
         //     // 移除自动跳转，让用户自己决定是否去设置
         //     throw new Error('未配置API密钥，请先在设置页面配置');
         // }
-        
+
         // 界面显示逻辑已移至processQuestion方法中处理，这里不再重复
-        
+
         try {
             console.log('开始知识库查询请求:', message);
             console.log('使用配置 - streamUrl:', streamUrl);
@@ -2552,7 +3370,7 @@ class BicQAPopup {
             console.log('parameterRule:', parameterRule);
             console.log('model:', model);
             console.log('provider:', provider);
-            
+
             // 动态获取注册信息
             let userEmail = null;
             let userName = null;
@@ -2569,7 +3387,7 @@ class BicQAPopup {
             } catch (error) {
                 console.error('获取注册信息失败:', error);
             }
-            
+
             // 构建新的请求体格式
             const requestBody = {
                 question: message,
@@ -2586,7 +3404,7 @@ class BicQAPopup {
                 language: "简体中文",
                 // prompt: null
             };
-            
+
             // 如果选择了知识库，设置dataset_name
             if (knowledgeBaseId) {
                 try {
@@ -2606,7 +3424,7 @@ class BicQAPopup {
                     console.log('使用原始knowledgeBaseId作为dataset_name:', knowledgeBaseId);
                 }
             }
-            
+
             // 如果选择了参数规则，更新相关参数
             if (parameterRule) {
                 if (parameterRule.temperature !== undefined) {
@@ -2623,9 +3441,9 @@ class BicQAPopup {
                 // }
                 console.log('使用参数规则:', parameterRule);
             }
-            
+
             console.log('最终请求体:', requestBody);
-            
+
             // 发送请求
             const response = await fetch(streamUrl, {
                 method: 'POST',
@@ -2635,14 +3453,14 @@ class BicQAPopup {
                 },
                 body: JSON.stringify(requestBody)
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('知识库查询请求失败:', response.status, errorText);
-                
+
                 // 根据HTTP状态码提供更精准的错误信息
                 let errorMessage = '知识库查询请求失败';
-                
+
                 if (response.status === 400) {
                     errorMessage = '知识库查询请求格式错误，请检查请求参数';
                 } else if (response.status === 401) {
@@ -2660,19 +3478,19 @@ class BicQAPopup {
                 } else {
                     errorMessage = `知识库查询请求失败: ${response.status} - ${errorText}`;
                 }
-                
+
                 throw new Error(errorMessage);
             }
-            
+
             // 处理非流式响应
             const responseData = await response.json();
             console.log('知识库查询响应:', responseData);
-            
+
             // 检查响应格式
             if (responseData.status !== "200") {
                 throw new Error(`知识库查询失败: ${responseData.message || '未知错误'}`);
             }
-            
+
             // 提取data数组中的内容，并更新提示
             let contextContent = '';
             let matchCount = 0;
@@ -2686,18 +3504,18 @@ class BicQAPopup {
                 console.warn('响应中没有找到data数组或data不是数组格式');
                 this._kbItems = [];
             }
-            
+
             // 设置用于最终提示的状态
             this._useKnowledgeBaseThisTime = !!knowledgeBaseId;
             this._kbMatchCount = matchCount;
-            
+
             console.log('=== streamChat 知识库状态设置 ===');
             console.log('knowledgeBaseId:', knowledgeBaseId);
             console.log('_useKnowledgeBaseThisTime:', this._useKnowledgeBaseThisTime);
             console.log('_kbMatchCount:', this._kbMatchCount);
             console.log('_kbItems:', this._kbItems);
             console.log('_kbItems.length:', this._kbItems ? this._kbItems.length : 'null');
-            
+
             // 如果选择了知识库且接口返回了数据，更新提示为3行（思考中）
             if (knowledgeBaseId) {
                 // 使用传入的container参数而不是this.resultText
@@ -2708,7 +3526,7 @@ class BicQAPopup {
                     tipsEl.innerHTML = `正在搜索知识库...<br>匹配到${matchCount}条知识库<br>正在思考，请稍等...`;
                 }
             }
-            
+
             // 如果知识库返回0条，直接提示并终止，不调用大模型
             if (knowledgeBaseId && matchCount === 0) {
                 // 使用传入的container参数而不是this.resultText
@@ -2736,7 +3554,7 @@ class BicQAPopup {
                 // 内容区保持为空，不报错
                 return '';
             }
-            
+
             // 如果没有获取到知识库内容，使用原始页面内容
             if (!contextContent.trim()) {
                 console.log('未获取到知识库内容，使用原始页面内容');
@@ -2744,12 +3562,12 @@ class BicQAPopup {
                 // const pageContent = await this.getPageSummary();
                 contextContent = pageContent || '无法获取页面内容';
             }
-            
+
             // 调用 callOllamaAPI 处理最终的回答生成
             console.log('开始调用 callOllamaAPI 生成最终回答');
             try {
                 const finalAnswer = await this.callOllamaAPI(
-                    message, 
+                    message,
                     contextContent, // 使用知识库查询结果作为context
                     window.location.href, // 页面URL
                     provider,
@@ -2758,29 +3576,29 @@ class BicQAPopup {
                     parameterRule,
                     container // 传递当前对话容器
                 );
-                
+
                 return finalAnswer;
             } catch (modelError) {
                 console.error('大模型服务调用失败:', modelError);
                 // 直接抛出大模型服务错误，不包装成知识库服务错误
                 throw new Error(`大模型服务调用失败: ${modelError.message}`);
             }
-            
+
         } catch (error) {
             console.error('知识库查询失败:', error);
             console.error('错误详情:', error.stack);
-            
+
             // 检查是否是大模型服务错误，如果是则直接抛出，不重新包装
-            if (error.message.includes('大模型服务调用失败:') || 
+            if (error.message.includes('大模型服务调用失败:') ||
                 error.message.includes('模型服务调用失败:') ||
                 error.message.includes('API调用失败:')) {
                 // 直接抛出大模型服务错误，不重新包装
                 throw error;
             }
-            
+
             // 根据错误类型提供更精准的错误信息
             let errorMessage = '知识库查询失败';
-            
+
             if (error.message.includes('请求失败:')) {
                 // 网络请求失败
                 const detail = error.message.replace('请求失败:', '').trim();
@@ -2799,7 +3617,7 @@ class BicQAPopup {
                 // 其他错误 - 直接使用原始错误信息，避免重复添加前缀
                 errorMessage = error.message;
             }
-            
+
             throw new Error(errorMessage);
         }
     }
@@ -2807,39 +3625,39 @@ class BicQAPopup {
     // 格式化内容显示 - 优化版本
     formatContent(content) {
         if (!content) return '';
-        
+
         // 简单的缓存机制，避免重复处理相同内容
         if (this._lastContent === content && this._lastFormattedContent) {
             return this._lastFormattedContent;
         }
-        
+
         // 检查文本是否包含Markdown格式
         const hasMarkdown = /\*\*.*?\*\*|`.*?`|```.*?```|###|####|---/.test(content);
-        
+
         // 如果是纯文本，直接返回pre标签包装的内容
         if (!hasMarkdown) {
             const plainTextContent = `<pre class="plain-text-pre" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; padding: 0; background: transparent; border: none;">${this.escapeHtml(content)}</pre>`;
-            
+
             // 缓存结果
             this._lastContent = content;
             this._lastFormattedContent = plainTextContent;
-            
+
             return plainTextContent;
         }
-        
+
         let formattedContent = content;
-        
+
         // 先处理表格格式 - 在换行符转换之前
         formattedContent = this.formatTableWithNewlines(formattedContent);
-        
+
         // 处理换行符 - 恢复这行代码
         formattedContent = formattedContent.replace(/\n/g, '<br>');
-        
+
         // 处理Markdown样式的标题 - 改进处理逻辑
         // 先处理带粗体的标题
         formattedContent = formattedContent.replace(/### \*\*(.*?)\*\*/g, '<h3><strong>$1</strong></h3>');
         formattedContent = formattedContent.replace(/#### \*\*(.*?)\*\*/g, '<h4><strong>$1</strong></h4>');
-        
+
         // 处理普通标题 - 使用更精确的方法
         // 先按<br>分割，然后处理每一行
         const lines = formattedContent.split('<br>');
@@ -2862,41 +3680,41 @@ class BicQAPopup {
             return line;
         });
         formattedContent = processedLines.join('<br>');
-        
+
         // 处理代码块（多行）
         formattedContent = formattedContent.replace(/```(\w+)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
         formattedContent = formattedContent.replace(/```\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
         formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-        
+
         // 处理行内代码
         formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
+
         // 处理粗体 - 改进正则表达式，避免贪婪匹配
         formattedContent = formattedContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        
+
         // 处理斜体
         formattedContent = formattedContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        
+
         // 处理分割线
         formattedContent = formattedContent.replace(/---/g, '<hr>');
-        
+
         // 处理列表项
         formattedContent = formattedContent.replace(/^\d+\. \*\*(.*?)\*\*：/gm, '<li><strong>$1</strong>：');
         formattedContent = formattedContent.replace(/^\d+\. (.*?)$/gm, '<li>$1</li>');
         formattedContent = formattedContent.replace(/^- \*\*(.*?)\*\*：/gm, '<li><strong>$1</strong>：');
         formattedContent = formattedContent.replace(/^- (.*?)$/gm, '<li>$1</li>');
-        
+
         // 改进blockquote处理 - 修复正则表达式
         // 处理以>开头的行，支持多行blockquote
         // 先按<br>分割，然后处理连续的blockquote行
         const blockquoteLines = formattedContent.split('<br>');
         const processedBlockquoteLines = [];
         let currentBlockquote = [];
-        
+
         for (let i = 0; i < blockquoteLines.length; i++) {
             const line = blockquoteLines[i];
             const trimmedLine = line.trim();
-            
+
             if (trimmedLine.startsWith('> ')) {
                 // 这是一个blockquote行
                 const content = trimmedLine.substring(2); // 移除 '> '
@@ -2912,54 +3730,54 @@ class BicQAPopup {
                 processedBlockquoteLines.push(line);
             }
         }
-        
+
         // 处理最后的blockquote
         if (currentBlockquote.length > 0) {
             const blockquoteHtml = `<blockquote>${currentBlockquote.join('<br>')}</blockquote>`;
             processedBlockquoteLines.push(blockquoteHtml);
         }
-        
+
         formattedContent = processedBlockquoteLines.join('<br>');
-        
+
         // 处理链接
         formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        
+
         // 改进段落处理 - 避免在已有HTML标签外包装p标签
         // 先分割内容，分别处理表格和非表格部分
         const parts = formattedContent.split(/(<div class="table-container">.*?<\/div>|<h[1-6]>.*?<\/h[1-6]>|<pre>.*?<\/pre>|<blockquote>.*?<\/blockquote>)/g);
         const processedParts = parts.map((part, index) => {
             // 如果是表格部分、标题部分、代码块或blockquote部分，直接返回
-            if (part.includes('<div class="table-container">') || 
+            if (part.includes('<div class="table-container">') ||
                 part.match(/<h[1-6]>.*?<\/h[1-6]>/) ||
                 part.includes('<pre>') ||
                 part.includes('<blockquote>')) {
                 return part;
             }
-            
+
             // 如果是非特殊部分，进行段落处理
             let processedPart = part;
-            
+
             // 处理连续的<br>标签，但保留单个<br>
             processedPart = processedPart.replace(/(<br>){3,}/g, '</p><p>');
             processedPart = processedPart.replace(/(<br>){2}/g, '</p><p>');
-            
+
             // 包装在段落中，但避免在已有HTML标签外包装
             if (processedPart.trim() && !processedPart.match(/^<[^>]+>.*<\/[^>]+>$/)) {
                 processedPart = '<p>' + processedPart + '</p>';
             }
-            
+
             // 清理空的段落，但保留包含<br>的段落
             processedPart = processedPart.replace(/<p><\/p>/g, '');
-            
+
             return processedPart;
         });
-        
+
         formattedContent = processedParts.join('');
-        
+
         // 缓存结果
         this._lastContent = content;
         this._lastFormattedContent = formattedContent;
-        
+
         return formattedContent;
     }
 
@@ -2969,21 +3787,21 @@ class BicQAPopup {
         const lines = content.split('\n');
         const processedLines = [];
         let i = 0;
-        
+
         while (i < lines.length) {
             const line = lines[i];
-            
+
             // 检查是否开始表格
             if (this.isTableRow(line) && !this.tableState.isInTable) {
                 this.tableState.isInTable = true;
                 this.tableState.tableStartIndex = i;
                 this.tableState.tableLines = [line];
                 i++;
-                
+
                 // 收集表格的所有行
                 while (i < lines.length) {
                     const nextLine = lines[i];
-                    
+
                     // 如果是表格行，继续收集
                     if (this.isTableRow(nextLine)) {
                         this.tableState.tableLines.push(nextLine);
@@ -2993,11 +3811,11 @@ class BicQAPopup {
                         break;
                     }
                 }
-                
+
                 // 处理收集到的表格
                 const tableHtml = this.processTableLinesWithNewlines(this.tableState.tableLines);
                 processedLines.push(tableHtml);
-                
+
                 // 重置表格状态
                 this.resetTableState();
             } else {
@@ -3006,7 +3824,7 @@ class BicQAPopup {
                 i++;
             }
         }
-        
+
         const result = processedLines.join('\n');
         return result;
     }
@@ -3017,32 +3835,32 @@ class BicQAPopup {
             // 如果表格行数不足，返回原始内容
             return tableLines.join('\n');
         }
-        
+
         // 解析所有行
         const rows = tableLines.map(line => this.parseTableRow(line));
-        
+
         // 过滤掉空行
         const validRows = rows.filter(row => row && row.length > 0);
-        
+
         if (validRows.length === 0) {
             return tableLines.join('\n');
         }
-        
+
         // 检查是否有分隔行
         let hasSeparator = false;
         let headerRow = validRows[0];
         let dataRows = validRows.slice(1);
-        
+
         // 检查第二行是否是分隔行
         if (validRows.length > 1 && this.isTableSeparator(tableLines[1])) {
             hasSeparator = true;
             headerRow = validRows[0];
             dataRows = validRows.slice(2); // 跳过分隔行
         }
-        
+
         // 生成HTML表格
         let tableHtml = '<div class="table-container"><table class="result-table">';
-        
+
         // 添加表头
         if (headerRow && headerRow.length > 0) {
             tableHtml += '<thead><tr>';
@@ -3051,7 +3869,7 @@ class BicQAPopup {
             });
             tableHtml += '</tr></thead>';
         }
-        
+
         // 添加数据行
         if (dataRows.length > 0) {
             tableHtml += '<tbody>';
@@ -3068,7 +3886,7 @@ class BicQAPopup {
             });
             tableHtml += '</tbody>';
         }
-        
+
         tableHtml += '</table></div>';
         return tableHtml;
     }
@@ -3076,24 +3894,24 @@ class BicQAPopup {
     // 渲染消息列表的方法
     renderMessageList(messageList) {
         console.log('开始渲染消息列表，消息数量:', messageList.length);
-        
+
         const resultText = this.resultText;
         if (!resultText) {
             console.error('resultText元素不存在!');
             return;
         }
-        
+
         // 只在第一次调用时清空内容
         if (messageList.length === 1) {
             console.log('首次渲染，清空resultText内容...');
             resultText.innerHTML = '';
         }
-        
+
         // 只渲染最新的消息（最后一条）
         const latestMessage = messageList[messageList.length - 1];
         if (latestMessage && latestMessage.content) {
             console.log(`渲染最新消息:`, latestMessage.content);
-            
+
             const messageDiv = document.createElement('div');
             messageDiv.className = 'stream-message';
             messageDiv.style.cssText = `
@@ -3107,19 +3925,19 @@ class BicQAPopup {
                 word-wrap: break-word;
                 white-space: pre-wrap;
             `;
-            
+
             // 添加时间戳（可选）
             const timestamp = latestMessage.timestamp ? new Date(latestMessage.timestamp).toLocaleTimeString() : '';
             const timeText = timestamp ? `<small style="color: #6c757d; font-size: 0.8em;">${timestamp}</small><br>` : '';
-            
+
             messageDiv.innerHTML = `${timeText}${this.escapeHtml(latestMessage.content)}`;
             resultText.appendChild(messageDiv);
-            
+
             console.log(`最新消息已添加到DOM，当前总消息数: ${messageList.length}`);
         }
-        
+
         console.log('消息渲染完成，当前resultText内容长度:', resultText.innerHTML.length);
-        
+
         // 添加CSS动画
         if (!document.getElementById('stream-animation-style')) {
             const style = document.createElement('style');
@@ -3137,49 +3955,49 @@ class BicQAPopup {
     // 测试流式聊天的方法
     async testStreamChat() {
         const testMessage = this.questionInput.value.trim() || '怎么创建表';
-        
+
         this.setLoading(true);
-        
+
         try {
             console.log('开始测试流式聊天...');
             console.log('测试消息:', testMessage);
             // console.log('resultText元素:', this.resultText);
             console.log('resultContainer元素:', this.resultContainer);
-            
+
             // 检查DOM元素是否正确初始化
             if (!this.resultText) {
                 throw new Error('resultText元素未找到，请检查DOM初始化');
             }
-            
+
             if (!this.resultContainer) {
                 throw new Error('resultContainer元素未找到，请检查DOM初始化');
             }
-            
+
             // 获取当前选择的模型和服务商
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
                 throw new Error('请先选择一个模型');
             }
-            
+
             let selectedKey;
             try {
                 selectedKey = JSON.parse(selectedModelValue);
             } catch (_) {
                 selectedKey = { name: selectedModelValue };
             }
-            
+
             const selectedModel = this.models.find(m => m.name === selectedKey.name && (!selectedKey.provider || m.provider === selectedKey.provider));
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
-            
+
             if (!selectedModel || !provider) {
                 throw new Error('配置的模型或服务商不存在，请检查设置');
             }
-            
+
             // 清空并准备显示区域
             this.resultText.innerHTML = '';
             this.resultContainer.style.display = 'block';
             this.resultText.style.display = 'block';
-            
+
             // 添加一个测试消息来验证显示
             const testDiv = document.createElement('div');
             testDiv.style.cssText = `
@@ -3192,16 +4010,16 @@ class BicQAPopup {
             `;
             testDiv.textContent = `正在连接流式API (${provider.name})...`;
             this.resultText.appendChild(testDiv);
-            
+
             console.log('测试消息已添加到DOM');
             console.log('使用模型:', selectedModel.name);
             console.log('使用服务商:', provider.name);
-            
+
             // 尝试调用流式聊天
             const result = await this.streamChatWithConfig(testMessage, selectedModel, provider, null, null, this.resultContainer);
             console.log('流式聊天完成，返回结果:', result);
             console.log('返回结果长度:', result ? result.length : 0);
-            
+
             // 检查返回的结果
             if (result && result.length > 0) {
                 console.log('流式聊天成功，结果已显示');
@@ -3221,13 +4039,13 @@ class BicQAPopup {
                 noResultDiv.textContent = '流式聊天完成，但没有返回内容';
                 this.resultText.appendChild(noResultDiv);
             }
-            
+
             // 保存对话历史记录
             this.saveConversationHistory(testMessage, result || '无返回内容', `${selectedModel.displayName || selectedModel.name}（${selectedModel.provider}）`, null, '');
-            
+
         } catch (error) {
             console.error('测试流式聊天失败:', error);
-            
+
             // 显示错误信息到结果区域
             if (this.resultText) {
                 const errorDiv = document.createElement('div');
@@ -3242,7 +4060,7 @@ class BicQAPopup {
                 errorDiv.innerHTML = `<strong>流式聊天测试失败:</strong><br>${error.message}`;
                 this.resultText.appendChild(errorDiv);
             }
-            
+
             this.showMessage('流式聊天测试失败: ' + error.message, 'error');
         } finally {
             this.setLoading(false);
@@ -3255,7 +4073,7 @@ class BicQAPopup {
         } else if (provider.authType === 'API-Key') {
             // 根据不同的API服务商设置不同的认证头
             const endpoint = provider.apiEndpoint.toLowerCase();
-            
+
             if (endpoint.includes('deepseek')) {
                 headers['Authorization'] = `Bearer ${provider.apiKey}`;
             } else if (endpoint.includes('openai')) {
@@ -3282,14 +4100,14 @@ class BicQAPopup {
     async getPageSummary() {
         // 检查resultText区域是否有内容
         const resultContent = this.resultText.textContent.trim();
-        
+
         if (!resultContent) {
             this.showMessage('请先生成一些内容，然后点击页面摘要按钮', 'info');
             return;
         }
-        
+
         this.setLoading(true);
-        
+
         try {
             // 直接对resultText区域的内容生成摘要
             const summary = await this.generateSummaryFromText(resultContent);
@@ -3321,7 +4139,7 @@ class BicQAPopup {
             z-index: 10000;
             animation: fadeIn 0.3s ease;
         `;
-        
+
         summaryDialog.innerHTML = `
             <div class="dialog-content" style="
                 background: white;
@@ -3418,15 +4236,15 @@ class BicQAPopup {
                 </div>
             </div>
         `;
-        
+
         // 添加到页面
         document.body.appendChild(summaryDialog);
-        
+
         // 绑定事件
         const closeSummaryDialog = document.getElementById('closeSummaryDialog');
         const closeSummaryBtn = document.getElementById('closeSummaryBtn');
         const copySummaryBtn = document.getElementById('copySummaryBtn');
-        
+
         // 关闭弹窗事件
         const closeDialog = () => {
             summaryDialog.style.animation = 'fadeOut 0.3s ease';
@@ -3436,17 +4254,17 @@ class BicQAPopup {
                 }
             }, 300);
         };
-        
+
         closeSummaryDialog.addEventListener('click', closeDialog);
         closeSummaryBtn.addEventListener('click', closeDialog);
-        
+
         // 点击背景关闭弹窗
         summaryDialog.addEventListener('click', (e) => {
             if (e.target === summaryDialog) {
                 closeDialog();
             }
         });
-        
+
         // 复制摘要事件
         copySummaryBtn.addEventListener('click', async () => {
             try {
@@ -3457,7 +4275,7 @@ class BicQAPopup {
                 this.showMessage('复制失败', 'error');
             }
         });
-        
+
         // 添加CSS动画
         if (!document.getElementById('summary-dialog-animation-style')) {
             const style = document.createElement('style');
@@ -3510,7 +4328,7 @@ class BicQAPopup {
             `;
             document.head.appendChild(style);
         }
-        
+
         // 聚焦到关闭按钮
         setTimeout(() => {
             closeSummaryDialog.focus();
@@ -3519,22 +4337,22 @@ class BicQAPopup {
 
     async translateSelection() {
         console.log('翻译按钮被点击');
-        
+
         // 检查resultText区域是否有内容
         const resultContent = this.resultText.textContent.trim();
         console.log('结果区域内容:', resultContent);
         console.log('结果区域长度:', resultContent.length);
-        
+
         if (!resultContent) {
             console.log('没有内容，显示提示消息');
             this.showMessage('请先生成一些内容，然后点击翻译按钮', 'info');
             return;
         }
-        
+
         console.log('开始翻译，显示翻译弹窗');
         // 先显示翻译弹窗，在弹窗中显示翻译进度
         this.showTranslationDialog(resultContent, null, true); // 第三个参数表示正在翻译
-        
+
         try {
             console.log('调用translateText方法');
             // 直接翻译resultText区域的内容
@@ -3556,11 +4374,11 @@ class BicQAPopup {
         console.log('原文:', originalText);
         console.log('译文:', translatedText);
         console.log('是否正在翻译:', isTranslating);
-        
+
         // 检测语言
         const hasChinese = /[\u4e00-\u9fff]/.test(originalText);
         const hasEnglish = /[a-zA-Z]/.test(originalText);
-        
+
         // 确定语言信息
         let sourceLanguage, targetLanguage;
         if (hasChinese && !hasEnglish) {
@@ -3576,9 +4394,9 @@ class BicQAPopup {
             sourceLanguage = '未知语言';
             targetLanguage = '中文';
         }
-        
+
         console.log('语言检测结果:', { sourceLanguage, targetLanguage });
-        
+
         // 创建翻译弹窗
         const translationDialog = document.createElement('div');
         translationDialog.id = 'translationDialog';
@@ -3596,9 +4414,9 @@ class BicQAPopup {
             z-index: 10000;
             animation: fadeIn 0.3s ease;
         `;
-        
+
         console.log('创建弹窗元素完成');
-        
+
         // 根据翻译状态生成不同的内容
         let translationContent;
         if (isTranslating) {
@@ -3661,7 +4479,7 @@ class BicQAPopup {
                 ">准备翻译...</div>
             `;
         }
-        
+
         translationDialog.innerHTML = `
             <div class="dialog-content" style="
                 background: white;
@@ -3845,7 +4663,7 @@ class BicQAPopup {
                 </div>
             </div>
         `;
-        
+
         // 添加CSS动画
         if (!document.getElementById('translation-dialog-animation-style')) {
             const style = document.createElement('style');
@@ -3903,20 +4721,20 @@ class BicQAPopup {
             `;
             document.head.appendChild(style);
         }
-        
+
         console.log('弹窗HTML设置完成');
-        
+
         // 添加到页面
         document.body.appendChild(translationDialog);
         console.log('弹窗已添加到页面');
-        
+
         // 绑定事件
         const closeTranslationDialog = document.getElementById('closeTranslationDialog');
         const closeTranslationBtn = document.getElementById('closeTranslationBtn');
         const copyTranslationBtn = document.getElementById('copyTranslationBtn');
-        
+
         console.log('获取按钮元素:', { closeTranslationDialog, closeTranslationBtn, copyTranslationBtn });
-        
+
         // 关闭弹窗事件
         const closeDialog = () => {
             console.log('关闭弹窗');
@@ -3927,17 +4745,17 @@ class BicQAPopup {
                 }
             }, 300);
         };
-        
+
         closeTranslationDialog.addEventListener('click', closeDialog);
         closeTranslationBtn.addEventListener('click', closeDialog);
-        
+
         // 点击背景关闭
         translationDialog.addEventListener('click', (e) => {
             if (e.target === translationDialog) {
                 closeDialog();
             }
         });
-        
+
         // ESC键关闭
         const handleEscKey = (e) => {
             if (e.key === 'Escape') {
@@ -3946,30 +4764,30 @@ class BicQAPopup {
             }
         };
         document.addEventListener('keydown', handleEscKey);
-        
+
         // 复制译文（只在翻译完成后显示）
         if (copyTranslationBtn) {
             copyTranslationBtn.addEventListener('click', async () => {
                 try {
                     await navigator.clipboard.writeText(translatedText);
-                    
+
                     // 显示复制成功提示
                     const originalText = copyTranslationBtn.innerHTML;
                     copyTranslationBtn.innerHTML = '<span>✅</span> 已复制';
                     copyTranslationBtn.style.background = '#28a745';
-                    
+
                     setTimeout(() => {
                         copyTranslationBtn.innerHTML = originalText;
                         copyTranslationBtn.style.background = '#007bff';
                     }, 2000);
-                    
+
                 } catch (error) {
                     console.error('复制失败:', error);
                     this.showMessage('复制失败，请手动复制', 'error');
                 }
             });
         }
-        
+
         // 按钮悬停效果
         [closeTranslationDialog, closeTranslationBtn, copyTranslationBtn].forEach(btn => {
             if (btn) {
@@ -3981,25 +4799,25 @@ class BicQAPopup {
                 });
             }
         });
-        
+
         // 自动聚焦到关闭按钮
         setTimeout(() => {
             closeTranslationBtn.focus();
         }, 100);
-        
+
         console.log('弹窗事件绑定完成');
     }
-    
+
     // 更新翻译弹窗内容
     updateTranslationDialog(originalText, translatedText, showCopyButton = true, isError = false) {
         const translationContent = document.getElementById('translationContent');
         const copyTranslationBtn = document.getElementById('copyTranslationBtn');
-        
+
         if (!translationContent) {
             console.error('找不到translationContent元素');
             return;
         }
-        
+
         if (isError) {
             // 显示错误信息
             translationContent.innerHTML = `
@@ -4034,33 +4852,33 @@ class BicQAPopup {
                 ">${this.escapeHtml(translatedText)}</div>
             `;
         }
-        
+
         // 显示复制按钮
         if (copyTranslationBtn && showCopyButton && !isError) {
             copyTranslationBtn.style.display = 'flex';
-            
+
             // 重新绑定复制事件
             copyTranslationBtn.onclick = async () => {
                 try {
                     await navigator.clipboard.writeText(translatedText);
-                    
+
                     // 显示复制成功提示
                     const originalText = copyTranslationBtn.innerHTML;
                     copyTranslationBtn.innerHTML = '<span>✅</span> 已复制';
                     copyTranslationBtn.style.background = '#28a745';
-                    
+
                     setTimeout(() => {
                         copyTranslationBtn.innerHTML = originalText;
                         copyTranslationBtn.style.background = '#007bff';
                     }, 2000);
-                    
+
                 } catch (error) {
                     console.error('复制失败:', error);
                     this.showMessage('复制失败，请手动复制', 'error');
                 }
             };
         }
-        
+
         console.log('翻译弹窗内容已更新');
     }
 
@@ -4069,7 +4887,7 @@ class BicQAPopup {
             // 检测语言
             const hasChinese = /[\u4e00-\u9fff]/.test(text);
             const hasEnglish = /[a-zA-Z]/.test(text);
-            
+
             // 确定翻译方向
             let targetLanguage, sourceLanguage;
             if (hasChinese && !hasEnglish) {
@@ -4089,27 +4907,27 @@ class BicQAPopup {
                 sourceLanguage = '未知语言';
                 targetLanguage = '中文';
             }
-            
+
             // 获取用户选择的模型和服务商
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
                 throw new Error('请先选择一个模型');
             }
-            
+
             let selectedKey;
             try {
                 selectedKey = JSON.parse(selectedModelValue);
             } catch (_) {
                 selectedKey = { name: selectedModelValue };
             }
-            
+
             const selectedModel = this.models.find(m => m.name === selectedKey.name && (!selectedKey.provider || m.provider === selectedKey.provider));
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
-            
+
             if (!selectedModel || !provider) {
                 throw new Error('配置的模型或服务商不存在，请检查设置');
             }
-            
+
             // 构建翻译提示词
             const translationPrompt = `请将以下${sourceLanguage}文本翻译成${targetLanguage}，要求：
 1. 保持原文的意思和语气
@@ -4121,7 +4939,7 @@ class BicQAPopup {
 ${text}
 
 翻译结果：`;
-            
+
             // 使用AI API进行翻译
             const translatedText = await this.callAIAPI(
                 translationPrompt,
@@ -4130,32 +4948,32 @@ ${text}
                 provider,
                 selectedModel
             );
-            
+
             // 清理翻译结果，移除可能的AI前缀
             let cleanTranslation = translatedText.trim();
-            
+
             // 移除常见的AI前缀
             const prefixes = [
                 '翻译结果：', 'Translation:', '翻译：', 'Translated text:',
                 'AI翻译：', 'AI Translation:', '结果：', 'Result:'
             ];
-            
+
             for (const prefix of prefixes) {
                 if (cleanTranslation.startsWith(prefix)) {
                     cleanTranslation = cleanTranslation.substring(prefix.length).trim();
                     break;
                 }
             }
-            
+
             return cleanTranslation || translatedText;
-            
+
         } catch (error) {
             console.error('翻译处理失败:', error);
-            
+
             // 如果AI翻译失败，提供备用方案
             const hasChinese = /[\u4e00-\u9fff]/.test(text);
             const hasEnglish = /[a-zA-Z]/.test(text);
-            
+
             if (hasChinese && !hasEnglish) {
                 return `[翻译失败] ${error.message || '请检查网络连接或AI服务配置'}。原文：${text}`;
             } else if (hasEnglish && !hasChinese) {
@@ -4177,7 +4995,7 @@ ${text}
 
     openFullPage() {
         // 发送消息给background script来打开完整页面
-        chrome.runtime.sendMessage({action: 'openFullPage'}, (response) => {
+        chrome.runtime.sendMessage({ action: 'openFullPage' }, (response) => {
             if (response && response.success) {
                 console.log('成功打开完整页面');
             } else {
@@ -4192,10 +5010,12 @@ ${text}
     // 处理知识库选择变化
     async handleKnowledgeBaseChange() {
         const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
-        
-        // 如果选择了"不使用知识库"，清空知识库列表
-        if (!selectedKnowledgeBase || selectedKnowledgeBase === '不使用知识库') {
-            console.log('handleKnowledgeBaseChange: 选择不使用知识库，清空知识库列表');
+
+        // 立即更新字符计数显示（无论选择什么）
+        this.updateCharacterCount();
+        // 如果选择了"不使用知识库(None)"，清空知识库列表
+        if (!selectedKnowledgeBase || selectedKnowledgeBase === '不使用知识库(None)') {
+            console.log('handleKnowledgeBaseChange: 选择不使用知识库(None)，清空知识库列表');
             const knowlistEl = this.resultText?.querySelector('.result-text-knowlist');
             if (knowlistEl) {
                 knowlistEl.innerHTML = '';
@@ -4205,21 +5025,27 @@ ${text}
             this._useKnowledgeBaseThisTime = false;
             this._kbMatchCount = 0;
             this._kbItems = [];
+
+            // 更新字符计数显示
+            this.updateCharacterCount();
             return;
         }
-        
-        // 如果选择了知识库（不是"不使用知识库"），检查知识库服务配置
-        if (selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库') {
+
+        // 如果选择了知识库，更新字符计数显示
+        this.updateCharacterCount();
+
+        // 如果选择了知识库（不是"不使用知识库(None)"），检查知识库服务配置
+        if (selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库(None)') {
             // 重新加载知识库服务配置，确保获取最新配置
             console.log('选择知识库，重新加载配置...');
             await this.loadKnowledgeServiceConfig();
-            
+
             // 检查知识库服务配置
             if (!this.knowledgeServiceConfig) {
                 this.showMessage('请先在设置页面配置知识库服务连接信息', 'error');
                 return;
             }
-            
+
             // 检查知识库服务URL是否配置
             if (!this.knowledgeServiceConfig.default_url || this.knowledgeServiceConfig.default_url.trim() === '') {
                 this.showMessage('请先在设置页面配置知识库服务URL', 'error');
@@ -4231,7 +5057,7 @@ ${text}
                 }, 1000);
                 return;
             }
-            
+
             // 检查知识库服务API密钥是否配置
             if (!this.knowledgeServiceConfig.api_key || this.knowledgeServiceConfig.api_key.trim() === '') {
                 this.showMessage('请先在设置页面配置知识库服务API密钥', 'error');
@@ -4243,7 +5069,7 @@ ${text}
                 // }, 1000);
                 return;
             }
-            
+
             // 配置完整，不显示任何提示
             console.log('知识库服务配置检查完成，配置有效');
         }
@@ -4265,7 +5091,7 @@ ${text}
 
     updateButtonState() {
         if (!this.questionInput || !this.askButton) return;
-        
+
         const hasInput = this.questionInput.value.trim().length > 0;
         if (hasInput) {
             this.askButton.classList.add('active');
@@ -4278,29 +5104,53 @@ ${text}
 
     updateCharacterCount() {
         if (!this.questionInput || !this.charCount || !this.charCountContainer) return;
-        
+
         const currentLength = this.questionInput.value.length;
-        const maxLength = 500;
-        
+        const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
+        const isUsingKnowledgeBase = selectedKnowledgeBase && selectedKnowledgeBase !== '不使用知识库(None)';
+        const maxLength = isUsingKnowledgeBase ? 500 : Infinity;
+
         // 更新字符计数显示
-        this.charCount.textContent = currentLength;
-        
-        // 根据字符数量更新样式
-        this.charCountContainer.classList.remove('warning', 'danger');
-        
-        if (currentLength >= maxLength) {
-            this.charCountContainer.classList.add('danger');
-        } else if (currentLength >= maxLength * 0.8) { // 80%时显示警告
-            this.charCountContainer.classList.add('warning');
+        if (isUsingKnowledgeBase) {
+            this.charCount.textContent = currentLength;
+            this.charCountContainer.style.display = 'block';
+
+            // 根据字符数量更新样式
+            this.charCountContainer.classList.remove('warning', 'danger');
+
+            if (currentLength >= maxLength) {
+                this.charCountContainer.classList.add('danger');
+            } else if (currentLength >= maxLength * 0.8) { // 80%时显示警告
+                this.charCountContainer.classList.add('warning');
+            }
+        } else {
+            // 不使用知识库(None)时隐藏字符计数
+            this.charCountContainer.style.display = 'none';
+            // 清除样式类
+            this.charCountContainer.classList.remove('warning', 'danger');
         }
+        const charCount = this.questionInput.value.length;
+        const charCountElement = document.getElementById('charCount');
+        if (charCountElement) {
+            charCountElement.textContent = charCount;
+        }
+
+        // 如果输入框有内容且建议容器显示，则隐藏建议容器
+        // if (charCount > 5) {
+        //     const currentContainer = this.getCurrentConversationContainer();
+        //     const suggestionContainer = currentContainer ? currentContainer.querySelector('.suggestion-container') : null;
+        //     if (suggestionContainer && suggestionContainer.style.display === 'block') {
+        //         suggestionContainer.style.display = 'none';
+        //     }
+        // }
     }
 
     // 更新布局状态
     updateLayoutState() {
         if (!this.contentArea || !this.resultContainer) return;
-        
+
         const hasResult = this.resultContainer.style.display !== 'none';
-        
+
         if (hasResult) {
             this.contentArea.classList.remove('no-result');
             this.contentArea.classList.add('has-result');
@@ -4309,13 +5159,23 @@ ${text}
             this.contentArea.classList.add('no-result');
         }
     }
+    // 获取当前对话容器
+    getCurrentConversationContainer() {
+        // 获取所有对话容器
+        const containers = this.resultContainer.querySelectorAll('.conversation-container');
+        if (containers.length === 0) {
+            return null;
+        }
 
+        // 返回最后一个容器（当前正在使用的）
+        return containers[containers.length - 1];
+    }
     showResult(text, container = null) {
         if (this.hasBeenStopped) {
             // 用户主动停止后，不覆盖/清空已渲染的内容
             return;
         }
-        
+
         // 获取目标容器
         const targetContainer = container || this.resultContainer;
         if (targetContainer) {
@@ -4325,14 +5185,14 @@ ${text}
                 return;
             }
         }
-        
+
         // 获取结果文本容器
         const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
         if (!resultText) {
             console.error('未找到结果文本容器');
             return;
         }
-        
+
         // 确保提示与内容容器存在
         let tipsEl = resultText.querySelector('.result-text-tips');
         if (!tipsEl) {
@@ -4340,14 +5200,14 @@ ${text}
             tipsEl.className = 'result-text-tips';
             resultText.appendChild(tipsEl);
         }
-        
+
         let contentEl = resultText.querySelector('.result-text-content');
         if (!contentEl) {
             contentEl = document.createElement('div');
             contentEl.className = 'result-text-content';
             resultText.appendChild(contentEl);
         }
-        
+
         let knowlistEl = resultText.querySelector('.result-text-knowlist');
         if (!knowlistEl) {
             knowlistEl = document.createElement('div');
@@ -4365,7 +5225,7 @@ ${text}
         }
         // 渲染结果到内容容器
         contentEl.innerHTML = this.formatContent(text);
-        
+
         // 结束提示
         if (this._useKnowledgeBaseThisTime) {
             const count = typeof this._kbMatchCount === 'number' ? this._kbMatchCount : 0;
@@ -4392,10 +5252,10 @@ ${text}
             knowlistEl.innerHTML = '';
             console.log('知识库列表已清空');
         }
-        
+
         // 滚动到底部
         this.scrollToBottom();
-        
+
         // 计算用时并更新标题
         if (this.startTime) {
             const endTime = Date.now();
@@ -4407,41 +5267,138 @@ ${text}
         }
     }
 
-    showMessage(message, type = 'info') {
+    showMessage(message, type = 'info', options = {}) {
+        // options: { centered?: boolean, durationMs?: number, maxWidth?: string, background?: string }
+        const { centered = false, durationMs = 3000, maxWidth, background } = options || {};
+
         // 创建临时消息显示
         const messageDiv = document.createElement('div');
         messageDiv.className = `message message-${type}`;
         messageDiv.textContent = message;
-        messageDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            border-radius: 6px;
-            color: white;
-            font-size: 14px;
-            z-index: 1000;
-            background: ${type === 'error' ? '#e74c3c' : '#3498db'};
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        `;
-        
+
+        const resolvedBg = background || (type === 'error' ? '#e74c3c' : (type === 'success' ? '#1e7e34' : '#3498db'));
+
+        let baseStyle = `
+			position: fixed;
+			padding: 10px 15px;
+			border-radius: 6px;
+			color: white;
+			font-size: 14px;
+			z-index: 20000;
+            background: ${resolvedBg};
+			box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+		`;
+
+        if (centered) {
+            const widthStyle = maxWidth ? `max-width: ${maxWidth};` : '';
+            baseStyle += `
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				text-align: center;
+				${widthStyle}
+			`;
+        } else {
+            baseStyle += `
+				top: 20px;
+				right: 20px;
+			`;
+        }
+
+        messageDiv.style.cssText = baseStyle;
+
         document.body.appendChild(messageDiv);
-        
+
         setTimeout(() => {
             messageDiv.remove();
-        }, 3000);
+        }, Math.max(0, Number(durationMs) || 3000));
+    }
+
+    // 显示全局加载遮罩
+    showLoadingOverlay(message = '处理中，请稍候...') {
+        // 避免重复创建
+        let overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            const textEl = overlay.querySelector('.loading-text');
+            if (textEl) textEl.textContent = message;
+            overlay.style.display = 'flex';
+            return;
+        }
+
+        // 注入一次性样式（用于旋转动画）
+        if (!document.getElementById('globalLoadingStyle')) {
+            const styleTag = document.createElement('style');
+            styleTag.id = 'globalLoadingStyle';
+            styleTag.textContent = `@keyframes bicqa_spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`;
+            document.head.appendChild(styleTag);
+        }
+
+        overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px 24px;
+            min-width: 260px;
+            max-width: 320px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+        `;
+
+        const spinner = document.createElement('div');
+        spinner.style.cssText = `
+            width: 22px; height: 22px;
+            border: 3px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: bicqa_spin 0.9s linear infinite;
+        `;
+
+        const text = document.createElement('div');
+        text.className = 'loading-text';
+        text.textContent = message;
+        text.style.cssText = `
+            font-size: 14px;
+            color: #333;
+        `;
+
+        box.appendChild(spinner);
+        box.appendChild(text);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+    }
+
+    // 隐藏全局加载遮罩
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
     }
 
     async copyResult(container = null) {
         // 获取目标容器
         const targetContainer = container || this.resultContainer;
         const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
-        
+
         if (!resultText) {
             this.showMessage('没有找到要复制的内容', 'error');
             return;
         }
-        
+
         const text = resultText.textContent;
         try {
             await navigator.clipboard.writeText(text);
@@ -4452,33 +5409,33 @@ ${text}
         }
     }
 
-   async exportResultAsHtml(container = null) {
+    async exportResultAsHtml(container = null) {
         try {
             // 获取目标容器
             const targetContainer = container || this.resultContainer;
             const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
-            
+
             if (!resultText) {
                 this.showMessage('没有找到要导出的内容', 'error');
                 return;
             }
-            
+
             // 获取当前时间作为文件名的一部分
             const now = new Date();
             const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            
+
             // 获取问题内容作为文件名的一部分
             const questionDisplay = targetContainer ? targetContainer.querySelector('.question-text') : this.questionText;
             const question = questionDisplay ? questionDisplay.textContent.trim() : '未知问题';
             const questionPart = question.length > 20 ? question.substring(0, 20) + '...' : question;
             const safeQuestionPart = questionPart.replace(/[<>:"/\\|?*]/g, '_');
-            
+
             // 生成文件名
             const fileName = `BIC-QA-结果-${safeQuestionPart}-${timestamp}.html`;
-            
+
             // 获取结果内容的HTML
             const resultHtml = resultText.innerHTML;
-            
+
             // 创建完整的HTML文档
             const fullHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -4855,7 +5812,7 @@ ${text}
     </script>
 </body>
 </html>`;
-            
+
             // 创建Blob对象
             const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
             // 创建下载链接
@@ -4863,17 +5820,17 @@ ${text}
             const link = document.createElement('a');
             link.href = url;
             link.download = fileName;
-            
+
             // 触发下载
             document.body.appendChild(link);
             link.click();
-            
+
             // 清理
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
+
             this.showMessage('HTML文件已导出', 'success');
-            
+
         } catch (error) {
             console.error('导出失败:', error);
             this.showMessage('导出失败', 'error');
@@ -4887,26 +5844,26 @@ ${text}
             if (resultText) {
                 resultText.innerHTML = '';
             }
-            
+
             const questionDisplay = container.querySelector('.question-display');
             if (questionDisplay) {
                 questionDisplay.style.display = 'none';
             }
-            
+
             const questionText = container.querySelector('.question-text');
             if (questionText) {
                 questionText.textContent = '';
             }
-            
+
             const resultTitle = container.querySelector('.result-title');
             if (resultTitle) {
                 resultTitle.textContent = '回答：';
             }
-            
+
             this.showMessage('已清空当前对话', 'success');
             return;
         }
-        
+
         // 如果没有指定容器，清空所有内容（原有逻辑）
         if (this.resultContainer) {
             this.resultContainer.style.display = 'none';
@@ -4926,36 +5883,36 @@ ${text}
         if (this.questionText) {
             this.questionText.textContent = '';
         }
-        
+
         // 清空当前会话历史
         this.currentSessionHistory = [];
         console.log('当前会话历史已清空');
-        
+
         // 重置知识库相关状态变量
         this._useKnowledgeBaseThisTime = false;
         this._kbMatchCount = 0;
         this._kbItems = [];
         console.log('clearResult: 知识库状态变量已重置');
-        
+
         // 重置计时
         this.startTime = null;
-        
+
         // 重置标题
         const resultTitle = document.querySelector('.result-title');
         if (resultTitle) {
             resultTitle.textContent = '回答：';
         }
-        
+
         // 清空输入框并聚焦
         this.questionInput.value = '';
         this.questionInput.focus();
-        
+
         // 更新字符计数显示
         this.updateCharacterCount();
-        
+
         // 更新布局状态
         this.updateLayoutState();
-        
+
         // 重置反馈按钮状态
         this.resetFeedbackButtons();
     }
@@ -4964,17 +5921,17 @@ ${text}
     // 处理用户反馈
     handleFeedback(type, container) {
         const selectedKnowledgeBase = this.knowledgeBaseSelect.value;
-        
-        // 如果选择了"不使用知识库"，清空知识库列表
-        if (!selectedKnowledgeBase || selectedKnowledgeBase === '不使用知识库') {
+
+        // 如果选择了"不使用知识库(None)"，清空知识库列表
+        if (!selectedKnowledgeBase || selectedKnowledgeBase === '不使用知识库(None)') {
             if (container) {
                 const likeBtn = container.querySelector('.like-btn');
                 const dislikeBtn = container.querySelector('.dislike-btn');
-                
+
                 if (likeBtn && dislikeBtn) {
                     const isCurrentlyLiked = likeBtn.classList.contains('active');
                     const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
-                    
+
                     // 处理点赞逻辑
                     if (type === 'like') {
                         if (isCurrentlyLiked) {
@@ -5004,35 +5961,35 @@ ${text}
                 }
                 return;
             }
-        }else{
+        } else {
             //针对已经选择了的可以评价
             // 获取当前问题文本
             const questionDisplay = container ? container.querySelector('.question-text') : this.questionText;
             const question = questionDisplay ? questionDisplay.textContent : '';
-            
+
             // 获取当前回答文本
             const resultText = container ? container.querySelector('.result-text-content') : this.resultText;
             const answer = resultText ? resultText.textContent : '';
-            
+
             // 确定反馈类型
             const adviceType = type === 'like' ? 'good' : 'bad';
             debugger;
             // 调用统一处理函数
             // 直接调用统一处理函数
             this.doAdviceForAnswer(question, answer, adviceType, container);
-            
+
         }
-        
+
         return;
         // 如果指定了容器，针对该容器的按钮进行操作
         if (container) {
             const likeBtn = container.querySelector('.like-btn');
             const dislikeBtn = container.querySelector('.dislike-btn');
-            
+
             if (likeBtn && dislikeBtn) {
                 const isCurrentlyLiked = likeBtn.classList.contains('active');
                 const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
-                
+
                 // 处理点赞逻辑
                 if (type === 'like') {
                     if (isCurrentlyLiked) {
@@ -5074,16 +6031,16 @@ ${text}
             this.handleFeedback(type, defaultContainer);
             return;
         }
-        
+
         // 如果连默认容器都没有，使用全局按钮（备用方案）
         const likeBtn = this.likeButton;
         const dislikeBtn = this.dislikeButton;
-        
+
         if (!likeBtn || !dislikeBtn) return;
-        
+
         const isCurrentlyLiked = likeBtn.classList.contains('active');
         const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
-        
+
         // 处理点赞逻辑
         if (type === 'like') {
             if (isCurrentlyLiked) {
@@ -5112,7 +6069,7 @@ ${text}
             }
             this.doAdviceForAnswer(question, answer, adviceType, container);
         }
-        
+
     }
 
     // 重置反馈按钮状态
@@ -5121,12 +6078,12 @@ ${text}
         if (container) {
             const likeBtn = container.querySelector('.like-btn');
             const dislikeBtn = container.querySelector('.dislike-btn');
-            
+
             if (likeBtn) likeBtn.classList.remove('active');
             if (dislikeBtn) dislikeBtn.classList.remove('active');
             return;
         }
-        
+
         // 如果没有指定容器，重置固定按钮状态（用于第一个容器）
         if (this.likeButton) this.likeButton.classList.remove('active');
         if (this.dislikeButton) this.dislikeButton.classList.remove('active');
@@ -5148,16 +6105,16 @@ ${text}
                 currentModel = selectedModel ? `${selectedModel.displayName || selectedModel.name}（${selectedModel.provider}）` : selectedModelValue;
             }
             const currentKnowledgeBase = this.knowledgeBaseSelect.value;
-            
+
             // 获取当前页面信息
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             const pageUrl = tab ? tab.url : '';
-            
+
             // 限制数据长度，避免存储配额超限
             const maxLength = 500; // 限制反馈数据长度
             const truncatedQuestion = currentQuestion.length > maxLength ? currentQuestion.substring(0, maxLength) + '...' : currentQuestion;
             const truncatedAnswer = currentAnswer.length > maxLength ? currentAnswer.substring(0, maxLength) + '...' : currentAnswer;
-            
+
             const feedback = {
                 id: Date.now().toString(),
                 timestamp: new Date().toISOString(),
@@ -5168,27 +6125,27 @@ ${text}
                 knowledgeBase: currentKnowledgeBase,
                 pageUrl: pageUrl ? pageUrl.substring(0, 200) : '' // 限制URL长度
             };
-            
+
             // 获取现有反馈数据
             const result = await chrome.storage.sync.get(['feedbackHistory']);
             const feedbackHistory = result.feedbackHistory || [];
-            
+
             // 添加新反馈
             feedbackHistory.push(feedback);
-            
+
             // 限制反馈历史记录数量，避免存储配额超限
             if (feedbackHistory.length > 30) {
                 feedbackHistory.splice(0, feedbackHistory.length - 30); // 只保留最新的30条
             }
-            
+
             // 保存到存储
             await chrome.storage.sync.set({ feedbackHistory: feedbackHistory });
-            
+
             console.log('反馈已保存:', feedback);
-            
+
             // 发送反馈到服务器（如果有API）
             this.sendFeedbackToServer(feedback);
-            
+
         } catch (error) {
             console.error('保存反馈失败:', error);
             // 如果是存储配额超限错误，尝试清理旧数据
@@ -5205,7 +6162,7 @@ ${text}
             // 这里可以添加发送反馈到服务器的逻辑
             // 例如发送到分析API或反馈收集服务
             console.log('发送反馈到服务器:', feedback);
-            
+
             // 示例：发送到反馈API
             // const response = await fetch('https://your-feedback-api.com/feedback', {
             //     method: 'POST',
@@ -5214,7 +6171,7 @@ ${text}
             //     },
             //     body: JSON.stringify(feedback)
             // });
-            
+
         } catch (error) {
             console.error('发送反馈到服务器失败:', error);
         }
@@ -5224,7 +6181,7 @@ ${text}
     handleScroll() {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const showBackToTop = scrollTop > 300; // 滚动超过300px时显示按钮
-        
+
         if (showBackToTop) {
             this.backToTopBtn.style.display = 'flex';
         } else {
@@ -5238,7 +6195,7 @@ ${text}
             top: 0,
             behavior: 'smooth'
         });
-        
+
         // 在弹出窗口模式下，滚动到提问区域
         if (this.isPopupMode) {
             setTimeout(() => {
@@ -5249,11 +6206,11 @@ ${text}
 
     initFullscreenMode() {
         // 检查是否支持全屏API
-        this.supportsFullscreen = document.fullscreenEnabled || 
-                                 document.webkitFullscreenEnabled || 
-                                 document.mozFullScreenEnabled || 
-                                 document.msFullscreenEnabled;
-        
+        this.supportsFullscreen = document.fullscreenEnabled ||
+            document.webkitFullscreenEnabled ||
+            document.mozFullScreenEnabled ||
+            document.msFullscreenEnabled;
+
         // 检查是否已经是全屏模式
         if (window.location.search.includes('fullscreen=true')) {
             this.isFullscreenMode = true;
@@ -5262,7 +6219,7 @@ ${text}
             // this.fullscreenBtn.title = '退出全屏';
             // this.fullscreenBtn.innerHTML = '<span class="fullscreen-icon">⛶</span>';
         }
-        
+
         // 在新窗口模式下，全屏按钮应该可用
         // 移除对 fullscreenBtn 的引用，因为元素已删除
         // if (!this.supportsFullscreen) {
@@ -5282,25 +6239,25 @@ ${text}
                 // this.fullscreenBtn.innerHTML = '<span class="fullscreen-icon">⛶</span>';
                 return;
             }
-            
+
             // 进入全屏模式
             this.isFullscreenMode = true;
             document.body.classList.add('fullscreen-mode');
             // 移除对 fullscreenBtn 的引用，因为元素已删除
             // this.fullscreenBtn.title = '退出全屏';
             // this.fullscreenBtn.innerHTML = '<span class="fullscreen-icon">⛶</span>';
-            
+
             // 如果是popup模式，尝试打开新窗口
             if (this.isPopupMode) {
                 try {
                     // 获取当前popup的URL
                     const currentUrl = window.location.href;
                     const fullscreenUrl = currentUrl.replace('popup.html', 'popup.html?fullscreen=true');
-                    
+
                     // 打开新窗口
-                    const newWindow = window.open(fullscreenUrl, 'bic-qa-fullscreen', 
+                    const newWindow = window.open(fullscreenUrl, 'bic-qa-fullscreen',
                         'width=1200,height=800,scrollbars=yes,resizable=yes,status=yes');
-                    
+
                     if (newWindow) {
                         // 关闭当前popup
                         window.close();
@@ -5334,9 +6291,9 @@ ${text}
 
     // 监听全屏状态变化
     handleFullscreenChange() {
-        if (!document.fullscreenElement && 
-            !document.webkitFullscreenElement && 
-            !document.mozFullScreenElement && 
+        if (!document.fullscreenElement &&
+            !document.webkitFullscreenElement &&
+            !document.mozFullScreenElement &&
             !document.msFullscreenElement) {
             document.body.classList.remove('fullscreen-mode');
             // 移除对 fullscreenBtn 的引用，因为元素已删除
@@ -5348,17 +6305,17 @@ ${text}
     async testContentScript() {
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
+
             if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
                 this.showMessage('当前页面不支持content script', 'error');
                 return;
             }
-            
+
             console.log('测试content script连接...');
             const response = await chrome.tabs.sendMessage(tab.id, {
                 action: 'test'
             });
-            
+
             if (response && response.success) {
                 this.showMessage('Content script连接正常', 'success');
             } else {
@@ -5377,11 +6334,11 @@ ${text}
             const maxLength = 1000; // 限制每个字段的最大长度
             const truncatedQuestion = question.length > maxLength ? question.substring(0, maxLength) + '...' : question;
             const truncatedAnswer = answer.length > maxLength ? answer.substring(0, maxLength) + '...' : answer;
-            
+
             // 解析知识库信息
             let knowledgeBaseName = null;
             let knowledgeBaseIdForHistory = knowledgeBaseId;
-            
+
             if (knowledgeBaseId) {
                 try {
                     // 尝试解析知识库对象
@@ -5398,7 +6355,7 @@ ${text}
                     }
                 }
             }
-            
+
             const historyItem = {
                 id: Date.now().toString(),
                 question: truncatedQuestion,
@@ -5437,27 +6394,27 @@ ${text}
     async cleanupHistoryRecords() {
         try {
             console.log('开始清理历史记录...');
-            
+
             // 减少对话历史记录数量
             if (this.conversationHistory.length > 20) {
                 this.conversationHistory = this.conversationHistory.slice(0, 20);
             }
-            
+
             // 清理反馈历史记录
             const result = await chrome.storage.sync.get(['feedbackHistory']);
             const feedbackHistory = result.feedbackHistory || [];
-            
+
             if (feedbackHistory.length > 20) {
                 const cleanedFeedbackHistory = feedbackHistory.slice(0, 20);
                 await chrome.storage.sync.set({ feedbackHistory: cleanedFeedbackHistory });
                 console.log('反馈历史记录已清理，保留20条');
             }
-            
+
             // 重新保存对话历史记录
             await chrome.storage.sync.set({
                 conversationHistory: this.conversationHistory
             });
-            
+
             console.log('历史记录清理完成');
         } catch (error) {
             console.error('清理历史记录失败:', error);
@@ -5475,6 +6432,848 @@ ${text}
         this.historyDialog.style.display = 'none';
     }
 
+    // 显示AWR分析对话框
+    async showAwrAnalysisDialog() {
+        if (this.awrAnalysisDialog) {
+            this.awrAnalysisDialog.style.display = 'flex';
+            // 先重置表单（清除问题描述和文件）
+            this.resetAwrForm();
+            // 然后加载注册邮箱（这样不会覆盖邮箱字段）
+            await this.loadRegistrationEmail();
+            // 渲染后查询用户信息并回显
+            try {
+                await this.populateUserProfileFromApi();
+            } catch (e) {
+                console.error('加载用户信息失败:', e);
+            }
+        }
+    }
+
+    // 隐藏AWR分析对话框
+    hideAwrAnalysisDialog() {
+        if (this.awrAnalysisDialog) {
+            this.awrAnalysisDialog.style.display = 'none';
+            // 清理倒计时定时器
+            if (this.awrCountdownInterval) {
+                clearInterval(this.awrCountdownInterval);
+                this.awrCountdownInterval = null;
+            }
+            // 重置按钮状态
+            if (this.awrSaveBtn) {
+                this.awrSaveBtn.disabled = false;
+                this.awrSaveBtn.textContent = '执行分析(Run)';
+            }
+            // 重置表单（不清空邮箱，下次打开时会重新加载注册邮箱）
+            this.resetAwrForm();
+        }
+    }
+
+    // 加载注册邮箱
+    async loadRegistrationEmail() {
+        try {
+            const result = await chrome.storage.sync.get(['registration']);
+            const registration = result.registration;
+            if (registration && registration.status === 'registered' && registration.email) {
+                if (this.awrEmail) {
+                    this.awrEmail.value = registration.email;
+                }
+                console.log('已加载注册邮箱:', registration.email);
+            } else {
+                console.log('未找到有效的注册邮箱');
+                if (this.awrEmail) {
+                    this.awrEmail.value = '';
+                }
+            }
+        } catch (error) {
+            console.error('加载注册邮箱失败:', error);
+            if (this.awrEmail) {
+                this.awrEmail.value = '';
+            }
+        }
+    }
+
+    // 重置AWR表单（不清空邮箱，保留注册邮箱）
+    resetAwrForm() {
+        if (this.awrProblemDescription) {
+            this.awrProblemDescription.value = '';
+        }
+        // 注意：邮箱字段不清空，在showAwrAnalysisDialog中会单独加载注册邮箱
+        if (this.awrFileDisplay) {
+            this.awrFileDisplay.value = '';
+            this.awrFileDisplay.placeholder = '未选择文件';
+        }
+        if (this.awrFileInput) {
+            this.awrFileInput.value = '';
+        }
+        // 重置语言选择为中文（默认值）
+        if (this.awrLanguage) {
+            this.awrLanguage.value = 'zh';
+        }
+        this.selectedFile = null;
+    }
+
+    // 处理文件选择
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            this.selectedFile = file;
+            if (this.awrFileDisplay) {
+                this.awrFileDisplay.value = file.name;
+                this.awrFileDisplay.placeholder = file.name;
+            }
+            console.log('已选择文件:', file.name);
+        } else {
+            this.selectedFile = null;
+            if (this.awrFileDisplay) {
+                this.awrFileDisplay.value = '';
+                this.awrFileDisplay.placeholder = '未选择文件';
+            }
+        }
+    }
+
+    // 处理AWR分析表单提交
+    async handleAwrAnalysisSubmit() {
+        // 检查按钮是否已禁用（防止重复点击）
+        if (this.awrSaveBtn && this.awrSaveBtn.disabled) {
+            return;
+        }
+
+        // 验证必填项
+        if (!this.awrEmail || !this.awrEmail.value.trim()) {
+            this.showMessage('请填写接收邮箱(Please enter the recipient email)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.awrEmail?.focus();
+            return;
+        }
+
+        // 验证邮箱格式
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(this.awrEmail.value.trim())) {
+            this.showMessage('请输入有效的邮箱地址(Please enter a valid email address)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.awrEmail?.focus();
+            return;
+        }
+
+        // 验证文件是否已选择
+        if (!this.selectedFile) {
+            this.showMessage('请选择要上传的文件(Please select the file to upload)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.awrFileUploadBtn?.focus();
+            return;
+        }
+
+        // 验证用户名
+        const username = this.awrUserName?.value.trim() || '';
+        // if (!username) {
+        //     this.showMessage('用户名不能为空，请检查用户信息是否已加载', 'error');
+        //     return;
+        // }
+
+        // 验证通过后，禁用按钮并设置5秒倒计时
+        const originalButtonText = this.awrSaveBtn?.textContent || '';
+        if (this.awrSaveBtn) {
+            this.awrSaveBtn.disabled = true;
+            this.awrSaveBtn.textContent = '执行分析 (5秒)';
+        }
+
+        // 开始5秒倒计时
+        let countdown = 5;
+        // 清理之前的定时器（如果存在）
+        if (this.awrCountdownInterval) {
+            clearInterval(this.awrCountdownInterval);
+        }
+        this.awrCountdownInterval = setInterval(() => {
+            countdown--;
+            if (this.awrSaveBtn) {
+                if (countdown > 0) {
+                    this.awrSaveBtn.textContent = `执行分析 (${countdown}秒)`;
+                } else {
+                    this.awrSaveBtn.textContent = originalButtonText;
+                    this.awrSaveBtn.disabled = false;
+                    clearInterval(this.awrCountdownInterval);
+                    this.awrCountdownInterval = null;
+                }
+            } else {
+                clearInterval(this.awrCountdownInterval);
+                this.awrCountdownInterval = null;
+            }
+        }, 1000);
+
+        // 收集表单数据
+        const language = this.awrLanguage?.value || 'zh';
+        const formData = {
+            username: username,
+            email: this.awrEmail.value.trim(),
+            problemDescription: this.awrProblemDescription?.value.trim() || '',
+            file: this.selectedFile,
+            language: language
+        };
+
+        console.log('AWR分析表单数据:', {
+            username: formData.username,
+            email: formData.email,
+            problemDescription: formData.problemDescription,
+            fileName: formData.file ? formData.file.name : '无文件',
+            language: formData.language
+        });
+
+        // 调用后端接口
+        this.showLoadingOverlay('正在执行分析，请稍候...(Analyzing, please wait...)');
+        try {
+            const response = await this.submitAwrAnalysis(formData);
+
+            // 处理响应
+            if (response && response.status === 'success') {
+                this.hideLoadingOverlay();
+                this.showMessage('AWR报告提交成功!后台分析结束后会发送邮件到您填写的邮箱，请耐心等候.(AWR report submitted successfully! The analysis report will be sent to your registered email address upon completion of the background analysis. Thank you for your patience.)', 'success', { centered: true, durationMs: 6000, maxWidth: '380px', background: '#1e7e34' });
+
+                // 如果当前在历史记录页面，刷新列表
+                const historyView = document.getElementById('awrHistoryView');
+                if (historyView && historyView.classList.contains('active')) {
+                    this.loadAwrHistoryList(this.awrHistoryCurrentPage);
+                }
+
+                this.hideAwrAnalysisDialog();
+                // 如果成功关闭对话框，清理倒计时
+                if (this.awrCountdownInterval) {
+                    clearInterval(this.awrCountdownInterval);
+                    this.awrCountdownInterval = null;
+                }
+                if (this.awrSaveBtn) {
+                    this.awrSaveBtn.textContent = originalButtonText;
+                }
+            } else {
+                const errorMsg = response?.message || '提交失败，请稍后重试(Submission failed, please try again later)';
+                this.hideLoadingOverlay();
+                this.showMessage(errorMsg, 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            }
+        } catch (error) {
+            console.error('提交AWR分析失败(Submission failed):', error);
+            this.hideLoadingOverlay();
+            this.showMessage('提交失败，请稍后重试(Submission failed, please try again later): ' + (error.message || '未知错误(Unknown error)'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+        }
+        // 注意：按钮的重新启用由倒计时控制，不需要在这里手动启用
+    }
+
+    // 解析可用的apiKey（优先知识服务配置，其次服务商/模型）
+    resolveApiKey() {
+        let apiKey = '';
+        if (this.knowledgeServiceConfig && this.knowledgeServiceConfig.api_key && this.knowledgeServiceConfig.api_key.trim()) {
+            apiKey = this.knowledgeServiceConfig.api_key.trim();
+        }
+        if (!apiKey && Array.isArray(this.providers)) {
+            const providerWithKey = this.providers.find(p => p && p.apiKey && String(p.apiKey).trim());
+            if (providerWithKey) apiKey = String(providerWithKey.apiKey).trim();
+        }
+        if (!apiKey && Array.isArray(this.models)) {
+            const modelWithKey = this.models.find(m => m && m.apiKey && String(m.apiKey).trim());
+            if (modelWithKey) apiKey = String(modelWithKey.apiKey).trim();
+        }
+        return apiKey;
+    }
+
+    // 调用用户信息接口并回显用户名、邮箱
+    async populateUserProfileFromApi() {
+        const apiKey = this.resolveApiKey();
+        if (!apiKey) {
+            // 重置输入框为空
+            if (this.awrUserName) {
+                this.awrUserName.value = '';
+            }
+            if (this.awrEmail) {
+                this.awrEmail.value = '';
+            }
+            this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+            return;
+        }
+
+        const url = 'http://www.dbaiops.cn/api/user/profile';
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            if (!resp.ok) {
+                // 如果是401未授权或其他错误，重置输入框并显示提示
+                if (this.awrUserName) {
+                    this.awrUserName.value = '';
+                }
+                if (this.awrEmail) {
+                    this.awrEmail.value = '';
+                }
+                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+                throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+            const data = await resp.json();
+
+            // 解析固定返回结构 { code, success, user: { userName, email, ... } }
+            if (!data || data.code !== 200 || data.success !== true || !data.user) {
+                // 用户信息返回格式异常或无用户数据，重置输入框并显示提示
+                if (this.awrUserName) {
+                    this.awrUserName.value = '';
+                }
+                if (this.awrEmail) {
+                    this.awrEmail.value = '';
+                }
+                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+                return;
+            }
+
+            const user = data.user || {};
+            const username = user.userName || '';
+            const email = user.email || '';
+
+            if (this.awrUserName && username) {
+                this.awrUserName.value = username;
+            }
+            // 仅当邮箱为空时才用接口返回覆盖，避免覆盖注册邮箱
+            if (this.awrEmail && !this.awrEmail.value && email) {
+                this.awrEmail.value = email;
+            }
+        } catch (error) {
+            console.error('查询用户信息失败(Failed to query user information):', error);
+            // 出错时重置输入框为空
+            if (this.awrUserName) {
+                this.awrUserName.value = '';
+            }
+            if (this.awrEmail) {
+                this.awrEmail.value = '';
+            }
+            // 如果还没有显示错误提示，则显示
+            if (!error.message || !error.message.includes('HTTP error')) {
+                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+            }
+        }
+    }
+
+    // 提交AWR分析接口调用
+    async submitAwrAnalysis(formData) {
+        // 获取apiKey
+        const apiKey = this.resolveApiKey();
+        if (!apiKey) {
+            throw new Error('未配置API密钥，请先在设置页面配置');
+        }
+
+        // 构建FormData用于文件上传
+        const formDataToSend = new FormData();
+        formDataToSend.append('file', formData.file);
+
+        // 构建URL查询参数
+        const queryParams = new URLSearchParams();
+        queryParams.append('username', formData.username);
+        queryParams.append('email', formData.email);
+        // language 参数，默认为 'zh'
+        queryParams.append('language', formData.language || 'zh');
+        // backgroundHint 是可选的，只有填写了才添加
+        if (formData.problemDescription) {
+            queryParams.append('backgroundHint', formData.problemDescription);
+        }
+
+        // 构建完整URL
+        const baseUrl = 'http://www.dbaiops.cn/api/awr/upload';
+
+        const url = `${baseUrl}?${queryParams.toString()}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: formDataToSend
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // 返回响应格式: { status: "", data: null, message: "" }
+            return result;
+        } catch (error) {
+            console.error('AWR分析接口调用失败(AWR analysis interface call failed):', error);
+            throw error;
+        }
+    }
+
+    // ==================== AWR历史记录功能 ====================
+
+    // 选项卡切换方法
+    switchAwrTab(tabName) {
+        // 切换选项卡按钮状态
+        document.querySelectorAll('.awr-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        // 切换内容视图
+        const newView = document.getElementById('awrNewAnalysisView');
+        const historyView = document.getElementById('awrHistoryView');
+
+        if (tabName === 'new') {
+            if (newView) newView.classList.add('active');
+            if (historyView) historyView.classList.remove('active');
+        } else {
+            if (newView) newView.classList.remove('active');
+            if (historyView) historyView.classList.add('active');
+            // 切换到历史记录时自动加载（使用当前筛选条件）
+            const startTime = document.getElementById('awrStartTime')?.value || '';
+            const endTime = document.getElementById('awrEndTime')?.value || '';
+            const status = document.getElementById('awrStatusFilter')?.value || '';
+            this.loadAwrHistoryList(1, this.awrHistoryPageSize, '', startTime, endTime, status);
+        }
+    }
+
+    // 处理搜索按钮点击
+    handleAwrSearch() {
+        // 获取所有筛选条件
+        const startTime = document.getElementById('awrStartTime')?.value || '';
+        const endTime = document.getElementById('awrEndTime')?.value || '';
+        const status = document.getElementById('awrStatusFilter')?.value || '';
+
+        // 重置到第一页
+        this.loadAwrHistoryList(1, this.awrHistoryPageSize, '', startTime, endTime, status);
+    }
+
+    // 处理重置按钮点击
+    handleAwrReset() {
+        // 清空所有筛选条件
+        const startTimeInput = document.getElementById('awrStartTime');
+        const endTimeInput = document.getElementById('awrEndTime');
+        const statusSelect = document.getElementById('awrStatusFilter');
+
+        if (startTimeInput) startTimeInput.value = '';
+        if (endTimeInput) endTimeInput.value = '';
+        if (statusSelect) statusSelect.value = '';
+
+        // 重新加载列表（使用空条件）
+        this.loadAwrHistoryList(1, this.awrHistoryPageSize, '', '', '', '');
+    }
+
+    // 查询AWR历史记录列表（分页）
+    async loadAwrHistoryList(page = 1, pageSize = 10, keyword = '', startTime = '', endTime = '', status = '') {
+        try {
+            const apiKey = this.resolveApiKey();
+            if (!apiKey) {
+                this.showMessage('未配置API密钥，请先在设置页面配置(API key not configured, please configure it in the settings page)', 'error');
+                return;
+            }
+
+            // 获取用户名作为查询条件（只能查看自己的记录）
+            let username = this.awrUserName?.value.trim() || '-';
+
+            // 如果输入框中没有用户名，尝试从注册信息中获取
+            if (!username) {
+                try {
+                    const result = await chrome.storage.sync.get(['registration']);
+                    const registration = result.registration;
+                    if (registration && registration.status === 'registered' && registration.username) {
+                        username = registration.username;
+                        // 同时更新输入框的值
+                        if (this.awrUserName) {
+                            this.awrUserName.value = username;
+                        }
+                    }
+                } catch (error) {
+                    console.error('获取注册信息失败:', error);
+                }
+            }
+
+            if (!username) {
+                this.showMessage('无法获取用户信息，请确保API密钥正确(Unable to get user information, please ensure the API key is correct)', 'error');
+                return;
+            }
+
+            // 构建请求体
+            const requestBody = {
+                pageNum: page,
+                pageSize: pageSize,
+                username: username  // 添加用户名查询条件
+            };
+
+            // 关键词搜索已移除，不再使用
+
+            // 添加状态筛选
+            if (status !== '') {
+                requestBody.status = parseInt(status);
+            }
+
+            // 添加时间范围筛选
+            if (startTime) {
+                // 将datetime-local格式转换为：YYYY-MM-DD HH:mm:ss（使用本地时间，不转换时区）
+                const startDateTime = new Date(startTime);
+                const year = startDateTime.getFullYear();
+                const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
+                const day = String(startDateTime.getDate()).padStart(2, '0');
+                const hours = String(startDateTime.getHours()).padStart(2, '0');
+                const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
+                const seconds = String(startDateTime.getSeconds()).padStart(2, '0');
+                requestBody.startTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // 格式: "2024-01-01 00:00:00"
+            }
+
+            if (endTime) {
+                // 将datetime-local格式转换为：YYYY-MM-DD HH:mm:ss（使用本地时间，不转换时区），并设置为当天的23:59:59
+                const endDateTime = new Date(endTime);
+                endDateTime.setHours(23, 59, 59, 999);
+                const year = endDateTime.getFullYear();
+                const month = String(endDateTime.getMonth() + 1).padStart(2, '0');
+                const day = String(endDateTime.getDate()).padStart(2, '0');
+                const hours = String(endDateTime.getHours()).padStart(2, '0');
+                const minutes = String(endDateTime.getMinutes()).padStart(2, '0');
+                const seconds = String(endDateTime.getSeconds()).padStart(2, '0');
+                requestBody.endTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // 格式: "2024-12-31 23:59:59"
+            }
+
+            const url = 'http://www.dbaiops.cn/api/awr/list';
+
+            this.showLoadingOverlay('正在加载历史记录...(Loading history records...)');
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // 解析返回格式: { status: "", data: { list: [], total: 0, pageNum: 1, pageSize: 10, ... } }
+            if (result.status === 'success' || result.status === '200' || result.data) {
+                const data = result.data || {};
+                const list = data.list || [];
+
+                // 转换数据格式，适配前端显示
+                this.awrHistoryList = list.map(item => {
+                    return {
+                        id: item.id,
+                        email: item.email || '',
+                        language: item.language || 'zh',
+                        problemDescription: item.backgroundHint || '',
+                        fileName: item.awrFilename || '',
+                        status: this.convertStatusNumberToString(item.status),
+                        createTime: this.parseDateTime(item.createdAt),
+                        reportUrl: item.reportFileurl || null,
+                        username: item.username || '',
+                        fileUrl: item.awrFileurl || null
+                    };
+                });
+
+                this.awrHistoryTotal = data.total || 0;
+                this.awrHistoryCurrentPage = data.pageNum || page;
+                this.awrHistoryPageSize = data.pageSize || pageSize;
+
+                this.renderAwrHistoryList();
+                this.updateAwrPagination();
+            } else {
+                throw new Error(result.message || '查询失败(Query failed)');
+            }
+
+            this.hideLoadingOverlay();
+            // 每次查询后重置隐藏的用户输入框
+            if (this.awrUserName) {
+                this.awrUserName.value = '';
+            }
+            if (this.awrEmail) {
+                this.awrEmail.value = '';
+            }
+        } catch (error) {
+            console.error('加载AWR历史记录失败:', error);
+            this.hideLoadingOverlay();
+            this.showMessage('加载历史记录失败(Failed to load history records): ' + (error.message || '未知错误(Unknown error)'), 'error');
+            // 显示空状态
+            this.renderAwrHistoryList();
+            // 如果查询出错，将输入框设置为空
+            if (this.awrUserName) {
+                this.awrUserName.value = '';
+            }
+            if (this.awrEmail) {
+                this.awrEmail.value = '';
+            }
+        }
+    }
+
+    // 转换状态数字为字符串
+    convertStatusNumberToString(statusNum) {
+        // 状态映射：0-未分析, 1-成功, 2-失败, 3-执行中
+        const statusMap = {
+            0: 'pending',    // 未分析
+            1: 'success',    // 成功
+            2: 'failed',     // 失败
+            3: 'running'     // 执行中
+        };
+        return statusMap[statusNum] || 'unknown';
+    }
+
+    // 转换状态字符串为显示文本
+    convertStatusToString(statusStr) {
+        const statusTextMap = {
+            'pending': '未分析',
+            'success': '成功',
+            'failed': '失败',
+            'running': '执行中',
+            'unknown': '未知'
+        };
+        return statusTextMap[statusStr] || statusStr;
+    }
+
+    // 解析日期时间对象
+    parseDateTime(dateTimeObj) {
+        if (!dateTimeObj) return null;
+
+        // 如果已经是字符串格式，直接返回
+        if (typeof dateTimeObj === 'string') {
+            return dateTimeObj;
+        }
+
+        // 如果是对象格式 { dateTime: "2024-01-01T00:00:00", offset: { totalSeconds: 0 } }
+        if (dateTimeObj.dateTime) {
+            return dateTimeObj.dateTime;
+        }
+
+        return null;
+    }
+
+    // 渲染历史记录列表
+    renderAwrHistoryList() {
+        const tbody = document.getElementById('awrHistoryList');
+        const table = document.getElementById('awrHistoryTable');
+        if (!tbody || !table) return;
+
+        if (this.awrHistoryList.length === 0) {
+            // 清空表格并显示空状态
+            tbody.innerHTML = '';
+            const tableContainer = table.closest('.awr-history-table-container');
+            if (tableContainer) {
+                table.style.display = 'none';
+                let emptyDiv = tableContainer.querySelector('.empty-history');
+                if (!emptyDiv) {
+                    emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'empty-history';
+                    emptyDiv.innerHTML = `
+                        <div class="empty-history-icon">📝</div>
+                        <div class="empty-history-text">暂无分析记录(No Analysis Records)</div>
+                        <div class="empty-history-subtext">尚未进行AWR分析，请先创建新的分析任务(Haven't performed AWR analysis yet, please create a new analysis task first)</div>
+                    `;
+                    tableContainer.appendChild(emptyDiv);
+                }
+                emptyDiv.style.display = 'block';
+            }
+            return;
+        }
+
+        // 显示表格，隐藏空状态
+        table.style.display = 'table';
+        const tableContainer = table.closest('.awr-history-table-container');
+        if (tableContainer) {
+            const emptyDiv = tableContainer.querySelector('.empty-history');
+            if (emptyDiv) {
+                emptyDiv.style.display = 'none';
+            }
+        }
+
+        // 清空并重新渲染表格行
+        tbody.innerHTML = '';
+
+        this.awrHistoryList.forEach(item => {
+            const row = this.createAwrHistoryTableRow(item);
+            tbody.appendChild(row);
+        });
+    }
+
+    // 创建历史记录表格行
+    createAwrHistoryTableRow(item) {
+        const tr = document.createElement('tr');
+        tr.className = 'awr-history-row';
+
+        // 格式化时间
+        let createTime = '未知(Unknown)';
+        if (item.createTime) {
+            try {
+                const date = new Date(item.createTime);
+                if (!isNaN(date.getTime())) {
+                    createTime = date.toLocaleString('zh-CN');
+                }
+            } catch (e) {
+                console.error('日期解析失败:', e);
+            }
+        }
+
+        // 状态文本和样式
+        const statusText = this.getAwrStatusText(item.status);
+        const statusClass = this.getAwrStatusClass(item.status);
+
+        // 判断重发邮件按钮是否应该禁用（只有成功状态可以重发邮件）
+        const isResendDisabled = item.status !== 'success';
+        const resendDisabledAttr = isResendDisabled ? 'disabled' : '';
+        const resendDisabledClass = isResendDisabled ? 'disabled' : '';
+        const resendTitle = isResendDisabled
+            ? '只有执行成功的记录可以重发邮件(Only successfully completed records can resend email)'
+            : '重发邮件(Resend email)';
+
+        // 问题描述（截断显示）
+        const problemDesc = item.problemDescription || '';
+        const problemPreview = problemDesc.length > 30 ? problemDesc.substring(0, 30) + '...' : problemDesc;
+
+        // 文件名（截断显示）
+        const fileName = item.fileName || '';
+        const fileNamePreview = fileName.length > 20 ? fileName.substring(0, 20) + '...' : fileName;
+
+        // 构建表格行内容
+        tr.innerHTML = `
+            <td class="awr-table-cell-time">${this.escapeHtml(createTime)}</td>
+            <td class="awr-table-cell-status">
+                <span class="awr-history-status ${statusClass}">${statusText}</span>
+            </td>
+            <td class="awr-table-cell-filename" title="${this.escapeHtml(fileName)}">${this.escapeHtml(fileNamePreview || '未指定(Not Specified)')}</td>
+            <td class="awr-table-cell-problem" title="${this.escapeHtml(problemDesc)}">${this.escapeHtml(problemPreview || '-')}</td>
+            <td class="awr-table-cell-email">${this.escapeHtml(item.email || '未知(Unknown)')}</td>
+            <td class="awr-table-cell-language">${item.language === 'zh' ? '中文(Chinese)' : 'English'}</td>
+            <td class="awr-table-cell-actions">
+                <div class="awr-history-actions">
+                    <button class="awr-action-btn reanalyze-btn ${resendDisabledClass}" data-id="${item.id}" title="${resendTitle}" ${resendDisabledAttr}>
+                        重发邮件(Resend email)
+                    </button>
+                   
+                </div>
+            </td>
+        `;
+        // ${item.reportUrl ? `<a href="${item.reportUrl}" target="_blank" class="awr-action-btn view-btn" title="查看报告">查看报告</a>` : ''}
+        // 绑定重新分析按钮事件（只有在未禁用时才绑定）
+        const reanalyzeBtn = tr.querySelector('.reanalyze-btn');
+        if (reanalyzeBtn && !isResendDisabled) {
+            reanalyzeBtn.addEventListener('click', () => {
+                this.handleReanalyze(item);
+            });
+        }
+
+        return tr;
+    }
+
+    // 获取状态文本
+    getAwrStatusText(status) {
+        const statusMap = {
+            'pending': '未分析(Pending)',
+            'success': '成功(Success)',
+            'failed': '失败(Failed)',
+            'running': '执行中(Running)',
+            'unknown': '未知(Unknown)'
+        };
+        return statusMap[status] || '未知(Unknown)';
+    }
+
+    // 获取状态样式类
+    getAwrStatusClass(status) {
+        const classMap = {
+            'pending': 'status-pending',
+            'success': 'status-success',
+            'failed': 'status-failed',
+            'running': 'status-running',
+            'unknown': 'status-unknown'
+        };
+        return classMap[status] || '';
+    }
+
+    // 更新分页控件
+    updateAwrPagination() {
+        // 计算总页数
+        const totalPages = Math.ceil(this.awrHistoryTotal / this.awrHistoryPageSize);
+        const pageInfo = document.getElementById('awrPageInfo');
+        const prevBtn = document.getElementById('awrPrevPageBtn');
+        const nextBtn = document.getElementById('awrNextPageBtn');
+
+        if (pageInfo) {
+            pageInfo.textContent = `第 ${this.awrHistoryCurrentPage} 页，共 ${totalPages} 页 (Page ${this.awrHistoryCurrentPage} of ${totalPages}, Total ${this.awrHistoryTotal} records)`;
+        }
+
+        if (prevBtn) {
+            prevBtn.disabled = this.awrHistoryCurrentPage <= 1;
+        }
+
+        if (nextBtn) {
+            nextBtn.disabled = this.awrHistoryCurrentPage >= totalPages || totalPages === 0;
+        }
+    }
+
+    // 重新分析功能
+    async handleReanalyze(item) {
+        // 检查状态：只有成功状态可以重发邮件
+        if (item.status !== 'success') {
+            this.showMessage('只有执行成功的记录可以重发邮件(Only successfully completed records can resend email)', 'error', { centered: true });
+            return;
+        }
+
+        // 确认操作
+        // if (!confirm('确定要重新分析这条记录吗？')) {
+        //     return;
+        // }
+
+        try {
+            const apiKey = this.resolveApiKey();
+            if (!apiKey) {
+                this.showMessage('未配置API密钥(API key not configured)', 'error', { centered: true });
+                return;
+            }
+
+            // 构建URL，使用查询参数传递id
+            const url = `http://www.dbaiops.cn/api/awr/resendEmail?id=${encodeURIComponent(item.id)}`;
+
+            this.showLoadingOverlay('重新发送邮件中(Resending the email)...');
+
+            // 使用Fetch方式，POST请求，不需要body
+            const requestOptions = {
+                method: 'POST',
+                redirect: 'follow',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            };
+
+            const response = await fetch(url, requestOptions);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // 解析返回结果: { status: "", data: null, message: "" }
+            const result = await response.json();
+
+            // 判断status字段，通常成功时status为"success"、"ok"或"200"
+            // 如果status为空字符串，根据HTTP状态码判断（200-299为成功）
+            const successStatuses = ['success', 'ok', '200'];
+            const statusStr = String(result.status || '').toLowerCase().trim();
+            const isSuccess = statusStr && successStatuses.includes(statusStr);
+            const isEmptyStatus = !result.status || result.status === '';
+
+            // 如果status表示成功，或者status为空但HTTP状态码为2xx，则认为成功
+            if (isSuccess || (isEmptyStatus && response.ok)) {
+                this.hideLoadingOverlay();
+
+                this.showMessage('重发邮件操作成功，请稍候查看结果(The resending operation of the email was successful. Please check the result shortly)', 'success', { centered: true });
+                // 刷新列表，保持当前筛选条件
+                const startTime = document.getElementById('awrStartTime')?.value || '';
+                const endTime = document.getElementById('awrEndTime')?.value || '';
+                const status = document.getElementById('awrStatusFilter')?.value || '';
+                // this.loadAwrHistoryList(this.awrHistoryCurrentPage, this.awrHistoryPageSize, '', startTime, endTime, status);
+            } else {
+                // 如果status明确表示失败，或有错误message，则抛出错误
+                const errorMessage = result.message || (result.status ? `重新分析失败，状态(Re-analysis failed, status): ${result.status}` : '重新分析失败(Re-analysis failed)');
+                throw new Error(errorMessage);
+            }
+        } catch (error) {
+            console.error('重新分析失败:', error);
+            this.hideLoadingOverlay();
+            this.showMessage('重新分析失败(Re-analysis failed): ' + (error.message || '未知错误(Unknown error)'), 'error', { centered: true });
+        }
+    }
+
+    // ==================== AWR历史记录功能结束 ====================
+
     // 加载历史记录列表
     loadHistoryList() {
         const historyList = this.historyList;
@@ -5491,6 +7290,27 @@ ${text}
             return;
         }
 
+        // 添加批量操作区域
+        const batchActionsDiv = document.createElement('div');
+        batchActionsDiv.className = 'batch-actions';
+        batchActionsDiv.innerHTML = `
+            <div class="batch-controls">
+                <label class="select-all-label">
+                    <input type="checkbox" id="selectAllCheckbox">
+                    全选
+                </label>
+                <div class="batch-buttons">
+                    <button id="batchExportBtn" class="batch-export-btn" disabled>
+                        导出选中 (0)
+                    </button>
+                    <button id="batchDeleteBtn" class="batch-delete-btn" disabled>
+                        删除选中 (0)
+                    </button>
+                </div>
+            </div>
+        `;
+        historyList.appendChild(batchActionsDiv);
+
         this.conversationHistory.forEach((item, index) => {
             const historyItem = this.createHistoryItemElement(item, index);
             historyList.appendChild(historyItem);
@@ -5501,15 +7321,20 @@ ${text}
     createHistoryItemElement(item, index) {
         const div = document.createElement('div');
         div.className = 'history-item';
-        
+
         const questionPreview = item.question.length > 50 ? item.question.substring(0, 50) + '...' : item.question;
         const answerPreview = item.answer.length > 100 ? item.answer.substring(0, 100) + '...' : item.answer;
         const time = new Date(item.timestamp).toLocaleString('zh-CN');
-        
+
         div.innerHTML = `
             <div class="history-header">
-                <div class="history-time">${time}</div>
+                <div class="history-time"><input type="checkbox" class="history-checkbox" data-id="${item.id}">${time}</div>
                 <div class="history-actions">
+                    
+                    
+                    <button class="history-action-btn delete-single-btn" data-id="${item.id}" title="删除此条记录">
+                        🗑️
+                    </button>
                     
                 </div>
             </div>
@@ -5535,7 +7360,7 @@ ${text}
                 </div>
             </div>
         `;
-        
+
         return div;
     }
 
@@ -5557,6 +7382,10 @@ ${text}
     // 删除历史记录项
     deleteHistoryItem(id) {
         try {
+            if (!confirm('确定要删除这条历史记录吗？此操作不可恢复。')) {
+                return;
+            }
+
             this.conversationHistory = this.conversationHistory.filter(h => h.id !== id);
             chrome.storage.sync.set({
                 conversationHistory: this.conversationHistory
@@ -5568,7 +7397,61 @@ ${text}
             this.showMessage('删除失败', 'error');
         }
     }
+    // 在合适的位置添加这个方法（比如在 deleteHistoryItem 方法后面）
+    updateBatchButtons() {
+        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const batchExportBtn = document.getElementById('batchExportBtn');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
 
+        const selectedCount = checkboxes.length;
+
+        if (batchExportBtn) {
+            batchExportBtn.disabled = selectedCount === 0;
+            batchExportBtn.textContent = `导出选中 (${selectedCount})`;
+        }
+
+        if (batchDeleteBtn) {
+            batchDeleteBtn.disabled = selectedCount === 0;
+            batchDeleteBtn.textContent = `删除选中 (${selectedCount})`;
+        }
+    }
+    // 在合适的位置添加这个方法
+    batchDeleteHistory() {
+        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+        if (selectedIds.length === 0) {
+            this.showMessage('请先选择要删除的记录', 'warning');
+            return;
+        }
+
+        if (!confirm(`确定要删除选中的 ${selectedIds.length} 条历史记录吗？此操作不可恢复。`)) {
+            return;
+        }
+
+        try {
+            this.conversationHistory = this.conversationHistory.filter(h => !selectedIds.includes(h.id));
+            chrome.storage.sync.set({
+                conversationHistory: this.conversationHistory
+            });
+            this.loadHistoryList();
+            this.showMessage(`已删除 ${selectedIds.length} 条历史记录`, 'success');
+        } catch (error) {
+            console.error('批量删除历史记录失败:', error);
+            this.showMessage('批量删除失败', 'error');
+        }
+    }
+    // 在合适的位置添加这个方法
+    toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const checkboxes = document.querySelectorAll('.history-checkbox');
+
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+
+        this.updateBatchButtons();
+    }
     // 切换历史记录展开/收起
     toggleHistoryExpansion(id) {
         const fullContent = document.getElementById(`history-full-${id}`);
@@ -5619,13 +7502,13 @@ ${text}
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bic-qa-history-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `bic-qa-history-all-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            this.showMessage('历史记录已导出', 'success');
+            this.showMessage(`已导出全部 ${this.conversationHistory.length} 条历史记录`, 'success');
         } catch (error) {
             console.error('导出历史记录失败:', error);
             this.showMessage('导出失败', 'error');
@@ -5645,13 +7528,13 @@ ${text}
             const lines = text.split('\n').filter(line => line.trim());
             const words = text.split(/\s+/).filter(word => word.length > 0);
             const sentences = text.split(/[.!?。！？]/).filter(sentence => sentence.trim());
-            
+
             // 计算基本统计信息
             const charCount = text.length;
             const wordCount = words.length;
             const lineCount = lines.length;
             const sentenceCount = sentences.length;
-            
+
             // 提取可能的标题（第一行或包含关键词的行）
             let title = '';
             if (lines.length > 0) {
@@ -5660,7 +7543,7 @@ ${text}
                     title = title.substring(0, 50) + '...';
                 }
             }
-            
+
             // 提取主要内容预览
             let contentPreview = '';
             if (text.length > 200) {
@@ -5668,7 +7551,7 @@ ${text}
             } else {
                 contentPreview = text;
             }
-            
+
             // 检测内容类型
             let contentType = '文本内容';
             if (text.includes('http') || text.includes('www')) {
@@ -5680,23 +7563,23 @@ ${text}
             if (text.includes('错误') || text.includes('Error') || text.includes('失败')) {
                 contentType = '错误信息或日志';
             }
-            
+
             // 构建摘要
             let summary = `📄 内容摘要\n\n`;
             summary += `📝 内容类型：${contentType}\n\n`;
-            
+
             if (title) {
                 summary += `📋 标题：${title}\n\n`;
             }
-            
+
             summary += `📊 内容统计：\n`;
             summary += `• 字符数：${charCount}\n`;
             summary += `• 单词数：${wordCount}\n`;
             summary += `• 行数：${lineCount}\n`;
             summary += `• 句子数：${sentenceCount}\n\n`;
-            
+
             summary += `📝 内容预览：\n${contentPreview}\n\n`;
-            
+
             // 如果内容很长，提供分段分析
             if (lines.length > 10) {
                 summary += `📋 内容结构：\n`;
@@ -5706,17 +7589,17 @@ ${text}
                 });
                 summary += '\n';
             }
-            
+
             // 添加关键词分析
             const keywords = this.extractKeywords(text);
             if (keywords.length > 0) {
                 summary += `🔑 关键词：${keywords.slice(0, 10).join(', ')}\n\n`;
             }
-            
+
             summary += `⏰ 生成时间：${new Date().toLocaleString('zh-CN')}`;
-            
+
             return summary;
-            
+
         } catch (error) {
             console.error('生成文本摘要失败:', error);
             return `内容摘要生成失败：${error.message}`;
@@ -5726,34 +7609,34 @@ ${text}
     analyzeContentStructure(lines) {
         const sections = [];
         let currentSection = { title: '开头部分', lines: 0 };
-        
+
         lines.forEach((line, index) => {
             currentSection.lines++;
-            
+
             // 检测新的段落或标题
-            if (line.trim().length === 0 || 
-                line.startsWith('#') || 
-                line.startsWith('##') || 
+            if (line.trim().length === 0 ||
+                line.startsWith('#') ||
+                line.startsWith('##') ||
                 line.startsWith('###') ||
                 line.length < 50 && line.endsWith(':') ||
                 /^[A-Z][A-Z\s]+$/.test(line.trim())) {
-                
+
                 if (currentSection.lines > 1) {
                     sections.push({ ...currentSection });
                 }
-                
-                currentSection = { 
-                    title: line.trim() || `段落${sections.length + 2}`, 
-                    lines: 0 
+
+                currentSection = {
+                    title: line.trim() || `段落${sections.length + 2}`,
+                    lines: 0
                 };
             }
         });
-        
+
         // 添加最后一个部分
         if (currentSection.lines > 0) {
             sections.push(currentSection);
         }
-        
+
         return sections.slice(0, 5); // 只返回前5个部分
     }
 
@@ -5763,14 +7646,14 @@ ${text}
             .replace(/[^\w\s\u4e00-\u9fff]/g, ' ')
             .split(/\s+/)
             .filter(word => word.length > 2);
-        
+
         const wordCount = {};
         words.forEach(word => {
             wordCount[word] = (wordCount[word] || 0) + 1;
         });
-        
+
         return Object.entries(wordCount)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
             .map(([word]) => word);
     }
@@ -5781,31 +7664,31 @@ ${text}
         if (this.configChecked) {
             return;
         }
-        
+
         const hasProviders = this.providers && this.providers.length > 0;
         const hasModels = this.models && this.models.length > 0;
-        const hasValidApiKey = hasProviders && this.providers.some(provider => 
+        const hasValidApiKey = hasProviders && this.providers.some(provider =>
             provider.apiKey && provider.apiKey.trim() !== ''
         );
-        
+
         // 清除之前的配置提示
         this.clearConfigurationNotice();
-        
+
         // 标记已检查
         this.configChecked = true;
-        
+
         // 如果配置完整，不需要显示提示
         if (hasProviders && hasModels && hasValidApiKey) {
             console.log('配置检查完成：配置完整');
             return;
         }
-        
+
         // 根据配置状态显示不同的提示
         if (!hasProviders || !hasModels) {
             console.log('配置检查：缺少服务商或模型配置');
             this.showConfigurationNotice('请先在设置页面配置服务商和模型', 'warning');
-        } 
-        
+        }
+
         // else if (!hasValidApiKey) {
         //     console.log('配置检查：缺少API密钥配置');
         //     this.showConfigurationNotice('请先在设置页面配置API密钥', 'warning');
@@ -5818,7 +7701,7 @@ ${text}
         if (document.getElementById('configuration-notice')) {
             return;
         }
-        
+
         // 查找或创建提示容器
         let noticeContainer = document.getElementById('configuration-notice');
         if (!noticeContainer) {
@@ -5846,7 +7729,7 @@ ${text}
                 opacity: 0;
                 transition: opacity 0.3s ease;
             `;
-            
+
             // 添加设置按钮
             const settingsBtn = document.createElement('button');
             settingsBtn.textContent = '去设置';
@@ -5864,7 +7747,7 @@ ${text}
             settingsBtn.addEventListener('click', () => {
                 this.openSettings();
             });
-            
+
             // 添加关闭按钮
             const closeBtn = document.createElement('button');
             closeBtn.textContent = '×';
@@ -5881,13 +7764,13 @@ ${text}
             closeBtn.addEventListener('click', () => {
                 this.clearConfigurationNotice();
             });
-            
+
             noticeContainer.appendChild(document.createTextNode(message));
             noticeContainer.appendChild(settingsBtn);
             noticeContainer.appendChild(closeBtn);
-            
+
             document.body.appendChild(noticeContainer);
-            
+
             // 延迟显示，确保动画效果
             setTimeout(() => {
                 noticeContainer.style.opacity = '1';
@@ -5898,7 +7781,7 @@ ${text}
             noticeContainer.style.background = type === 'warning' ? '#fff3cd' : '#d1ecf1';
             noticeContainer.style.color = type === 'warning' ? '#856404' : '#0c5460';
             noticeContainer.style.borderColor = type === 'warning' ? '#ffeaa7' : '#bee5eb';
-            
+
             const settingsBtn = document.createElement('button');
             settingsBtn.textContent = '去设置';
             settingsBtn.style.cssText = `
@@ -5915,7 +7798,7 @@ ${text}
             settingsBtn.addEventListener('click', () => {
                 this.openSettings();
             });
-            
+
             const closeBtn = document.createElement('button');
             closeBtn.textContent = '×';
             closeBtn.style.cssText = `
@@ -5931,12 +7814,12 @@ ${text}
             closeBtn.addEventListener('click', () => {
                 this.clearConfigurationNotice();
             });
-            
+
             noticeContainer.appendChild(document.createTextNode(message));
             noticeContainer.appendChild(settingsBtn);
             noticeContainer.appendChild(closeBtn);
         }
-        
+
         // 延长显示时间，给用户更多时间阅读
         setTimeout(() => {
             this.clearConfigurationNotice();
@@ -5950,7 +7833,7 @@ ${text}
             // 添加淡出动画
             noticeContainer.style.opacity = '0';
             noticeContainer.style.transition = 'opacity 0.3s ease';
-            
+
             // 等待动画完成后移除元素
             setTimeout(() => {
                 if (noticeContainer.parentNode) {
@@ -5963,36 +7846,36 @@ ${text}
     // 开启新会话
     startNewSession() {
         console.log('开启新会话');
-        
+
         // 停止定期检查提示信息
         this.stopProgressMessageReplacement();
-        
+
         // 清空当前结果
         this.clearResult();
-        
+
         // 清空当前会话历史
         this.currentSessionHistory = [];
         console.log('startNewSession: 当前会话历史已清空');
-        
+
         // 重置知识库相关状态变量
         this._useKnowledgeBaseThisTime = false;
         this._kbMatchCount = 0;
         this._kbItems = [];
         console.log('startNewSession: 知识库状态变量已重置');
-        
+
         // 显示提示消息
         this.showMessage('已开启新会话，可以开始新的问答', 'success');
-        
+
         // 重置一些会话相关的状态
         // 重置计时
         this.startTime = null;
-        
+
         // 重置加载状态
         this.setLoading(false);
-        
+
         // 重置按钮状态
         this.updateButtonState();
-        
+
         // 确保输入框获得焦点
         if (this.questionInput) {
             this.questionInput.focus();
@@ -6000,15 +7883,15 @@ ${text}
         } else {
             console.warn('未找到输入框元素');
         }
-        
+
         // 重新开始定期检查提示信息
         setTimeout(() => {
             this.startProgressMessageReplacement();
         }, 1000);
-        
+
         // 可选：重置其他会话相关的状态
         // 例如清除任何缓存的上下文信息等
-        
+
         console.log('新会话已开启，所有状态已重置');
     }
 
@@ -6045,8 +7928,8 @@ ${text}
     // 检查是否是表格分隔行
     isTableSeparator(line) {
         const trimmed = line.trim();
-        return trimmed.startsWith('|') && trimmed.endsWith('|') && 
-               /^[\s|:-]+$/.test(trimmed.replace(/[|]/g, ''));
+        return trimmed.startsWith('|') && trimmed.endsWith('|') &&
+            /^[\s|:-]+$/.test(trimmed.replace(/[|]/g, ''));
     }
 
     // 新增：安全解析表格行的方法
@@ -6059,17 +7942,17 @@ ${text}
         if (cleanRow.endsWith('|')) {
             cleanRow = cleanRow.substring(0, cleanRow.length - 1);
         }
-        
+
         // 使用正则表达式分割，但保护<br>标签
         // 匹配 | 但不匹配 | 在 <br> 标签内的情况
         const cells = [];
         let currentCell = '';
         let inBrTag = false;
         let i = 0;
-        
+
         while (i < cleanRow.length) {
             const char = cleanRow[i];
-            
+
             if (char === '<' && cleanRow.substring(i, i + 4) === '<br>') {
                 inBrTag = true;
                 currentCell += '<br>';
@@ -6085,12 +7968,12 @@ ${text}
                 i++;
             }
         }
-        
+
         // 添加最后一个单元格
         if (currentCell.trim()) {
             cells.push(currentCell.trim());
         }
-        
+
         return cells.filter(cell => cell !== '');
     }
 
@@ -6099,45 +7982,45 @@ ${text}
         try {
             console.log('在格式化之前检查提示信息...');
             console.log('原始内容包含blockquote相关文本:', content.includes('>'));
-            
+
             // 检查是否包含blockquote相关的内容（以>开头的行）
             if (content.includes('>')) {
                 console.log('检测到可能的blockquote内容，开始处理提示信息...');
-                
+
                 // 检查当前resultText中是否有第一个p标签
                 const firstP = this.resultText.querySelector('p');
                 if (firstP) {
                     console.log('找到现有的第一个p标签:', firstP);
                     let pContent = firstP.innerHTML;
                     console.log('当前p标签内容:', pContent);
-                    
+
                     let hasChanged = false;
-                    
+
                     // 更灵活的匹配和替换
                     const searchPatterns = [
-                        { 
-                            search: /正在搜索知识库\.\.\./g, 
+                        {
+                            search: /正在搜索知识库\.\.\./g,
                             replace: '搜索知识库完成',
                             name: '搜索知识库'
                         },
-                        { 
-                            search: /正在思考中，请稍候\.\.\./g, 
+                        {
+                            search: /正在思考中，请稍候\.\.\./g,
                             replace: '已思考完成',
                             name: '思考中'
                         },
                         // 添加更多可能的变体
-                        { 
-                            search: /正在搜索知识库\.\.\./g, 
+                        {
+                            search: /正在搜索知识库\.\.\./g,
                             replace: '搜索知识库完成',
                             name: '搜索知识库(无转义)'
                         },
-                        { 
-                            search: /正在思考中，请稍候\.\.\./g, 
+                        {
+                            search: /正在思考中，请稍候\.\.\./g,
                             replace: '已思考完成',
                             name: '思考中(无转义)'
                         }
                     ];
-                    
+
                     for (const pattern of searchPatterns) {
                         if (pattern.search.test(pContent)) {
                             console.log(`匹配到模式: ${pattern.name}`);
@@ -6145,7 +8028,7 @@ ${text}
                             hasChanged = true;
                         }
                     }
-                    
+
                     // 如果有变化，更新内容
                     if (hasChanged) {
                         console.log('更新p标签内容:', pContent);
@@ -6169,45 +8052,45 @@ ${text}
         try {
             console.log('检查是否需要更新提示信息...');
             console.log('formattedContent包含blockquote:', formattedContent.includes('<blockquote>'));
-            
+
             // 检查是否包含blockquote内容
             if (formattedContent.includes('<blockquote>')) {
                 console.log('检测到blockquote，开始查找第一个p标签...');
-                
+
                 // 获取第一个p标签
                 const firstP = this.resultText.querySelector('p');
                 if (firstP) {
                     console.log('找到第一个p标签:', firstP);
                     let pContent = firstP.innerHTML;
                     console.log('p标签内容:', pContent);
-                    
+
                     let hasChanged = false;
-                    
+
                     // 更灵活的匹配和替换
                     const searchPatterns = [
-                        { 
-                            search: /正在搜索知识库\.\.\./g, 
+                        {
+                            search: /正在搜索知识库\.\.\./g,
                             replace: '搜索知识库完成',
                             name: '搜索知识库'
                         },
-                        { 
-                            search: /正在思考中，请稍候\.\.\./g, 
+                        {
+                            search: /正在思考中，请稍候\.\.\./g,
                             replace: '已思考完成',
                             name: '思考中'
                         },
                         // 添加更多可能的变体
-                        { 
-                            search: /正在搜索知识库\.\.\./g, 
+                        {
+                            search: /正在搜索知识库\.\.\./g,
                             replace: '搜索知识库完成',
                             name: '搜索知识库(无转义)'
                         },
-                        { 
-                            search: /正在思考中，请稍候\.\.\./g, 
+                        {
+                            search: /正在思考中，请稍候\.\.\./g,
                             replace: '已思考完成',
                             name: '思考中(无转义)'
                         }
                     ];
-                    
+
                     for (const pattern of searchPatterns) {
                         if (pattern.search.test(pContent)) {
                             console.log(`匹配到模式: ${pattern.name}`);
@@ -6215,7 +8098,7 @@ ${text}
                             hasChanged = true;
                         }
                     }
-                    
+
                     // 如果有变化，更新内容
                     if (hasChanged) {
                         console.log('更新p标签内容:', pContent);
@@ -6237,16 +8120,16 @@ ${text}
     // 开始定期检查和替换提示信息
     startProgressMessageReplacement() {
         console.log('开始定期检查提示信息替换...');
-        
+
         // 每500ms检查一次
         const checkInterval = setInterval(() => {
             this.checkAndReplaceProgressMessages();
         }, 500);
-        
+
         // 保存interval ID，以便后续可以停止
         this.progressMessageInterval = checkInterval;
     }
-    
+
     // 停止定期检查
     stopProgressMessageReplacement() {
         if (this.progressMessageInterval) {
@@ -6255,7 +8138,7 @@ ${text}
             console.log('停止定期检查提示信息替换');
         }
     }
-    
+
     // 检查并替换提示信息
     checkAndReplaceProgressMessages() {
         try {
@@ -6263,35 +8146,35 @@ ${text}
             if (!this.resultText) {
                 return;
             }
-            
+
             // 获取第一个p标签
             const firstP = this.resultText.querySelector('p');
             if (!firstP) {
                 return;
             }
-            
+
             let pContent = firstP.innerHTML;
             let hasChanged = false;
-            
+
             // 替换提示信息
             if (pContent.includes('正在搜索知识库...')) {
                 pContent = pContent.replace(/正在搜索知识库\.\.\./g, '搜索知识库完成');
                 hasChanged = true;
                 console.log('替换: 正在搜索知识库... → 搜索知识库完成');
             }
-            
+
             if (pContent.includes('正在思考中，请稍候...')) {
                 pContent = pContent.replace(/正在思考中，请稍候\.\.\./g, '已思考完成');
                 hasChanged = true;
                 console.log('替换: 正在思考中，请稍候... → 已思考完成');
             }
-            
+
             // 如果有变化，更新内容
             if (hasChanged) {
                 firstP.innerHTML = pContent;
                 console.log('提示信息已更新');
             }
-            
+
         } catch (error) {
             console.error('检查并替换提示信息失败:', error);
         }
@@ -6302,68 +8185,68 @@ ${text}
         try {
             console.log('=== 开始替换提示信息 ===');
             // console.log('resultText元素:', this.resultText);
-            
+
             // 检查resultText是否存在
             if (!this.resultText) {
                 console.log('❌ resultText不存在');
                 return;
             }
-            
+
             // 获取所有p标签
             const allP = this.resultText.querySelectorAll('p');
             console.log('找到的p标签数量:', allP.length);
-            
+
             if (allP.length === 0) {
                 console.log('❌ 未找到任何p标签');
                 return;
             }
-            
+
             // 遍历所有p标签，查找包含提示信息的标签
             let hasReplaced = false;
-            
+
             for (let i = 0; i < allP.length; i++) {
                 const p = allP[i];
                 let pContent = p.innerHTML;
                 let hasChanged = false;
-                
+
                 console.log(`检查第${i + 1}个p标签:`, pContent);
-                
+
                 // 更灵活的匹配和替换
                 const searchPatterns = [
-                    { 
-                        search: /正在搜索知识库\.\.\./g, 
+                    {
+                        search: /正在搜索知识库\.\.\./g,
                         replace: '搜索知识库完成',
                         name: '搜索知识库'
                     },
-                    { 
-                        search: /正在思考中，请稍候\.\.\./g, 
+                    {
+                        search: /正在思考中，请稍候\.\.\./g,
                         replace: '已思考完成',
                         name: '思考中'
                     },
                     // 添加更多可能的变体
-                    { 
-                        search: /正在搜索知识库\.\.\./g, 
+                    {
+                        search: /正在搜索知识库\.\.\./g,
                         replace: '搜索知识库完成',
                         name: '搜索知识库(无转义)'
                     },
-                    { 
-                        search: /正在思考中，请稍候\.\.\./g, 
+                    {
+                        search: /正在思考中，请稍候\.\.\./g,
                         replace: '已思考完成',
                         name: '思考中(无转义)'
                     },
                     // 添加可能的HTML实体变体
-                    { 
-                        search: /正在搜索知识库&hellip;/g, 
+                    {
+                        search: /正在搜索知识库&hellip;/g,
                         replace: '搜索知识库完成',
                         name: '搜索知识库(HTML实体)'
                     },
-                    { 
-                        search: /正在思考中，请稍候&hellip;/g, 
+                    {
+                        search: /正在思考中，请稍候&hellip;/g,
                         replace: '已思考完成',
                         name: '思考中(HTML实体)'
                     }
                 ];
-                
+
                 for (const pattern of searchPatterns) {
                     if (pattern.search.test(pContent)) {
                         console.log(`✅ 匹配到模式: ${pattern.name}`);
@@ -6372,35 +8255,74 @@ ${text}
                         hasReplaced = true;
                     }
                 }
-                
+
                 // 如果有变化，更新内容
                 if (hasChanged) {
                     console.log(`更新第${i + 1}个p标签内容:`, pContent);
                     p.innerHTML = pContent;
                 }
             }
-            
+
             if (hasReplaced) {
                 console.log('✅ 提示信息替换完成');
             } else {
                 console.log('❌ 没有找到需要替换的文本');
             }
-            
+
         } catch (error) {
             console.error('❌ 替换提示信息失败:', error);
         }
     }
+    batchExportHistory() {
+        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.id);
 
+        if (selectedIds.length === 0) {
+            this.showMessage('请先选择要导出的记录', 'warning');
+            return;
+        }
+
+        try {
+            // 筛选选中的历史记录
+            const selectedHistory = this.conversationHistory.filter(h => selectedIds.includes(h.id));
+
+            const exportData = {
+                conversationHistory: selectedHistory,
+                exportTime: new Date().toISOString(),
+                totalCount: selectedHistory.length,
+                selectedCount: selectedIds.length,
+                version: '1.0.0'
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                type: 'application/json'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bic-qa-history-selected-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showMessage(`已导出 ${selectedHistory.length} 条历史记录`, 'success');
+        } catch (error) {
+            console.error('批量导出历史记录失败:', error);
+            this.showMessage('批量导出失败', 'error');
+        }
+    }
     // 新增方法：添加用户交互监听
     addUserInteractionListeners() {
         // 监听用户的各种交互行为
         const interactionEvents = ['click', 'input', 'focus', 'keydown', 'mousedown', 'touchstart'];
-        
+
         const markUserInteraction = () => {
             if (!this.userHasInteracted) {
                 this.userHasInteracted = true;
                 console.log('用户开始交互');
-                
+
                 // 用户开始交互后，延迟检查配置状态
                 setTimeout(() => {
                     if (!this.configChecked) {
@@ -6410,25 +8332,25 @@ ${text}
                 }, 1000); // 给用户1秒时间熟悉界面
             }
         };
-        
+
         // 为整个文档添加交互监听
         interactionEvents.forEach(eventType => {
-            document.addEventListener(eventType, markUserInteraction, { 
-                passive: true, 
-                once: false 
+            document.addEventListener(eventType, markUserInteraction, {
+                passive: true,
+                once: false
             });
         });
-        
+
         // 为特定元素添加交互监听
         if (this.questionInput) {
             this.questionInput.addEventListener('focus', markUserInteraction, { passive: true });
         }
-        
+
         if (this.askButton) {
             this.askButton.addEventListener('click', markUserInteraction, { passive: true });
         }
     }
-    
+
     // 新增方法：检测浏览器兼容性
     detectBrowserCompatibility() {
         const userAgent = navigator.userAgent;
@@ -6436,7 +8358,7 @@ ${text}
         const isFirefox = /Firefox/.test(userAgent);
         const isEdge = /Edge/.test(userAgent);
         const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
-        
+
         console.log('浏览器检测结果:', {
             userAgent: userAgent,
             isChrome,
@@ -6444,7 +8366,7 @@ ${text}
             isEdge,
             isSafari
         });
-        
+
         // 根据浏览器类型调整配置检查时机
         if (isChrome || isEdge) {
             // Chrome和Edge浏览器，延迟检查时间
@@ -6456,7 +8378,7 @@ ${text}
             // 其他浏览器，使用默认延迟
             this.chromeCompatibilityDelay = 1200;
         }
-        
+
         return {
             isChrome,
             isFirefox,
@@ -6470,35 +8392,35 @@ ${text}
         if (provider.providerType === 'ollama') {
             return true;
         }
-        
+
         // 检查服务商名称
         const providerName = provider.name.toLowerCase();
         if (providerName.includes('ollama')) {
             return true;
         }
-        
+
         // 检查 API 端点
         try {
             const url = new URL(provider.apiEndpoint);
             const hostname = url.hostname.toLowerCase();
-            
+
             // 检查是否为本地地址或自定义 IP
-            if (hostname === 'localhost' || 
-                hostname === '127.0.0.1' || 
+            if (hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
                 hostname.startsWith('192.168.') ||
                 hostname.startsWith('10.') ||
                 hostname.startsWith('172.')) {
-                
+
                 // 检查端口和路径是否匹配 Ollama 格式
                 const path = url.pathname.toLowerCase();
                 const port = url.port;
-                
+
                 // 支持多种路径格式
-                if (path.includes('/v1/chat/completions') || 
-                    path.includes('/v1') || 
-                    path === '/' || 
+                if (path.includes('/v1/chat/completions') ||
+                    path.includes('/v1') ||
+                    path === '/' ||
                     path === '') {
-                    
+
                     // 检查端口是否为 11434（Ollama 默认端口）
                     if (port === '11434' || port === '') {
                         console.log('检测到 Ollama 服务，路径:', path, '端口:', port);
@@ -6509,7 +8431,7 @@ ${text}
         } catch (e) {
             console.warn('无法解析 API 端点 URL:', e.message);
         }
-        
+
         return false;
     }
 
@@ -6521,42 +8443,42 @@ ${text}
             console.log('items.length:', items ? items.length : 'items is null/undefined');
             console.log('items type:', typeof items);
             console.log('Array.isArray(items):', Array.isArray(items));
-            
+
             // 确定目标容器
             let targetContainer = container;
             let resultText = null;
-            
+
             if (targetContainer) {
                 // 如果传入的是conversationContainer，直接查找其中的.result-text
                 resultText = targetContainer.querySelector('.result-text');
                 // console.log('从传入的container中查找.result-text:', resultText);
                 // console.log('targetContainer.innerHTML:', targetContainer.innerHTML);
             }
-            
+
             // 如果没找到，使用默认的resultText
             if (!resultText) {
                 resultText = this.resultText;
                 console.log('使用默认的resultText:', resultText);
             }
-            
+
             if (!resultText) {
                 console.error('无法找到result-text容器');
                 return;
             }
-            
+
             // console.log('最终使用的resultText:', resultText);
             // console.log('resultText.innerHTML:', resultText.innerHTML);
-            
+
             let knowlistEl = resultText.querySelector('.result-text-knowlist');
             console.log('找到的knowlistEl:', knowlistEl);
-            
+
             if (!knowlistEl) {
                 knowlistEl = document.createElement('div');
                 knowlistEl.className = 'result-text-knowlist';
                 resultText.appendChild(knowlistEl);
                 console.log('创建了新的.result-text-knowlist元素');
             }
-            
+
             // 清空并渲染
             knowlistEl.innerHTML = '';
             console.log('清空知识库列表，准备渲染', items.length, '条知识库');
@@ -6608,7 +8530,7 @@ ${text}
 
                 listEl.appendChild(itemEl);
             });
-            
+
             console.log('知识库列表渲染完成，共渲染', items.length, '条知识库');
             // console.log('最终knowlistEl.innerHTML:', knowlistEl.innerHTML);
             console.log('=== renderKnowledgeList 结束 ===');
@@ -6626,18 +8548,18 @@ ${text}
             if (this.abortController) {
                 this.abortController.abort();
             }
-            
+
             // 获取最新的对话容器中的result-title
             const currentContainer = this.getCurrentConversationContainer();
             const resultTitle = currentContainer ? currentContainer.querySelector('.result-title') : null;
-            
+
             if (resultTitle) {
                 resultTitle.textContent = '已停止回答';
             }
-            
+
             // 获取最新的对话容器中的result-text-tips
             const resultTextTips = currentContainer ? currentContainer.querySelector('.result-text-tips') : null;
-            
+
             if (resultTextTips) {
                 resultTextTips.textContent = '已停止作答，请重新提问';
             }
@@ -6663,7 +8585,7 @@ ${text}
         // 获取目标容器
         const targetContainer = container || this.resultContainer;
         let questionDisplay = null;
-        
+        debugger;
         if (targetContainer) {
             // 查找指定容器内的question-display容器
             questionDisplay = targetContainer.querySelector('.question-display');
@@ -6677,13 +8599,13 @@ ${text}
                 }
             }
         }
-        
+        debugger;
         if (questionDisplay) {
             questionDisplay.style.display = 'block';
-            
+
             const currentTime = new Date();
             const timeStr = this.formatTime(currentTime);
-            
+
             questionDisplay.innerHTML = `
                 <div class="question-header">
                     <div class="user-avatar">
@@ -6702,7 +8624,7 @@ ${text}
                 </div>
             `;
         }
-        
+
         // 滚动到底部
         this.scrollToBottom();
     }
@@ -6712,7 +8634,7 @@ ${text}
         // 获取目标容器
         const targetContainer = container || this.resultContainer;
         let aiDisplay = null;
-        
+
         if (targetContainer) {
             // 查找指定容器内的ai-display容器
             aiDisplay = targetContainer.querySelector('.ai-display');
@@ -6733,13 +8655,13 @@ ${text}
                 }
             }
         }
-        
+
         if (aiDisplay) {
             aiDisplay.style.display = 'block';
-            
+
             const currentTime = new Date();
             const timeStr = this.formatTime(currentTime);
-            
+
             aiDisplay.innerHTML = `
                 <div class="ai-header">
                     <div class="ai-avatar">
@@ -6752,11 +8674,11 @@ ${text}
                 </div>
             `;
         }
-        
+
         // 滚动到底部
         this.scrollToBottom();
     }
-    
+
     scrollToBottom() {
         if (this.resultContainer) {
             setTimeout(() => {
@@ -6765,14 +8687,14 @@ ${text}
             }, 100);
         }
     }
-    
+
     createNewConversationContainer() {
         // 创建新的对话容器
         const conversationContainer = document.createElement('div');
         conversationContainer.className = 'conversation-container';
         const containerId = `conversation-${Date.now()}`;
         conversationContainer.id = containerId;
-        
+
         // 创建结果容器结构，与原有样式保持一致
         conversationContainer.innerHTML = `
             <div class="resultListShow">
@@ -6809,6 +8731,8 @@ ${text}
                     <p class="result-text-tips"></p>
                     <div class="result-text-content"></div>
                     <div class="result-text-knowlist"></div>
+                    
+                    
                 </div>
                 <div class="result-actions">
                     <div class="action-icons-row">
@@ -6831,7 +8755,7 @@ ${text}
                 </div>
             </div>
         `;
-        
+
         // 将新容器添加到主结果容器中
         if (this.resultContainer) {
             this.resultContainer.appendChild(conversationContainer);
@@ -6845,7 +8769,7 @@ ${text}
         }
         // 滚动到底部
         this.scrollToBottom();
-        
+
         return conversationContainer;
     }
 
@@ -6853,32 +8777,32 @@ ${text}
         // 检查是否已经存在相同的对话，避免重复添加
         const lastUserMessage = this.currentSessionHistory[this.currentSessionHistory.length - 2];
         const lastAssistantMessage = this.currentSessionHistory[this.currentSessionHistory.length - 1];
-        
+
         // 如果最后一条用户消息和AI回答与当前要添加的相同，则不添加
-        if (lastUserMessage && lastAssistantMessage && 
+        if (lastUserMessage && lastAssistantMessage &&
             lastUserMessage.role === "user" && lastAssistantMessage.role === "assistant" &&
             lastUserMessage.content === userQuestion && lastAssistantMessage.content === aiAnswer) {
             console.log('检测到重复对话，跳过添加:', { userQuestion, aiAnswer });
             return;
         }
-        
+
         // 添加用户问题
         this.currentSessionHistory.push({
             role: "user",
             content: userQuestion
         });
-        
+
         // 添加AI回答
         this.currentSessionHistory.push({
-            role: "assistant", 
+            role: "assistant",
             content: aiAnswer
         });
-        
+
         // 保持最多6条消息（3轮对话）
         if (this.currentSessionHistory.length > 6) {
             this.currentSessionHistory = this.currentSessionHistory.slice(-6);
         }
-        
+
         console.log('当前会话历史:', this.currentSessionHistory);
     }
 
@@ -6886,20 +8810,20 @@ ${text}
     getCurrentConversationContainer() {
         // 检查是否已经有正在进行的对话容器
         const existingContainers = this.resultContainer.querySelectorAll('.conversation-container');
-        
+
         if (existingContainers.length === 0) {
             // 没有任何容器，创建第一个
             return this.getOrCreateConversationContainer();
         }
-        
+
         // 获取最后一个容器（最新的对话）
         const lastContainer = existingContainers[existingContainers.length - 1];
-        
+
         // 如果最后一个容器是默认容器且是第一次对话，使用它
         if (lastContainer.id === 'conversation-default' && this.currentSessionHistory.length === 0) {
             return lastContainer;
         }
-        
+
         // 否则返回最后一个容器（最新的对话）
         return lastContainer;
     }
@@ -6908,7 +8832,7 @@ ${text}
     getOrCreateConversationContainer() {
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+
         if (isFirstConversation) {
             // 第一次对话，使用默认容器
             conversationContainer = this.resultContainer.querySelector('#conversation-default');
@@ -6919,7 +8843,7 @@ ${text}
             // 后续对话，创建新容器
             conversationContainer = this.createNewConversationContainer();
         }
-        
+
         return conversationContainer;
     }
 
@@ -6928,7 +8852,7 @@ ${text}
         // 总是创建新的对话容器，除非是第一次对话且默认容器存在
         const isFirstConversation = this.currentSessionHistory.length === 0;
         let conversationContainer;
-        
+
         if (isFirstConversation) {
             // 第一次对话，检查默认容器是否存在
             conversationContainer = this.resultContainer.querySelector('#conversation-default');
@@ -6952,25 +8876,25 @@ ${text}
     // 清空对话容器的辅助方法
     clearConversationContainer(container) {
         if (!container) return;
-        
+
         // 清空问题显示
         const questionDisplay = container.querySelector('.question-display');
         if (questionDisplay) {
             questionDisplay.style.display = 'none';
         }
-        
+
         // 清空AI显示
         const aiDisplay = container.querySelector('.ai-display');
         if (aiDisplay) {
             aiDisplay.style.display = 'none';
         }
-        
+
         // 重置标题
         const resultTitle = container.querySelector('.result-title');
         if (resultTitle) {
             resultTitle.textContent = '回答：';
         }
-        
+
         // 清空结果文本
         const resultText = container.querySelector('.result-text');
         if (resultText) {
@@ -6978,6 +8902,7 @@ ${text}
                 <p class="result-text-tips"></p>
                 <div class="result-text-content"></div>
                 <div class="result-text-knowlist"></div>
+                
             `;
         }
         // 【修改点5】在clearConversationContainer方法中，清空内容时隐藏result-actions
@@ -6988,356 +8913,356 @@ ${text}
         }
     }
     // 统一的点赞和否定处理函数
-// 统一的点赞和否定处理函数
-async doAdviceForAnswer(question, answer, adviceType, container = null) {
-    debugger;
-    try {
+    // 统一的点赞和否定处理函数
+    async doAdviceForAnswer(question, answer, adviceType, container = null) {
         debugger;
-        // 获取目标容器
-        const targetContainer = container || this.resultContainer;
-        if (!targetContainer) {
-            console.error('未找到目标容器');
-            return;
-        }
+        try {
+            debugger;
+            // 获取目标容器
+            const targetContainer = container || this.resultContainer;
+            if (!targetContainer) {
+                console.error('未找到目标容器');
+                return;
+            }
 
-        // 获取当前容器的反馈按钮
-        const likeBtn = targetContainer.querySelector('.like-btn');
-        const dislikeBtn = targetContainer.querySelector('.dislike-btn');
-        
-        if (!likeBtn || !dislikeBtn) {
-            console.error('未找到反馈按钮');
-            return;
-        }
+            // 获取当前容器的反馈按钮
+            const likeBtn = targetContainer.querySelector('.like-btn');
+            const dislikeBtn = targetContainer.querySelector('.dislike-btn');
 
-        // 检查当前状态
-        const isCurrentlyLiked = likeBtn.classList.contains('active');
-        const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
-        
-        // 获取当前容器的反馈ID（隐藏字段）
-        const feedbackIdElement = targetContainer.querySelector('.feedback-id');
-        const currentFeedbackId = feedbackIdElement ? feedbackIdElement.textContent : null;
-        
-        // 获取当前时间
-        const now = new Date();
-        const operTime = now.toISOString().slice(0, 19).replace('T', ' ');
-        
-        // 获取API密钥
-        await this.loadKnowledgeServiceConfig();
-        let apiKey = '';
-        let apiUserId = 0; // 默认用户ID，你可以根据需要修改
-        
-        if (this.knowledgeServiceConfig && this.knowledgeServiceConfig.api_key) {
-            apiKey = this.knowledgeServiceConfig.api_key.trim();
-        }
-        
-        if (!apiKey) {
-            console.error('未配置API密钥，无法提交反馈', 'error');
-            this.showMessage("感谢您的反馈!", 'success');
-            // this.showMessage('未配置API密钥，无法提交反馈', 'error');
-            return;
-        }
+            if (!likeBtn || !dislikeBtn) {
+                console.error('未找到反馈按钮');
+                return;
+            }
 
-        // 构建请求参数
-        const requestData = {
-            id: currentFeedbackId ? parseInt(currentFeedbackId) : null,
-            question: question,
-            answer: answer,
-            adviceType: adviceType,
-            // operTime: operTime,
-            // apiUserId: apiUserId
-        };
+            // 检查当前状态
+            const isCurrentlyLiked = likeBtn.classList.contains('active');
+            const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
 
-        // 构建请求头
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        };
+            // 获取当前容器的反馈ID（隐藏字段）
+            const feedbackIdElement = targetContainer.querySelector('.feedback-id');
+            const currentFeedbackId = feedbackIdElement ? feedbackIdElement.textContent : null;
 
-        let response;
-        let operation = '';
+            // 获取当前时间
+            const now = new Date();
+            const operTime = now.toISOString().slice(0, 19).replace('T', ' ');
 
-        // 根据当前状态和操作类型决定API调用
-        if (adviceType === 'good') {
-            if (isCurrentlyLiked) {
-                // 当前已点赞，再次点击取消点赞（删除）
-                if (currentFeedbackId) {
-                    operation = 'delete';
-                    response = await this.deleteFeedback(currentFeedbackId, apiKey);
+            // 获取API密钥
+            await this.loadKnowledgeServiceConfig();
+            let apiKey = '';
+            let apiUserId = 0; // 默认用户ID，你可以根据需要修改
+
+            if (this.knowledgeServiceConfig && this.knowledgeServiceConfig.api_key) {
+                apiKey = this.knowledgeServiceConfig.api_key.trim();
+            }
+
+            if (!apiKey) {
+                console.error('未配置API密钥，无法提交反馈', 'error');
+                this.showMessage("感谢您的反馈!", 'success');
+                // this.showMessage('未配置API密钥，无法提交反馈', 'error');
+                return;
+            }
+
+            // 构建请求参数
+            const requestData = {
+                id: currentFeedbackId ? parseInt(currentFeedbackId) : null,
+                question: question,
+                answer: answer,
+                adviceType: adviceType,
+                // operTime: operTime,
+                // apiUserId: apiUserId
+            };
+
+            // 构建请求头
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            };
+
+            let response;
+            let operation = '';
+
+            // 根据当前状态和操作类型决定API调用
+            if (adviceType === 'good') {
+                if (isCurrentlyLiked) {
+                    // 当前已点赞，再次点击取消点赞（删除）
+                    if (currentFeedbackId) {
+                        operation = 'delete';
+                        response = await this.deleteFeedback(currentFeedbackId, apiKey);
+                    } else {
+                        // 没有ID，直接移除样式
+                        this.removeFeedbackStyle(targetContainer);
+                        this.showMessage('已取消点赞', 'info');
+                        return;
+                    }
                 } else {
-                    // 没有ID，直接移除样式
-                    this.removeFeedbackStyle(targetContainer);
-                    this.showMessage('已取消点赞', 'info');
-                    return;
+                    // 当前未点赞，执行点赞操作
+                    if (currentFeedbackId && isCurrentlyDisliked) {
+                        // 从否定改为点赞（编辑）
+                        operation = 'update';
+                        response = await this.updateFeedback(requestData, apiKey);
+                    } else {
+                        // 新增点赞
+                        operation = 'add';
+                        response = await this.addFeedback(requestData, apiKey);
+                    }
                 }
+            } else if (adviceType === 'bad') {
+                if (isCurrentlyDisliked) {
+                    // 当前已否定，再次点击取消否定（删除）
+                    if (currentFeedbackId) {
+                        operation = 'delete';
+                        response = await this.deleteFeedback(currentFeedbackId, apiKey);
+                    } else {
+                        // 没有ID，直接移除样式
+                        this.removeFeedbackStyle(targetContainer);
+                        this.showMessage('已取消否定', 'info');
+                        return;
+                    }
+                } else {
+                    // 当前未否定，执行否定操作
+                    if (currentFeedbackId && isCurrentlyLiked) {
+                        // 从点赞改为否定（编辑）
+                        operation = 'update';
+                        response = await this.updateFeedback(requestData, apiKey);
+                    } else {
+                        // 新增否定
+                        operation = 'add';
+                        response = await this.addFeedback(requestData, apiKey);
+                    }
+                }
+            }
+            debugger;
+
+            // 处理响应
+            if (response && response.status === 'success') {
+                // 更新UI状态
+                this.updateFeedbackUI(targetContainer, adviceType, operation, response.data);
+
+                // 显示成功消息
+                let message = '';
+                if (operation === 'add') {
+                    message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
+                } else if (operation === 'update') {
+                    message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
+                } else if (operation === 'delete') {
+                    message = adviceType === 'good' ? '已取消点赞' : '已取消否定';
+                }
+                this.showMessage(message, 'success');
             } else {
-                // 当前未点赞，执行点赞操作
-                if (currentFeedbackId && isCurrentlyDisliked) {
-                    // 从否定改为点赞（编辑）
-                    operation = 'update';
-                    response = await this.updateFeedback(requestData, apiKey);
-                } else {
-                    // 新增点赞
-                    operation = 'add';
-                    response = await this.addFeedback(requestData, apiKey);
-                }
+                // 显示错误消息
+                const errorMsg = response ? response.message || '操作失败' : '网络错误';
+                console.error('反馈操作失败:', errorMsg);
+                this.showMessage("感谢您的反馈!", 'success');
+                // this.showMessage(errorMsg, 'error');
             }
-        } else if (adviceType === 'bad') {
-            if (isCurrentlyDisliked) {
-                // 当前已否定，再次点击取消否定（删除）
-                if (currentFeedbackId) {
-                    operation = 'delete';
-                    response = await this.deleteFeedback(currentFeedbackId, apiKey);
-                } else {
-                    // 没有ID，直接移除样式
-                    this.removeFeedbackStyle(targetContainer);
-                    this.showMessage('已取消否定', 'info');
-                    return;
-                }
-            } else {
-                // 当前未否定，执行否定操作
-                if (currentFeedbackId && isCurrentlyLiked) {
-                    // 从点赞改为否定（编辑）
-                    operation = 'update';
-                    response = await this.updateFeedback(requestData, apiKey);
-                } else {
-                    // 新增否定
-                    operation = 'add';
-                    response = await this.addFeedback(requestData, apiKey);
-                }
-            }
-        }
-        debugger;
 
-        // 处理响应
-        if (response && response.status === 'success') {
-            // 更新UI状态
-            this.updateFeedbackUI(targetContainer, adviceType, operation, response.data);
-            
-            // 显示成功消息
-            let message = '';
-            if (operation === 'add') {
-                message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
-            } else if (operation === 'update') {
-                message = adviceType === 'good' ? '感谢您的反馈！👍' : '感谢您的反馈👎！我们会继续改进。';
-            } else if (operation === 'delete') {
-                message = adviceType === 'good' ? '已取消点赞' : '已取消否定';
-            }
-            this.showMessage(message, 'success');
-        } else {
-            // 显示错误消息
-            const errorMsg = response ? response.message || '操作失败' : '网络错误';
-            console.error('反馈操作失败:', errorMsg);
+        } catch (error) {
+            console.error('反馈操作失败:', error);
             this.showMessage("感谢您的反馈!", 'success');
-            // this.showMessage(errorMsg, 'error');
+            // this.showMessage('操作失败，请稍后重试', 'error');
         }
-
-    } catch (error) {
-        console.error('反馈操作失败:', error);
-        this.showMessage("感谢您的反馈!", 'success');
-        // this.showMessage('操作失败，请稍后重试', 'error');
     }
-}
 
-// 新增反馈
-async addFeedback(data, apiKey) {
-    try {
-        const response = await fetch('http://www.dbaiops.cn/api/chat/addFeedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(data)
-        });
+    // 新增反馈
+    async addFeedback(data, apiKey) {
+        try {
+            const response = await fetch('http://www.dbaiops.cn/api/chat/addFeedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(data)
+            });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('新增反馈失败:', error);
-        throw error;
-    }
-}
-
-// 编辑反馈
-async updateFeedback(data, apiKey) {
-    try {
-        const response = await fetch('http://www.dbaiops.cn/api/chat/updateFeedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('编辑反馈失败:', error);
-        throw error;
-    }
-}
-
-// 删除反馈
-async deleteFeedback(id, apiKey) {
-    try {
-        const response = await fetch(`http://www.dbaiops.cn/api/chat/deleteFeedback?id=${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('新增反馈失败:', error);
+            throw error;
         }
-
-        return await response.json();
-    } catch (error) {
-        console.error('删除反馈失败:', error);
-        throw error;
     }
-}
 
-// 更新反馈UI状态
-updateFeedbackUI(container, adviceType, operation, responseData) {
-    const likeBtn = container.querySelector('.like-btn');
-    const dislikeBtn = container.querySelector('.dislike-btn');
-    
-    if (!likeBtn || !dislikeBtn) return;
+    // 编辑反馈
+    async updateFeedback(data, apiKey) {
+        try {
+            const response = await fetch('http://www.dbaiops.cn/api/chat/updateFeedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(data)
+            });
 
-    // 移除所有活跃状态
-    likeBtn.classList.remove('active');
-    dislikeBtn.classList.remove('active');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-    // 根据操作类型更新状态
-    if (operation === 'add' || operation === 'update') {
-        if (adviceType === 'good') {
-            likeBtn.classList.add('active');
-        } else if (adviceType === 'bad') {
-            dislikeBtn.classList.add('active');
+            return await response.json();
+        } catch (error) {
+            console.error('编辑反馈失败:', error);
+            throw error;
         }
-        
-        // 保存反馈ID
-        this.saveFeedbackId(container, responseData.id || responseData.feedbackId);
-    } else if (operation === 'delete') {
-        // 删除操作，移除反馈ID
+    }
+
+    // 删除反馈
+    async deleteFeedback(id, apiKey) {
+        try {
+            const response = await fetch(`http://www.dbaiops.cn/api/chat/deleteFeedback?id=${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('删除反馈失败:', error);
+            throw error;
+        }
+    }
+
+    // 更新反馈UI状态
+    updateFeedbackUI(container, adviceType, operation, responseData) {
+        const likeBtn = container.querySelector('.like-btn');
+        const dislikeBtn = container.querySelector('.dislike-btn');
+
+        if (!likeBtn || !dislikeBtn) return;
+
+        // 移除所有活跃状态
+        likeBtn.classList.remove('active');
+        dislikeBtn.classList.remove('active');
+
+        // 根据操作类型更新状态
+        if (operation === 'add' || operation === 'update') {
+            if (adviceType === 'good') {
+                likeBtn.classList.add('active');
+            } else if (adviceType === 'bad') {
+                dislikeBtn.classList.add('active');
+            }
+
+            // 保存反馈ID
+            this.saveFeedbackId(container, responseData.id || responseData.feedbackId);
+        } else if (operation === 'delete') {
+            // 删除操作，移除反馈ID
+            this.removeFeedbackId(container);
+        }
+    }
+
+    // 保存反馈ID到容器中
+    saveFeedbackId(container, feedbackId) {
+        // 移除旧的反馈ID元素
         this.removeFeedbackId(container);
+
+        // 创建新的反馈ID元素（隐藏）
+        const feedbackIdElement = document.createElement('div');
+        feedbackIdElement.className = 'feedback-id';
+        feedbackIdElement.style.display = 'none';
+        feedbackIdElement.textContent = feedbackId;
+
+        // 添加到容器中
+        container.appendChild(feedbackIdElement);
     }
-}
 
-// 保存反馈ID到容器中
-saveFeedbackId(container, feedbackId) {
-    // 移除旧的反馈ID元素
-    this.removeFeedbackId(container);
-    
-    // 创建新的反馈ID元素（隐藏）
-    const feedbackIdElement = document.createElement('div');
-    feedbackIdElement.className = 'feedback-id';
-    feedbackIdElement.style.display = 'none';
-    feedbackIdElement.textContent = feedbackId;
-    
-    // 添加到容器中
-    container.appendChild(feedbackIdElement);
-}
-
-// 移除反馈ID
-removeFeedbackId(container) {
-    const existingIdElement = container.querySelector('.feedback-id');
-    if (existingIdElement) {
-        existingIdElement.remove();
-    }
-}
-
-// 移除反馈样式
-removeFeedbackStyle(container) {
-    const likeBtn = container.querySelector('.like-btn');
-    const dislikeBtn = container.querySelector('.dislike-btn');
-    
-    if (likeBtn) likeBtn.classList.remove('active');
-    if (dislikeBtn) dislikeBtn.classList.remove('active');
-}
-
-// 格式化日期时间
-formatDateTime(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-// 复制问题文本功能
-copyQuestionText(button) {
-    try {
-        // 获取问题文本
-        const questionText = button.parentElement.querySelector('.question-text');
-        const textToCopy = questionText.textContent || questionText.innerText;
-        
-        if (!textToCopy || textToCopy.trim() === '') {
-            console.log('没有找到问题文本');
-            return;
+    // 移除反馈ID
+    removeFeedbackId(container) {
+        const existingIdElement = container.querySelector('.feedback-id');
+        if (existingIdElement) {
+            existingIdElement.remove();
         }
-        
-        // 复制到剪贴板
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            // 显示复制成功提示
-            this.showCopySuccess(button);
-        }).catch(err => {
+    }
+
+    // 移除反馈样式
+    removeFeedbackStyle(container) {
+        const likeBtn = container.querySelector('.like-btn');
+        const dislikeBtn = container.querySelector('.dislike-btn');
+
+        if (likeBtn) likeBtn.classList.remove('active');
+        if (dislikeBtn) dislikeBtn.classList.remove('active');
+    }
+
+    // 格式化日期时间
+    formatDateTime(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    // 复制问题文本功能
+    copyQuestionText(button) {
+        try {
+            // 获取问题文本
+            const questionText = button.parentElement.querySelector('.question-text');
+            const textToCopy = questionText.textContent || questionText.innerText;
+
+            if (!textToCopy || textToCopy.trim() === '') {
+                console.log('没有找到问题文本');
+                return;
+            }
+
+            // 复制到剪贴板
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // 显示复制成功提示
+                this.showCopySuccess(button);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                // 降级方案：使用传统方法
+                this.fallbackCopyTextToClipboard(textToCopy, button);
+            });
+        } catch (error) {
+            console.error('复制功能出错:', error);
+        }
+    }
+
+    // 降级复制方案
+    fallbackCopyTextToClipboard(text, button) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                this.showCopySuccess(button);
+            } else {
+                console.log('复制失败');
+            }
+        } catch (err) {
             console.error('复制失败:', err);
-            // 降级方案：使用传统方法
-            this.fallbackCopyTextToClipboard(textToCopy, button);
-        });
-    } catch (error) {
-        console.error('复制功能出错:', error);
-    }
-}
-
-// 降级复制方案
-fallbackCopyTextToClipboard(text, button) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            this.showCopySuccess(button);
-        } else {
-            console.log('复制失败');
         }
-    } catch (err) {
-        console.error('复制失败:', err);
+
+        document.body.removeChild(textArea);
     }
-    
-    document.body.removeChild(textArea);
-}
 
-// 显示复制成功提示
-// 简洁蓝色提示：屏幕居中显示“复制成功”
-showCopySuccess() {
-	try {
-		const existing = document.querySelector('.bicqa-toast');
-		if (existing) existing.remove();
+    // 显示复制成功提示
+    // 简洁蓝色提示：屏幕居中显示“复制成功”
+    showCopySuccess() {
+        try {
+            const existing = document.querySelector('.bicqa-toast');
+            if (existing) existing.remove();
 
-		const toast = document.createElement('div');
-		toast.className = 'bicqa-toast';
-		toast.textContent = '复制成功';
-		toast.style.cssText = `
+            const toast = document.createElement('div');
+            toast.className = 'bicqa-toast';
+            toast.textContent = '复制成功';
+            toast.style.cssText = `
 			position: fixed;
 			top: 50%;
 			left: 50%;
@@ -7354,22 +9279,22 @@ showCopySuccess() {
 			transition: opacity .15s ease, transform .15s ease;
 			pointer-events: none;
 		`;
-		document.body.appendChild(toast);
+            document.body.appendChild(toast);
 
-		requestAnimationFrame(() => {
-			toast.style.opacity = '1';
-			toast.style.transform = 'translate(-50%, -50%) scale(1)';
-		});
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, -50%) scale(1)';
+            });
 
-		setTimeout(() => {
-			toast.style.opacity = '0';
-			toast.style.transform = 'translate(-50%, -50%) scale(.98)';
-			setTimeout(() => toast.remove(), 150);
-		}, 1500);
-	} catch (e) {
-		console.warn(e);
-	}
-}
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -50%) scale(.98)';
+                setTimeout(() => toast.remove(), 150);
+            }, 1500);
+        } catch (e) {
+            console.warn(e);
+        }
+    }
 
 }
 
@@ -7377,11 +9302,11 @@ showCopySuccess() {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new BicQAPopup();
-    
+
     // 将app实例暴露到全局作用域，供历史记录按钮使用
     window.app = app;
     window.bicQAPopup = app; // 确保bicQAPopup也指向同一个实例
-    
+
     // 监听全屏状态变化
     document.addEventListener('fullscreenchange', () => app.handleFullscreenChange());
     document.addEventListener('webkitfullscreenchange', () => app.handleFullscreenChange());

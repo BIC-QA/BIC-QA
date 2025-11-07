@@ -8,7 +8,7 @@ class BicQASettings {
         this.editingProvider = null;
         this.editingModel = null;
         this.editingRule = null;
-        
+
         // 预设服务商类型配置
         this.providerTypes = [
             {
@@ -48,7 +48,7 @@ class BicQASettings {
                 description: 'OpenAI官方API服务'
             }
         ];
-        
+
         this.init();
     }
 
@@ -62,22 +62,22 @@ class BicQASettings {
             this.loadGeneralSettings();
             this.bindEvents();
             this.populateProviderTypeOptions(); // 初始化服务商类型下拉框
-            
+
             // 检查规则数据是否正确
             console.log('初始化时检查规则数据...');
             const needsFix = this.checkAndFixRules();
-            
+
             // 如果发现问题，自动修复
             // if (!needsFix) { 
             //     console.log('发现规则数据问题，正在自动修复...');
             //     await this.forceFixRules();
             // }
-            
+
             // 加载其他配置
             await this.loadRegistrationConfig();
             await this.loadKnowledgeServiceConfig();
             await this.loadKnowledgeBases();
-            
+
             console.log('BIC-QA 设置页面初始化完成');
         } catch (error) {
             console.error('初始化失败:', error);
@@ -112,7 +112,7 @@ class BicQASettings {
             console.log('规则表单提交事件被触发');
             this.handleRuleSubmit(e);
         });
-        
+
         // 恢复初始设置按钮事件
         const resetDefaultRulesBtn = document.getElementById('resetDefaultRulesBtn');
         if (resetDefaultRulesBtn) {
@@ -134,19 +134,19 @@ class BicQASettings {
         document.getElementById('clearSettings').addEventListener('click', () => this.clearSettings());
         document.getElementById('exportSettings').addEventListener('click', () => this.exportSettings());
         document.getElementById('importSettings').addEventListener('click', () => this.importSettings());
-        
+
         // 返回问答界面
         document.getElementById('backToQA').addEventListener('click', () => this.backToQA());
-        
+
         // 知识库管理按钮
         document.getElementById('refreshKnowledgeBasesBtn').addEventListener('click', () => this.refreshKnowledgeBases());
         document.getElementById('exportKnowledgeBasesBtn').addEventListener('click', () => this.exportKnowledgeBases());
-        
+
         // 反馈历史按钮
         document.getElementById('refreshFeedbackBtn').addEventListener('click', () => this.refreshFeedback());
         document.getElementById('exportFeedbackBtn').addEventListener('click', () => this.exportFeedback());
         document.getElementById('clearFeedbackBtn').addEventListener('click', () => this.clearFeedback());
-        
+
         // 密码切换按钮事件绑定
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('toggle-password')) {
@@ -156,14 +156,14 @@ class BicQASettings {
                 }
             }
         });
-        
+
         // 规则列表事件委托
         document.getElementById('rulesList').addEventListener('click', (e) => {
             const target = e.target;
             if (target.classList.contains('action-btn')) {
                 const action = target.getAttribute('data-action');
                 const index = parseInt(target.getAttribute('data-index'));
-                
+
                 if (action === 'edit') {
                     this.editRule(index);
                 } else if (action === 'delete') {
@@ -171,14 +171,14 @@ class BicQASettings {
                 }
             }
         });
-        
+
         // 服务商列表事件委托
         document.getElementById('providersList').addEventListener('click', (e) => {
             const target = e.target;
             if (target.classList.contains('action-btn')) {
                 const action = target.getAttribute('data-action');
                 const index = parseInt(target.getAttribute('data-index'));
-                
+
                 if (action === 'test') {
                     this.testProvider(index);
                 } else if (action === 'edit') {
@@ -188,14 +188,14 @@ class BicQASettings {
                 }
             }
         });
-        
+
         // 模型列表事件委托
         document.getElementById('modelsList').addEventListener('click', (e) => {
             const target = e.target;
             if (target.classList.contains('action-btn')) {
                 const action = target.getAttribute('data-action');
                 const index = parseInt(target.getAttribute('data-index'));
-                
+
                 if (action === 'test') {
                     this.testModel(index);
                 } else if (action === 'edit') {
@@ -211,7 +211,7 @@ class BicQASettings {
         if (providerTypeSelect) {
             providerTypeSelect.addEventListener('change', (e) => this.handleProviderTypeChange(e));
         }
-        
+
         // 服务商类型管理按钮事件
         const manageProviderTypesBtn = document.getElementById('manageProviderTypes');
         if (manageProviderTypesBtn) {
@@ -224,22 +224,22 @@ class BicQASettings {
             const result = await chrome.storage.sync.get(['providers', 'models', 'rules', 'generalSettings', 'defaultRulesModified']);
             this.providers = result.providers || [];
             this.models = result.models || [];
-            
+
             // 检查并修复默认模型问题
             this.ensureSingleDefaultModel();
-            
+
             // 获取默认规则和保存的规则
             const defaultRules = this.getDefaultRules();
             const savedRules = result.rules || [];
             const defaultRulesModified = result.defaultRulesModified || false;
-            
+
             if (defaultRulesModified) {
                 // 如果内置规则被修改过，使用 mergeRules 方法合并
                 this.rules = this.mergeRules(defaultRules, savedRules);
             } else {
                 // 如果内置规则没有被修改过，直接使用默认规则并添加用户自定义规则
                 this.rules = [...defaultRules];
-                
+
                 // 只添加非内置的用户自定义规则
                 savedRules.forEach(savedRule => {
                     if (!this.isBuiltInRule(savedRule.id)) {
@@ -247,9 +247,9 @@ class BicQASettings {
                     }
                 });
             }
-            
+
             this.currentSettings = result.generalSettings || this.getDefaultSettings();
-            
+
             // 移除自动检查规则数据，避免干扰正常的规则修改
             // this.checkAndFixRules();
         } catch (error) {
@@ -276,7 +276,7 @@ class BicQASettings {
                 "description": "适用于快速检索场景，返回更多相关结果",
                 "id": "default-fast-search",
                 "isDefault": true,
-                "name": "精准检索",
+                "name": "精准检索(Precise search)",
                 "similarity": 0.7,
                 "topN": 6,
                 "temperature": 0.7,
@@ -286,7 +286,7 @@ class BicQASettings {
                 "description": "适用于创新思维场景，提供多角度分析和创新解决方案",
                 "id": "default-flexible-search",
                 "isDefault": false,
-                "name": "灵活检索",
+                "name": "灵活检索(Flexible search)",
                 "similarity": 0.6,
                 "topN": 8,
                 "temperature": 1.0,
@@ -304,10 +304,10 @@ class BicQASettings {
     // 合并内置规则和用户自定义规则
     mergeRules(defaultRules, savedRules) {
         const mergedRules = [...defaultRules]; // 复制内置规则
-        
+
         // 清理用户规则中的重复项
         const cleanedSavedRules = this.cleanDuplicateRules(savedRules);
-        
+
         // 处理保存的规则
         cleanedSavedRules.forEach(savedRule => {
             if (!this.isBuiltInRule(savedRule.id)) {
@@ -319,14 +319,14 @@ class BicQASettings {
                 if (existingIndex !== -1) {
                     console.log(`使用保存的内置规则版本: ${savedRule.name}`);
                     // 使用保存的版本，包括用户可能修改的 isDefault 状态
-                    mergedRules[existingIndex] = { 
+                    mergedRules[existingIndex] = {
                         ...savedRule
                         // 移除强制保持原有默认状态的逻辑，允许用户修改
                     };
                 }
             }
         });
-        
+
         return mergedRules;
     }
 
@@ -335,14 +335,14 @@ class BicQASettings {
         const cleanedRules = [];
         const seenIds = new Set();
         const seenNames = new Set();
-        
+
         savedRules.forEach(rule => {
             // 对于内置规则，直接添加（因为可能被修改过）
             if (this.isBuiltInRule(rule.id)) {
                 cleanedRules.push(rule);
                 return;
             }
-            
+
             // 对于用户自定义规则，检查ID和名称是否重复
             if (!seenIds.has(rule.id) && !seenNames.has(rule.name)) {
                 cleanedRules.push(rule);
@@ -352,14 +352,14 @@ class BicQASettings {
                 console.log(`清理重复规则: ${rule.name} (ID: ${rule.id})`);
             }
         });
-        
+
         // 如果清理了规则，更新存储
         if (cleanedRules.length !== savedRules.length) {
             chrome.storage.sync.set({ rules: cleanedRules }, () => {
                 console.log('已清理重复规则并更新存储');
             });
         }
-        
+
         return cleanedRules;
     }
 
@@ -382,14 +382,14 @@ class BicQASettings {
         const div = document.createElement('div');
         div.className = 'provider-item';
         div.setAttribute('data-provider-index', index);
-        
+
         // 构建自定义端点信息
-        const customEndpointInfo = provider.modelsEndpoint ? 
+        const customEndpointInfo = provider.modelsEndpoint ?
             `<div class="detail-item">
                 <div class="detail-label">自定义模型端点</div>
                 <div class="detail-value">${provider.modelsEndpoint}</div>
             </div>` : '';
-        
+
         div.innerHTML = `
             <div class="provider-header">
                 <div class="provider-name">
@@ -422,7 +422,7 @@ class BicQASettings {
                 </div>
             </div>
         `;
-        
+
         return div;
     }
 
@@ -447,7 +447,7 @@ class BicQASettings {
     renderRules() {
         const rulesList = document.getElementById('rulesList');
         rulesList.innerHTML = '';
-        
+
         if (this.rules.length === 0) {
             rulesList.innerHTML = `
                 <div class="empty-state">
@@ -457,7 +457,7 @@ class BicQASettings {
             `;
             return;
         }
-        
+
         this.rules.forEach((rule, index) => {
             const ruleElement = this.createRuleElement(rule, index);
             rulesList.appendChild(ruleElement);
@@ -499,20 +499,20 @@ class BicQASettings {
                 </div>
             </div>
         `;
-        
+
         return div;
     }
 
     createRuleElement(rule, index) {
         const ruleElement = document.createElement('div');
         ruleElement.className = 'rule-item';
-        
+
         const defaultBadge = rule.isDefault ? '<span class="default-badge">默认</span>' : '';
         const builtInBadge = this.isBuiltInRule(rule.id) ? '<span class="built-in-badge">内置</span>' : '';
-        
+
         // 判断是否为内置规则
         const isBuiltIn = this.isBuiltInRule(rule.id);
-        
+
         ruleElement.innerHTML = `
             <div class="rule-header">
                 <div class="rule-name">
@@ -546,7 +546,7 @@ class BicQASettings {
                 </div>
             </div>
         `;
-        
+
         return ruleElement;
     }
 
@@ -557,7 +557,7 @@ class BicQASettings {
     updateModelProviderOptions() {
         const select = document.getElementById('modelProvider');
         select.innerHTML = '<option value="">请选择服务商</option>';
-        
+
         this.providers.forEach(provider => {
             const option = document.createElement('option');
             option.value = provider.name;
@@ -570,17 +570,17 @@ class BicQASettings {
         this.editingProvider = provider;
         const form = document.getElementById('addProviderForm');
         const title = form.querySelector('.form-header h3');
-        
+
         // 初始化服务商类型下拉框
         this.populateProviderTypeOptions();
-        
+
         if (provider) {
             title.textContent = '编辑服务商';
             this.fillProviderForm(provider);
         } else {
             title.textContent = '添加服务商';
             document.getElementById('providerForm').reset();
-            
+
             // 设置默认的服务商类型（如果有的话）
             const providerTypeSelect = document.getElementById('providerType');
             if (providerTypeSelect && this.providerTypes.length > 0) {
@@ -590,14 +590,14 @@ class BicQASettings {
                 const event = new Event('change');
                 providerTypeSelect.dispatchEvent(event);
             }
-            
+
             // 清除描述信息
             const existingDesc = document.querySelector('.provider-type-description');
             if (existingDesc) {
                 existingDesc.remove();
             }
         }
-        
+
         form.style.display = 'flex';
     }
 
@@ -613,13 +613,13 @@ class BicQASettings {
         document.getElementById('apiKey').value = provider.apiKey;
         document.getElementById('authType').value = provider.authType;
         document.getElementById('requestFormat').value = provider.requestFormat;
-        
+
         // 填充服务商类型（如果存在）
         const providerTypeSelect = document.getElementById('providerType');
         if (providerTypeSelect && provider.providerType) {
             providerTypeSelect.value = provider.providerType;
         }
-        
+
         // 填充自定义模型列表端点（如果存在）
         const modelsEndpointInput = document.getElementById('modelsEndpoint');
         if (modelsEndpointInput) {
@@ -629,10 +629,10 @@ class BicQASettings {
 
     async handleProviderSubmit(e) {
         e.preventDefault();
-        
+
         console.log('处理服务商表单提交');
         console.log('编辑索引:', this.editingProviderIndex);
-        
+
         const formData = new FormData(e.target);
         const provider = {
             name: formData.get('providerName'),
@@ -642,30 +642,30 @@ class BicQASettings {
             requestFormat: formData.get('requestFormat'),
             providerType: formData.get('providerType') // 添加服务商类型
         };
-        
+
         // 添加自定义模型列表端点（如果存在）
         const modelsEndpointInput = document.getElementById('modelsEndpoint');
         if (modelsEndpointInput && modelsEndpointInput.value.trim()) {
             provider.modelsEndpoint = modelsEndpointInput.value.trim();
         }
-        
+
         console.log('表单数据:', provider);
 
         // 服务商名称唯一性校验
         const existingProviderIndex = this.providers.findIndex(p => p.name === provider.name);
-        
+
         if (this.editingProviderIndex !== undefined) {
             // 编辑现有服务商
             const originalName = this.providers[this.editingProviderIndex].name;
-            
+
             // 如果名称改变了，需要检查唯一性
             if (originalName !== provider.name && existingProviderIndex !== -1 && existingProviderIndex !== this.editingProviderIndex) {
                 this.showMessage(`❌ 服务商名称 "${provider.name}" 已存在，请使用其他名称`, 'error');
                 return;
             }
-            
+
             this.providers[this.editingProviderIndex] = provider;
-            
+
             // 如果服务商名称改变了，需要更新关联的模型
             if (originalName !== provider.name) {
                 this.models.forEach(model => {
@@ -696,10 +696,10 @@ class BicQASettings {
         this.editingModel = model;
         const form = document.getElementById('addModelForm');
         const title = form.querySelector('.form-header h3');
-        
+
         // 确保服务商选项已更新
         this.updateModelProviderOptions();
-        
+
         if (model) {
             title.textContent = '编辑模型';
             this.fillModelForm(model);
@@ -707,10 +707,10 @@ class BicQASettings {
             title.textContent = '添加模型';
             document.getElementById('modelForm').reset();
         }
-        
+
         // 添加模型名称自动填充功能
         this.setupModelNameAutoFill();
-        
+
         form.style.display = 'flex';
     }
 
@@ -718,11 +718,11 @@ class BicQASettings {
     async setupModelNameAutoFill() {
         const providerSelect = document.getElementById('modelProvider');
         const modelNameInput = document.getElementById('modelName');
-        
+
         if (!providerSelect || !modelNameInput) {
             return;
         }
-        
+
         // 监听服务商选择变化
         providerSelect.addEventListener('change', async (e) => {
             const selectedProvider = e.target.value;
@@ -730,14 +730,14 @@ class BicQASettings {
                 this.clearModelNameOptions();
                 return;
             }
-            
+
             try {
                 // 获取该服务商的配置
                 const provider = this.providers.find(p => p.name === selectedProvider);
                 if (!provider) {
                     return;
                 }
-                
+
                 // 尝试获取可用模型列表
                 const availableModels = await this.getAvailableModels(provider);
                 if (availableModels && availableModels.length > 0) {
@@ -747,7 +747,7 @@ class BicQASettings {
                 console.warn('获取可用模型失败:', error);
             }
         });
-        
+
         // 如果当前已选择服务商，立即加载模型列表
         if (providerSelect.value) {
             providerSelect.dispatchEvent(new Event('change'));
@@ -760,7 +760,7 @@ class BicQASettings {
         if (!modelNameInput) {
             return;
         }
-        
+
         // 创建数据列表
         let datalist = document.getElementById('modelNameOptions');
         if (!datalist) {
@@ -768,10 +768,10 @@ class BicQASettings {
             datalist.id = 'modelNameOptions';
             document.body.appendChild(datalist);
         }
-        
+
         // 清空现有选项
         datalist.innerHTML = '';
-        
+
         // 添加模型选项
         availableModels.forEach(model => {
             const option = document.createElement('option');
@@ -779,11 +779,11 @@ class BicQASettings {
             option.textContent = model.displayName || model.name;
             datalist.appendChild(option);
         });
-        
+
         // 设置输入框的list属性
         modelNameInput.setAttribute('list', 'modelNameOptions');
         modelNameInput.placeholder = `选择或输入模型名称 (${availableModels.length} 个可用模型)`;
-        
+
         // 添加刷新按钮
         this.addRefreshModelsButton(availableModels.length);
     }
@@ -803,14 +803,14 @@ class BicQASettings {
                 font-size: 12px;
                 color: #666;
             `;
-            
+
             // 插入到模型名称输入框后面
             const modelNameInput = document.getElementById('modelName');
             if (modelNameInput && modelNameInput.parentElement) {
                 modelNameInput.parentElement.appendChild(refreshContainer);
             }
         }
-        
+
         refreshContainer.innerHTML = `
             <span>�� 已加载 ${modelCount} 个可用模型</span>
             <button type="button" id="refreshModelsBtn" style="
@@ -823,7 +823,7 @@ class BicQASettings {
                 cursor: pointer;
             ">🔄 刷新</button>
         `;
-        
+
         // 绑定刷新按钮事件
         const refreshBtn = document.getElementById('refreshModelsBtn');
         if (refreshBtn) {
@@ -838,15 +838,15 @@ class BicQASettings {
             this.showMessage('请先选择服务商', 'warning');
             return;
         }
-        
+
         try {
             this.showMessage('正在刷新模型列表...', 'info');
-            
+
             const provider = this.providers.find(p => p.name === providerSelect.value);
             if (!provider) {
                 throw new Error('找不到选中的服务商');
             }
-            
+
             const availableModels = await this.getAvailableModels(provider);
             if (availableModels && availableModels.length > 0) {
                 this.populateModelNameOptions(availableModels);
@@ -854,7 +854,7 @@ class BicQASettings {
             } else {
                 throw new Error('无法获取模型列表');
             }
-            
+
         } catch (error) {
             console.error('刷新模型列表失败:', error);
             this.showMessage('刷新模型列表失败: ' + error.message, 'error');
@@ -874,7 +874,7 @@ class BicQASettings {
         this.editingRule = rule;
         const form = document.getElementById('addRuleForm');
         const title = form.querySelector('.form-header h3');
-        
+
         if (rule) {
             title.textContent = '编辑参数规则';
             this.fillRuleForm(rule);
@@ -882,7 +882,7 @@ class BicQASettings {
             title.textContent = '添加参数规则';
             document.getElementById('ruleForm').reset();
         }
-        
+
         form.style.display = 'flex';
     }
 
@@ -909,7 +909,7 @@ class BicQASettings {
     fillRuleForm(rule) {
         console.log('fillRuleForm被调用，规则数据:', rule);
         console.log('规则temperature值:', rule.temperature, '类型:', typeof rule.temperature);
-        
+
         // 获取输入框元素
         const ruleNameInput = document.getElementById('ruleName');
         const similarityInput = document.getElementById('similarity');
@@ -917,7 +917,7 @@ class BicQASettings {
         const temperatureInput = document.getElementById('ruleTemperature');
         const promptInput = document.getElementById('rulePrompt');
         const isDefaultInput = document.getElementById('isDefaultRule');
-        
+
         console.log('找到的输入框元素:', {
             ruleName: ruleNameInput,
             similarity: similarityInput,
@@ -926,7 +926,7 @@ class BicQASettings {
             prompt: promptInput,
             isDefault: isDefaultInput
         });
-        
+
         // 填充表单数据
         if (ruleNameInput) ruleNameInput.value = rule.name;
         if (similarityInput) similarityInput.value = rule.similarity;
@@ -937,7 +937,7 @@ class BicQASettings {
         }
         if (promptInput) promptInput.value = rule.prompt || '';
         if (isDefaultInput) isDefaultInput.checked = rule.isDefault || false;
-        
+
         console.log('表单填充完成，各输入框值:', {
             ruleName: ruleNameInput?.value,
             similarity: similarityInput?.value,
@@ -950,10 +950,10 @@ class BicQASettings {
 
     async handleModelSubmit(e) {
         e.preventDefault();
-        
+
         console.log('处理模型表单提交');
         console.log('编辑索引:', this.editingModelIndex);
-        
+
         const formData = new FormData(e.target);
         const model = {
             provider: formData.get('modelProvider'),
@@ -963,25 +963,25 @@ class BicQASettings {
             temperature: formData.get('temperature') ? parseFloat(formData.get('temperature')) : null,
             isDefault: formData.get('isDefault') === 'on'
         };
-        
+
         console.log('表单数据:', model);
 
         // 模型名称和服务商组合的唯一性校验
-        const existingModelIndex = this.models.findIndex(m => 
+        const existingModelIndex = this.models.findIndex(m =>
             m.name === model.name && m.provider === model.provider
         );
 
         if (this.editingModelIndex !== undefined) {
             // 编辑现有模型
             const originalModel = this.models[this.editingModelIndex];
-            
+
             // 如果模型名称或服务商改变了，需要检查唯一性
-            if ((originalModel.name !== model.name || originalModel.provider !== model.provider) && 
+            if ((originalModel.name !== model.name || originalModel.provider !== model.provider) &&
                 existingModelIndex !== -1 && existingModelIndex !== this.editingModelIndex) {
                 this.showMessage(`❌ 模型 "${model.name}" 在服务商 "${model.provider}" 下已存在，请使用其他名称或选择其他服务商`, 'error');
                 return;
             }
-            
+
             // 更新模型
             this.models[this.editingModelIndex] = model;
         } else {
@@ -1004,7 +1004,7 @@ class BicQASettings {
                     m.isDefault = false;
                 }
             });
-            
+
             // 确保当前模型为默认
             if (this.editingModelIndex !== undefined) {
                 this.models[this.editingModelIndex].isDefault = true;
@@ -1016,7 +1016,7 @@ class BicQASettings {
 
         // 确保只有一个默认模型
         this.ensureSingleDefaultModel();
-        
+
         await this.saveModels();
         console.log('模型保存成功，当前模型列表:', this.models);
         this.renderModels();
@@ -1026,36 +1026,36 @@ class BicQASettings {
 
     async handleRuleSubmit(e) {
         e.preventDefault();
-        
+
         const formData = new FormData(e.target);
-        
+
         // 添加详细的调试信息
-        console.log('=== 表单提交调试信息 ==='+formData);
+        console.log('=== 表单提交调试信息 ===' + formData);
         console.log('表单数据内容:');
         for (let [key, value] of formData.entries()) {
             console.log(`${key}: ${value} (类型: ${typeof value})`);
         }
-        
+
         // 修复字段名称，使其与表单填充时的字段ID保持一致
         const similarityValue = formData.get('similarity');
         const topNValue = formData.get('topN');
         const temperatureValue = formData.get('temperature'); // 修复：使用正确的字段名称
-        
+
         console.log('获取到的字段值:');
         console.log('- similarityValue:', similarityValue, '(类型:', typeof similarityValue, ')');
         console.log('- topNValue:', topNValue, '(类型:', typeof topNValue, ')');
         console.log('- temperatureValue:', temperatureValue, '(类型:', typeof temperatureValue, ')');
-        
+
         // 改进的数据类型转换
         const parsedSimilarity = similarityValue ? parseFloat(similarityValue) : null;
         const parsedTopN = topNValue ? parseInt(topNValue) : null;
         const parsedTemperature = temperatureValue ? parseFloat(temperatureValue) : null;
-        
+
         console.log('解析后的数值:');
         console.log('- parsedSimilarity:', parsedSimilarity, '(类型:', typeof parsedSimilarity, ')');
         console.log('- parsedTopN:', parsedTopN, '(类型:', typeof parsedTopN, ')');
         console.log('- parsedTemperature:', parsedTemperature, '(类型:', typeof parsedTemperature, ')');
-        
+
         const ruleData = {
             name: formData.get('ruleName'),
             similarity: parsedSimilarity !== null ? parsedSimilarity : 0.7,
@@ -1064,43 +1064,43 @@ class BicQASettings {
             prompt: formData.get('rulePrompt'),
             isDefault: formData.get('isDefaultRule') === 'on'
         };
-        
+
         console.log('最终规则数据:', ruleData);
-        
+
         // 验证数据
         if (!ruleData.name || ruleData.name.trim() === '') {
             this.showMessage('请输入规则名称', 'error');
             return;
         }
-        
+
         if (isNaN(ruleData.similarity) || ruleData.similarity < 0 || ruleData.similarity > 1) {
             this.showMessage('相似度必须在0-1之间', 'error');
             return;
         }
-        
+
         if (isNaN(ruleData.topN) || ruleData.topN < 1 || ruleData.topN > 10) {
             this.showMessage('TOP N必须在1-10之间', 'error');
             return;
         }
-        
+
         if (isNaN(ruleData.temperature) || ruleData.temperature < 0 || ruleData.temperature > 2) {
             this.showMessage('温度必须在0-2之间', 'error');
             return;
         }
-        
+
         console.log('提交的规则数据:', ruleData);
-        
+
         try {
             let newRule = null;
-            
+
             if (this.editingRule) {
                 // 编辑模式
                 const index = this.rules.findIndex(r => r.id === this.editingRule.id);
                 if (index !== -1) {
                     // 保留原有的id和description属性，但允许修改isDefault状态
                     const originalRule = this.rules[index];
-                    this.rules[index] = { 
-                        ...originalRule, 
+                    this.rules[index] = {
+                        ...originalRule,
                         ...ruleData,
                         id: originalRule.id, // 保持原有ID
                         description: originalRule.description // 保持原有的description
@@ -1119,7 +1119,7 @@ class BicQASettings {
                 this.rules.push(newRule);
                 this.showMessage('规则添加成功', 'success');
             }
-            
+
             // 如果设置为默认规则，取消其他规则的默认状态
             if (ruleData.isDefault) {
                 this.rules.forEach(rule => {
@@ -1128,11 +1128,11 @@ class BicQASettings {
                     }
                 });
             }
-            
+
             await this.saveRules();
             this.renderRules();
             this.hideRuleForm();
-            
+
         } catch (error) {
             console.error('保存规则失败:', error);
             this.showMessage('保存规则失败: ' + error.message, 'error');
@@ -1159,7 +1159,7 @@ class BicQASettings {
         console.log('要编辑的规则:', rule);
         console.log('规则temperature值:', rule.temperature, '类型:', typeof rule.temperature);
         console.log('当前所有规则:', this.rules);
-        
+
         // 检查是否为内置规则
         if (this.isBuiltInRule(rule.id)) {
             const defaultRules = this.getDefaultRules();
@@ -1171,25 +1171,25 @@ class BicQASettings {
                 console.log('温度值是否匹配:', rule.temperature === defaultRule.temperature);
             }
         }
-        
+
         this.showRuleForm(rule);
     }
 
     async deleteProvider(index) {
         const provider = this.providers[index];
         const relatedModels = this.getProviderModels(provider.name);
-        
+
         if (relatedModels.length > 0) {
             const confirm = window.confirm(
                 `删除服务商"${provider.name}"将同时删除其关联的${relatedModels.length}个模型，确定继续吗？`
             );
             if (!confirm) return;
-            
+
             // 删除关联的模型
             this.models = this.models.filter(model => model.provider !== provider.name);
             await this.saveModels();
         }
-        
+
         this.providers.splice(index, 1);
         await this.saveProviders();
         this.renderProviders();
@@ -1201,10 +1201,10 @@ class BicQASettings {
         const model = this.models[index];
         if (confirm(`确定要删除模型 "${model.name}" 吗？`)) {
             this.models.splice(index, 1);
-            
+
             // 确保删除后仍然只有一个默认模型
             this.ensureSingleDefaultModel();
-            
+
             await this.saveModels();
             this.renderModels();
             this.showMessage('模型删除成功', 'success');
@@ -1213,7 +1213,7 @@ class BicQASettings {
 
     async deleteRule(index) {
         const rule = this.rules[index];
-        
+
         // 检查是否为内置规则
         if (this.isBuiltInRule(rule.id)) {
             // 如果是内置规则，询问是否要恢复默认值
@@ -1221,7 +1221,7 @@ class BicQASettings {
                 `"${rule.name}" 是内置规则，删除后将恢复为默认值。确定继续吗？`
             );
             if (!confirm) return;
-            
+
             // 恢复默认规则
             const defaultRules = this.getDefaultRules();
             const defaultRule = defaultRules.find(r => r.id === rule.id);
@@ -1233,7 +1233,7 @@ class BicQASettings {
                 return;
             }
         }
-        
+
         // 删除用户自定义规则或恢复默认值失败的情况
         if (confirm(`确定要删除规则 "${rule.name}" 吗？`)) {
             this.rules.splice(index, 1);
@@ -1246,43 +1246,43 @@ class BicQASettings {
     async testProvider(index) {
         console.log('测试服务商:', index, this.providers[index]);
         const provider = this.providers[index];
-        
+
         // 显示初始测试提示
         this.showMessage('正在测试服务商连接...', 'info');
-        
+
         try {
             // 首先测试API Key的有效性
             this.showMessage('正在验证API Key...', 'info');
             await this.validateAPIKey(provider);
-            
+
             // 显示获取模型列表的提示
             this.showMessage('API Key验证成功，正在获取可用模型列表...', 'info');
-            
+
             // 然后进行完整的API测试
             const testResult = await this.performAPITest(provider);
-            
+
             // 显示成功消息和可用模型信息
             const modelCount = testResult.availableModels.length;
             const modelNames = testResult.availableModels.slice(0, 3).map(m => m.displayName || m.name).join(', ');
             const moreModels = modelCount > 3 ? ` 等${modelCount}个模型` : '';
-            
+
             // 显示最终成功消息，明确说明测试内容
             const testType = this.isOllamaService(provider) ? '' : '';
             this.showMessage(`✅ 服务商"${provider.name}"连接测试成功${testType}！发现 ${modelCount} 个模型: ${modelNames}${moreModels}`, 'success');
-            
+
             // 如果模型数量较多，在控制台显示完整列表
             if (modelCount > 3) {
                 console.log('完整可用模型列表:', testResult.availableModels.map(m => m.displayName || m.name));
             }
-            
+
             // 延迟一下再显示弹窗，让用户看到成功消息
             setTimeout(() => {
                 this.showModelSelectionDialog(provider, testResult.availableModels);
             }, 1000);
-            
+
             // 更新测试状态
             this.updateProviderStatus(index, 'active');
-            
+
         } catch (error) {
             console.error('API测试失败:', error);
             this.showMessage(`❌ 服务商"${provider.name}"连接测试失败: ${error.message}`, 'error');
@@ -1462,7 +1462,7 @@ class BicQASettings {
             }
 
             // 检查是否已有该服务商的默认模型
-            const existingDefaultModel = this.models.find(model => 
+            const existingDefaultModel = this.models.find(model =>
                 model.provider === provider.name && model.isDefault
             );
 
@@ -1472,7 +1472,7 @@ class BicQASettings {
                 .map(model => model.name);
 
             // 过滤出新增的模型（不包含已存在的）
-            const newModels = selectedModels.filter(model => 
+            const newModels = selectedModels.filter(model =>
                 !existingModelNames.includes(model.name)
             );
 
@@ -1486,8 +1486,8 @@ class BicQASettings {
             // 智能设置默认模型
             if (newModels.length > 0) {
                 if (existingDefaultModel) {
-                    const sameModel = newModels.find(model => 
-                        model.name === existingDefaultModel.name || 
+                    const sameModel = newModels.find(model =>
+                        model.name === existingDefaultModel.name ||
                         model.displayName === existingDefaultModel.displayName
                     );
                     if (sameModel) {
@@ -1538,18 +1538,18 @@ class BicQASettings {
     async syncModelsFromProvider(provider, availableModels) {
         try {
             this.showMessage('正在同步模型列表...', 'info');
-            
+
             // 检查是否已有该服务商的默认模型
-            const existingDefaultModel = this.models.find(model => 
+            const existingDefaultModel = this.models.find(model =>
                 model.provider === provider.name && model.isDefault
             );
-            
+
             // 获取该服务商下现有的模型名称列表，用于去重
             // 只检查同一服务商下的模型名称重复，允许不同服务商有相同名称
             const existingModelNames = this.models
                 .filter(model => model.provider === provider.name)
                 .map(model => model.name);
-            
+
             // 过滤出新增的模型（不包含同一服务商下已存在的）
             const newModels = availableModels
                 .filter(model => {
@@ -1564,19 +1564,19 @@ class BicQASettings {
                     temperature: null,
                     isDefault: false
                 }));
-            
+
             // 如果没有新模型，提示用户
             if (newModels.length === 0) {
                 this.showMessage('该服务商下的所有模型都已存在，无需重复添加', 'info');
                 return;
             }
-            
+
             // 智能设置默认模型
             if (newModels.length > 0) {
                 // 如果之前有默认模型，尝试保持相同的模型名称作为默认
                 if (existingDefaultModel) {
-                    const sameModel = newModels.find(model => 
-                        model.name === existingDefaultModel.name || 
+                    const sameModel = newModels.find(model =>
+                        model.name === existingDefaultModel.name ||
                         model.displayName === existingDefaultModel.displayName
                     );
                     if (sameModel) {
@@ -1597,21 +1597,21 @@ class BicQASettings {
                     }
                 }
             }
-            
+
             // 增量添加新模型
             this.models.push(...newModels);
-            
+
             // 确保全局只有一个默认模型
             this.ensureSingleDefaultModel();
-            
+
             // 保存模型配置
             await this.saveModels();
-            
+
             // 重新渲染模型列表
             this.renderModels();
-            
+
             this.showMessage(`已增量添加 ${newModels.length} 个新模型到模型列表`, 'success');
-            
+
         } catch (error) {
             console.error('同步模型列表失败:', error);
             this.showMessage('同步模型列表失败: ' + error.message, 'error');
@@ -1621,7 +1621,7 @@ class BicQASettings {
     // 确保只有一个默认模型的方法
     ensureSingleDefaultModel() {
         const defaultModels = this.models.filter(model => model.isDefault);
-        
+
         if (defaultModels.length > 1) {
             console.warn('发现多个默认模型，保留第一个，取消其他的默认状态');
             // 保留第一个默认模型，取消其他的
@@ -1644,20 +1644,20 @@ class BicQASettings {
     async validateAPIKey(provider) {
         // 根据服务商名称来判断如何验证API Key
         const providerName = provider.name.toLowerCase();
-        
+
         if (providerName.includes('deepseek')) {
             try {
                 const headers = {
                     'Content-Type': 'application/json'
                 };
                 this.setAuthHeaders(headers, provider);
-                
+
                 // 尝试获取模型列表
                 const response = await fetch('https://api.deepseek.com/v1/models', {
                     method: 'GET',
                     headers: headers
                 });
-                
+
                 if (response.status === 401) {
                     throw new Error('API Key无效或已过期');
                 } else if (response.status === 403) {
@@ -1666,10 +1666,10 @@ class BicQASettings {
                     const errorText = await response.text();
                     throw new Error(`API Key验证失败: ${response.status} ${response.statusText}\n${errorText}`);
                 }
-                
+
                 const data = await response.json();
                 console.log('API Key验证成功，可用模型:', data);
-                
+
             } catch (error) {
                 if (error.message.includes('API Key')) {
                     throw error;
@@ -1683,7 +1683,7 @@ class BicQASettings {
     async performAPITest(provider, specificModel = null) {
         console.log('开始API测试，服务商:', provider.name, '指定模型:', specificModel);
         console.log('API端点:', provider.apiEndpoint);
-        
+
         // 构建正确的API端点URL
         let apiEndpoint = provider.apiEndpoint;
         if (!apiEndpoint.includes("/chat/completions")) {
@@ -1695,31 +1695,31 @@ class BicQASettings {
         }
         console.log('处理后的API端点:', apiEndpoint);
         console.log('认证类型:', provider.authType);
-        
+
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
         console.log('检测到服务类型:', isOllama ? 'Ollama' : '其他服务商');
-        
+
         try {
             // 对于Ollama服务，使用与ollama_test.js相同的测试流程
             if (isOllama) {
                 return await this.performOllamaTest(provider, specificModel);
             }
-            
+
             // 其他服务商使用原有逻辑
             // 首先尝试获取可用模型列表
             const availableModels = await this.getAvailableModels(provider);
             console.log('获取到的可用模型:', availableModels);
-            
+
             if (!availableModels || availableModels.length === 0) {
                 throw new Error('无法获取可用模型列表，请检查API配置');
             }
-            
+
             // 选择测试模型
             let testModel;
             if (specificModel) {
                 // 如果指定了具体模型，验证该模型是否可用
-                const modelExists = availableModels.find(m => 
+                const modelExists = availableModels.find(m =>
                     m.id === specificModel || m.name === specificModel
                 );
                 if (modelExists) {
@@ -1731,9 +1731,9 @@ class BicQASettings {
                 // 否则选择第一个可用模型
                 testModel = availableModels[0].id || availableModels[0].name;
             }
-            
+
             console.log('选择的测试模型:', testModel);
-            
+
             // 根据不同的API服务商构建测试请求
             const testMessage = this.buildTestMessage(provider, testModel);
             const headers = {
@@ -1773,7 +1773,7 @@ class BicQASettings {
                 // 提供更详细的错误信息
                 let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
                 let suggestions = '';
-                
+
                 if (response.status === 400) {
                     errorMessage += '\n请求格式错误，请检查：\n1. 模型名称是否正确\n2. 请求格式是否符合API要求\n3. 请求体格式是否正确';
                     suggestions = '\n\n解决建议：\n• 检查模型名称是否在可用模型列表中\n• 确认API请求格式是否正确\n• 查看API文档确认参数要求';
@@ -1811,7 +1811,7 @@ class BicQASettings {
                         errorMessage += `\n\n服务器错误详情：${errorText}`;
                     }
                 }
-                
+
                 throw new Error(errorMessage + suggestions);
             }
 
@@ -1823,7 +1823,7 @@ class BicQASettings {
                 availableModels: availableModels,
                 response: data
             };
-            
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw new Error('请求超时，请检查：\n1. 网络连接是否正常\n2. API服务是否响应\n3. 防火墙是否阻止连接');
@@ -1837,43 +1837,43 @@ class BicQASettings {
     // 专门处理Ollama服务的测试方法
     async performOllamaTest(provider, specificModel = null) {
         console.log('开始Ollama服务测试，原始端点:', provider.apiEndpoint);
-        
+
         // 构建基础URL（与ollama_test.js保持一致）
         let baseUrl = provider.apiEndpoint;
         // this.buildOllamaBaseUrl(provider);
         console.log('Ollama基础URL:', baseUrl);
-        
+
         const results = {
             serviceReachable: false,
             modelsRetrieved: false,
             modelValidated: false
             // 移除 chatWorking 步骤，避免因单个模型问题影响整体测试
         };
-        
+
         try {
             // 步骤1: 检查服务是否可达
             results.serviceReachable = await this.testOllamaServiceReachability(baseUrl);
             if (!results.serviceReachable) {
                 throw new Error('Ollama服务不可达');
             }
-            
+
             // 步骤2: 获取可用模型列表
             const availableModels = await this.testOllamaGetModels(baseUrl, provider.apiKey);
             results.modelsRetrieved = availableModels !== null;
-            
+
             // 步骤3: 验证指定模型
             const testModel = specificModel || (availableModels && availableModels.length > 0 ? availableModels[0].name : null);
             if (testModel) {
                 results.modelValidated = await this.testOllamaSpecificModel(baseUrl, provider.apiKey, testModel, availableModels);
             }
-            
+
             // 计算成功率（只计算前三步）
             const successCount = Object.values(results).filter(Boolean).length;
             const totalCount = Object.keys(results).length;
-            
+
             console.log('Ollama测试结果:', results);
             console.log(`成功率: ${successCount}/${totalCount}`);
-            
+
             // 调整成功判断标准：前三步都通过即可认为服务商可用
             if (successCount === totalCount) {
                 return {
@@ -1885,7 +1885,7 @@ class BicQASettings {
             } else {
                 throw new Error(`Ollama服务测试失败\n\n${results.serviceReachable ? '✅ 1、Ollama服务可达，连接正常\n' : '❌ 1、Ollama服务不可达\n'}\n${results.modelsRetrieved ? '✅ 2、Ollama模型列表获取成功' : '❌ 2、Ollama模型列表获取失败'}\n${results.modelValidated ? `✅ 3、Ollama模型 "${testModel}" 在可用列表中` : `❌ 3、Ollama模型 "${testModel}" 不在可用列表中\n`}`);
             }
-            
+
         } catch (error) {
             console.error('Ollama测试失败:', error);
             throw error;
@@ -1920,15 +1920,15 @@ class BicQASettings {
     // 测试Ollama服务可达性
     async testOllamaServiceReachability(baseUrl) {
         console.log('步骤 1: 检查Ollama服务是否可达...');
-        
+
         try {
             const response = await fetch(`${baseUrl}/models`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             console.log(`Ollama服务响应状态: ${response.status} ${response.statusText}`);
-            
+
             if (response.ok) {
                 console.log('✅ Ollama服务可达，连接正常');
                 return true;
@@ -1945,31 +1945,31 @@ class BicQASettings {
     // 获取Ollama模型列表
     async testOllamaGetModels(baseUrl, apiKey) {
         console.log('步骤 2: 获取Ollama可用模型列表...');
-        
+
         try {
             const headers = { 'Content-Type': 'application/json' };
             if (apiKey && apiKey.trim() !== '') {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
-            
+
             console.log(`请求Ollama模型列表: ${baseUrl}/models`);
-            
+
             const response = await fetch(`${baseUrl}/models`, {
                 method: 'GET',
                 headers: headers
             });
-            
+
             console.log(`Ollama模型列表响应状态: ${response.status} ${response.statusText}`);
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.log(`❌ 获取Ollama模型列表失败: ${errorText}`);
                 return null;
             }
-            
+
             const data = await response.json();
             console.log(`✅ Ollama模型列表获取成功`);
-            
+
             let models = [];
             if (data.data && Array.isArray(data.data)) {
                 models = data.data.map(model => ({
@@ -1984,10 +1984,10 @@ class BicQASettings {
                     displayName: model.displayName || model.name || model.id || model
                 }));
             }
-            
+
             console.log(`解析后的Ollama模型列表: ${JSON.stringify(models, null, 2)}`);
             return models;
-            
+
         } catch (error) {
             console.log(`❌ 获取Ollama模型列表异常: ${error.message}`);
             return null;
@@ -1997,16 +1997,16 @@ class BicQASettings {
     // 验证Ollama指定模型
     async testOllamaSpecificModel(baseUrl, apiKey, modelName, availableModels) {
         console.log('步骤 3: 验证Ollama指定模型...');
-        
+
         if (!availableModels || availableModels.length === 0) {
             console.log('⚠️ 无法获取Ollama模型列表，跳过模型验证');
             return true;
         }
-        
-        const modelExists = availableModels.find(m => 
+
+        const modelExists = availableModels.find(m =>
             m.id === modelName || m.name === modelName
         );
-        
+
         if (modelExists) {
             console.log(`✅ Ollama模型 "${modelName}" 在可用列表中`);
             return true;
@@ -2019,10 +2019,10 @@ class BicQASettings {
 
     async getAvailableModels(provider) {
         console.log('开始获取可用模型列表，服务商:', provider.name);
-        
+
         const isOllama = this.isOllamaService(provider);
         console.log('检测到服务类型:', isOllama ? 'Ollama' : '其他服务商');
-        
+
         // 优先使用用户自定义的模型列表端点
         if (provider.modelsEndpoint) {
             console.log('使用自定义模型列表端点:', provider.modelsEndpoint);
@@ -2031,12 +2031,12 @@ class BicQASettings {
                     'Content-Type': 'application/json'
                 };
                 this.setAuthHeaders(headers, provider);
-                
+
                 const response = await fetch(provider.modelsEndpoint, {
                     method: 'GET',
                     headers: headers
                 });
-                
+
                 if (!response.ok) {
                     console.warn(`自定义端点获取模型列表失败 (${response.status}): ${response.statusText}`);
                     // 如果自定义端点失败，继续使用默认逻辑
@@ -2050,42 +2050,42 @@ class BicQASettings {
                 // 如果自定义端点失败，继续使用默认逻辑
             }
         }
-        
+
         // 使用新的URL构建方法
         const modelsEndpoint = this.buildModelsUrl(provider);
         console.log('构建的模型列表端点:', modelsEndpoint);
-        
+
         if (!modelsEndpoint) {
             // 如果无法确定模型列表端点，返回默认模型列表
             console.log('无法确定模型列表端点，使用默认模型列表');
             return this.getDefaultModelsForProvider(provider);
         }
-        
+
         try {
             const headers = {
                 'Content-Type': 'application/json'
             };
             this.setAuthHeaders(headers, provider);
-            
+
             console.log('尝试获取模型列表，端点:', modelsEndpoint);
-            
+
             const response = await fetch(modelsEndpoint, {
                 method: 'GET',
                 headers: headers
             });
-            
+
             console.log('模型列表响应状态:', response.status, response.statusText);
-            
+
             if (!response.ok) {
                 console.warn(`获取模型列表失败 (${response.status}): ${response.statusText}`);
                 return this.getDefaultModelsForProvider(provider);
             }
-            
+
             const data = await response.json();
             console.log('原始模型列表响应:', data);
-            
+
             return this.parseModelsResponse(data, provider);
-            
+
         } catch (error) {
             console.error('获取模型列表时发生错误:', error);
             return this.getDefaultModelsForProvider(provider);
@@ -2096,7 +2096,7 @@ class BicQASettings {
     parseModelsResponse(data, provider) {
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
-        
+
         if (isOllama) {
             // Ollama API 格式（OpenAI 兼容）
             let models = [];
@@ -2116,11 +2116,11 @@ class BicQASettings {
             console.log('解析后的 Ollama 模型列表:', models);
             return models;
         }
-        
+
         // 根据服务商名称而不是URL来判断
         const providerName = provider.name.toLowerCase();
         let models = [];
-        
+
         if (providerName.includes('deepseek')) {
             // DeepSeek API格式
             if (data.data && Array.isArray(data.data)) {
@@ -2180,7 +2180,7 @@ class BicQASettings {
                 }));
             }
         }
-        
+
         console.log('解析后的模型列表:', models);
         return models;
     }
@@ -2189,7 +2189,7 @@ class BicQASettings {
     getDefaultModelsForProvider(provider) {
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
-        
+
         if (isOllama) {
             return [
                 { id: 'deepseek-r1:8b', name: 'deepseek-r1:8b', displayName: 'DeepSeek R1 8B' },
@@ -2199,10 +2199,10 @@ class BicQASettings {
                 { id: 'codellama:7b', name: 'codellama:7b', displayName: 'Code Llama 7B' }
             ];
         }
-        
+
         // 根据服务商名称而不是URL来判断
         const providerName = provider.name.toLowerCase();
-        
+
         if (providerName.includes('deepseek')) {
             return [
                 { id: 'deepseek-chat', name: 'deepseek-chat', displayName: 'DeepSeek Chat' },
@@ -2239,7 +2239,7 @@ class BicQASettings {
         debugger;
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
-        
+
         if (isOllama) {
             return {
                 model: modelName,
@@ -2253,10 +2253,10 @@ class BicQASettings {
                 temperature: 0.7
             };
         }
-        
+
         // 根据服务商名称而不是URL来判断
         const providerName = provider.apiEndpoint.toLowerCase();
-        
+
         if (providerName.includes('deepseek')) {
             return {
                 model: modelName,
@@ -2308,7 +2308,7 @@ class BicQASettings {
                     temperature: 0.7
                 }
             };
-        }  else if (providerName.includes('aliyun') || providerName.includes('tongyi')) {
+        } else if (providerName.includes('aliyun') || providerName.includes('tongyi')) {
             return {
                 model: modelName,
                 messages: [
@@ -2354,27 +2354,27 @@ class BicQASettings {
         console.log('测试模型:', index, this.models[index]);
         const model = this.models[index];
         this.showMessage('正在查找关联服务商...', 'info');
-        
+
         try {
             // 获取关联的服务商
             const provider = this.providers.find(p => p.name === model.provider);
             if (!provider) {
                 throw new Error('找不到关联的服务商');
             }
-            
+
             this.showMessage(`找到服务商: ${provider.name}，正在测试模型聊天功能...`, 'info');
-            
+
             // 直接调用聊天接口进行模型测试
             const testResult = await this.performModelChatTest(provider, model.name);
-            
+
             // 显示详细的成功信息
             const modelDisplayName = model.displayName || model.name;
-            
+
             this.showMessage(`模型"${modelDisplayName}"聊天测试成功！模型可以正常响应对话`, 'success');
-            
+
             // 更新模型状态
             this.updateModelStatus(index, 'active');
-            
+
         } catch (error) {
             console.error('模型聊天测试失败:', error);
             const modelDisplayName = model.displayName || model.name;
@@ -2386,7 +2386,7 @@ class BicQASettings {
     // 专门用于模型聊天测试的方法
     async performModelChatTest(provider, modelName) {
         console.log('开始模型聊天测试，服务商:', provider.name, '模型:', modelName);
-        
+
         // 构建正确的聊天API端点URL
         let apiEndpoint = provider.apiEndpoint;
         if (!apiEndpoint.includes("/chat/completions")) {
@@ -2397,10 +2397,10 @@ class BicQASettings {
             }
         }
         console.log('聊天测试API端点:', apiEndpoint);
-        
+
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
-        
+
         try {
             // 构建测试消息
             const testMessage = this.buildTestMessage(provider, modelName);
@@ -2441,7 +2441,7 @@ class BicQASettings {
                 // 提供更详细的错误信息
                 let errorMessage = `聊天测试失败 - HTTP ${response.status}: ${response.statusText}`;
                 let suggestions = '';
-                
+
                 if (response.status === 400) {
                     errorMessage += '\n请求格式错误，请检查：\n1. 模型名称是否正确\n2. 请求格式是否符合API要求\n3. 请求体格式是否正确';
                     suggestions = '\n\n解决建议：\n• 检查模型名称是否正确\n• 确认API请求格式是否正确\n• 查看API文档确认参数要求';
@@ -2479,13 +2479,13 @@ class BicQASettings {
                         errorMessage += `\n\n服务器错误详情：${errorText}`;
                     }
                 }
-                
+
                 throw new Error(errorMessage + suggestions);
             }
 
             const data = await response.json();
             console.log('聊天测试成功，响应数据:', data);
-            
+
             // 验证响应数据是否包含有效的回复
             let hasValidResponse = false;
             if (data.choices && data.choices.length > 0) {
@@ -2495,18 +2495,18 @@ class BicQASettings {
                     console.log('模型回复内容:', choice.message.content);
                 }
             }
-            
+
             if (!hasValidResponse) {
                 throw new Error('模型响应格式异常，未收到有效的回复内容');
             }
-            
+
             return {
                 success: true,
                 model: modelName,
                 response: data,
                 message: '模型聊天测试成功，模型可以正常响应对话'
             };
-            
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw new Error('聊天测试请求超时，请检查：\n1. 网络连接是否正常\n2. API服务是否响应\n3. 防火墙是否阻止连接');
@@ -2540,13 +2540,13 @@ class BicQASettings {
     setAuthHeaders(headers, provider) {
         // 检测是否为 Ollama 服务
         const isOllama = this.isOllamaService(provider);
-        
+
         if (provider.authType === 'Bearer') {
             headers['Authorization'] = `Bearer ${provider.apiKey}`;
         } else if (provider.authType === 'API-Key') {
             // 根据不同的API服务商设置不同的认证头
             const providerName = provider.name.toLowerCase();
-            
+
             if (isOllama) {
                 // Ollama 服务通常使用 "ollama" 作为 API Key，或者不需要认证
                 if (provider.apiKey && provider.apiKey.trim() !== '') {
@@ -2577,7 +2577,7 @@ class BicQASettings {
             // 对于不需要认证的服务商（如本地 Ollama），不添加认证头
             console.log('服务商不需要认证，跳过认证头设置');
         }
-        
+
         console.log('设置的认证头:', headers);
     }
 
@@ -2601,7 +2601,7 @@ class BicQASettings {
         const knowledgeServiceUrl = document.getElementById('knowledgeServiceUrl');
         const knowledgeServiceApiKey = document.getElementById('knowledgeServiceApiKey');
         const enableKnowledgeService = document.getElementById('enableKnowledgeService');
-        
+
         const knowledgeServiceConfig = {
             default_url: knowledgeServiceUrl ? knowledgeServiceUrl.value.trim() : '',
             api_key: knowledgeServiceApiKey ? knowledgeServiceApiKey.value.trim() : '',
@@ -2657,12 +2657,12 @@ class BicQASettings {
                     if (defaultRule) {
                         // 比较所有字段，包括isDefault状态
                         return rule.temperature !== defaultRule.temperature ||
-                               rule.similarity !== defaultRule.similarity ||
-                               rule.topN !== defaultRule.topN ||
-                               rule.prompt !== defaultRule.prompt ||
-                               rule.name !== defaultRule.name ||
-                               rule.description !== defaultRule.description ||
-                               rule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
+                            rule.similarity !== defaultRule.similarity ||
+                            rule.topN !== defaultRule.topN ||
+                            rule.prompt !== defaultRule.prompt ||
+                            rule.name !== defaultRule.name ||
+                            rule.description !== defaultRule.description ||
+                            rule.isDefault !== defaultRule.isDefault; // 添加isDefault字段比较
                     }
                 }
                 return false;
@@ -2671,7 +2671,7 @@ class BicQASettings {
             // 保存所有规则
             console.log('正在保存所有规则配置:', this.rules);
             console.log('检测到内置规则修改:', hasModifiedBuiltInRules);
-            await chrome.storage.sync.set({ 
+            await chrome.storage.sync.set({
                 rules: this.rules,
                 defaultRulesModified: hasModifiedBuiltInRules // 只在真正修改了内置规则时才标记
             });
@@ -2687,30 +2687,30 @@ class BicQASettings {
         try {
             const confirm = window.confirm('确定要重置所有参数规则为默认值吗？这将删除所有自定义规则。');
             if (!confirm) return;
-            
+
             // 获取默认规则
             const defaultRules = this.getDefaultRules();
-            
+
             // 验证默认规则的温度值是否正确
             console.log('重置前的默认规则:', defaultRules);
             defaultRules.forEach(rule => {
                 console.log(`规则 ${rule.name}: temperature=${rule.temperature}, similarity=${rule.similarity}, topN=${rule.topN}`);
             });
-            
+
             // 重置规则列表
             this.rules = [...defaultRules];
-            
+
             // 保存重置后的规则，并清除修改标记
-            await chrome.storage.sync.set({ 
+            await chrome.storage.sync.set({
                 rules: this.rules,
                 defaultRulesModified: false // 重置为未修改状态
             });
-            
+
             // 重新渲染规则列表
             this.renderRules();
-            
+
             this.showMessage('参数规则已重置为默认值', 'success');
-            
+
             console.log('重置后的规则:', this.rules);
         } catch (error) {
             console.error('重置默认规则失败:', error);
@@ -2721,12 +2721,12 @@ class BicQASettings {
     async resetSettings() {
         const confirm = window.confirm('确定要重置所有设置吗？此操作不可撤销。');
         if (!confirm) return;
-        
+
         this.providers = [];
         this.models = [];
         this.rules = this.getDefaultRules();
         this.currentSettings = this.getDefaultSettings();
-        
+
         try {
             await chrome.storage.sync.clear();
             this.renderProviders();
@@ -2743,22 +2743,22 @@ class BicQASettings {
     async clearSettings() {
         const confirm = window.confirm('确定要清除所有缓存吗？此操作不可撤销。');
         if (!confirm) return;
-        
+
         try {
             console.log('开始清理缓存数据...');
-            
+
             // 清理本地存储（配置文件等）
             await chrome.storage.local.clear();
-            
+
             // 选择性清理同步存储（保留重要配置，清理历史数据）
             await chrome.storage.sync.remove([
                 'currentSessionHistory'
             ]);
-            
+
             // 清理localStorage和sessionStorage
             localStorage.clear();
             sessionStorage.clear();
-            
+
             console.log('启动时缓存清理完成');
         } catch (error) {
             console.error('缓存清理失败:', error);
@@ -2770,14 +2770,14 @@ class BicQASettings {
         const knowledgeServiceUrl = document.getElementById('knowledgeServiceUrl');
         const knowledgeServiceApiKey = document.getElementById('knowledgeServiceApiKey');
         const enableKnowledgeService = document.getElementById('enableKnowledgeService');
-        
+
         const knowledgeServiceConfig = {
             default_url: knowledgeServiceUrl ? knowledgeServiceUrl.value.trim() : '',
             api_key: knowledgeServiceApiKey ? knowledgeServiceApiKey.value.trim() : '',
             enabled: enableKnowledgeService ? enableKnowledgeService.checked : false,
             updated_at: new Date().toISOString()
         };
-        
+
         const exportData = {
             providers: this.providers,
             models: this.models,
@@ -2787,7 +2787,7 @@ class BicQASettings {
             exportDate: new Date().toISOString(),
             version: '1.0.0'
         };
-        
+
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -2795,7 +2795,7 @@ class BicQASettings {
         a.download = `bic-qa-settings-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        
+
         this.showMessage('配置已导出', 'success');
     }
 
@@ -2806,23 +2806,23 @@ class BicQASettings {
         input.onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             try {
                 const text = await file.text();
                 const importData = JSON.parse(text);
-                
+
                 if (importData.providers && importData.models) {
                     this.providers = importData.providers;
                     this.models = importData.models;
                     this.rules = importData.rules || this.getDefaultRules();
                     this.currentSettings = importData.generalSettings || this.getDefaultSettings();
-                    
+
                     // 导入知识库服务配置
                     if (importData.knowledgeServiceConfig) {
                         const knowledgeServiceUrl = document.getElementById('knowledgeServiceUrl');
                         const knowledgeServiceApiKey = document.getElementById('knowledgeServiceApiKey');
                         const enableKnowledgeService = document.getElementById('enableKnowledgeService');
-                        
+
                         if (knowledgeServiceUrl) {
                             knowledgeServiceUrl.value = importData.knowledgeServiceConfig.default_url || '';
                         }
@@ -2833,7 +2833,7 @@ class BicQASettings {
                             enableKnowledgeService.checked = importData.knowledgeServiceConfig.enabled || false;
                         }
                     }
-                    
+
                     await this.saveAllSettings();
                     this.renderProviders();
                     this.renderModels();
@@ -2856,7 +2856,7 @@ class BicQASettings {
             // 查找是否已经存在popup.html的标签页
             chrome.tabs.query({}, (tabs) => {
                 let popupTab = null;
-                
+
                 // 查找popup.html标签页
                 for (let tab of tabs) {
                     if (tab.url && tab.url.includes('popup.html')) {
@@ -2864,16 +2864,19 @@ class BicQASettings {
                         break;
                     }
                 }
-                
+
                 if (popupTab) {
-                    // 如果找到popup标签页，激活它
-                    chrome.tabs.update(popupTab.id, { active: true });
-                    
-                    // 关闭当前设置标签页
-                    chrome.tabs.getCurrent((currentTab) => {
-                        if (currentTab) {
-                            chrome.tabs.remove(currentTab.id);
-                        }
+                    // 如果找到popup标签页，先刷新它，然后激活它
+                    chrome.tabs.reload(popupTab.id, () => {
+                        // 刷新后激活标签页
+                        chrome.tabs.update(popupTab.id, { active: true });
+
+                        // 关闭当前设置标签页
+                        chrome.tabs.getCurrent((currentTab) => {
+                            if (currentTab) {
+                                chrome.tabs.remove(currentTab.id);
+                            }
+                        });
                     });
                 } else {
                     // 如果没有找到popup标签页，创建新的
@@ -2881,7 +2884,7 @@ class BicQASettings {
                         url: chrome.runtime.getURL('popup.html'),
                         active: true
                     });
-                    
+
                     // 关闭当前设置标签页
                     chrome.tabs.getCurrent((currentTab) => {
                         if (currentTab) {
@@ -2913,7 +2916,7 @@ class BicQASettings {
 
     showMessage(message, type = 'info') {
         console.log(`显示消息 [${type}]:`, message);
-        
+
         // 创建消息提示
         const messageDiv = document.createElement('div');
         messageDiv.className = `message message-${type}`;
@@ -2935,9 +2938,9 @@ class BicQASettings {
             word-wrap: break-word;
             line-height: 1.4;
         `;
-        
+
         document.body.appendChild(messageDiv);
-        
+
         // 根据消息类型设置不同的显示时间
         let displayTime = 3000; // 默认3秒
         if (type === 'success') {
@@ -2947,7 +2950,7 @@ class BicQASettings {
         } else if (type === 'info') {
             displayTime = 4000; // 信息消息显示4秒
         }
-        
+
         setTimeout(() => {
             messageDiv.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => messageDiv.remove(), 300);
@@ -2957,7 +2960,7 @@ class BicQASettings {
     // 加载注册配置
     async loadRegistrationConfig() {
         console.log('开始加载注册配置...');
-        
+
         // 默认配置
         const defaultConfig = {
             registration_service: {
@@ -2966,12 +2969,12 @@ class BicQASettings {
                 retry_count: 3
             }
         };
-        
+
         try {
             // 1. 首先尝试从保存的配置文件加载
             const savedConfigFile = await chrome.storage.local.get(['registrationConfigFile']);
             let config = null;
-            
+
             if (savedConfigFile.registrationConfigFile) {
                 try {
                     config = JSON.parse(savedConfigFile.registrationConfigFile);
@@ -2980,7 +2983,7 @@ class BicQASettings {
                     console.warn('解析保存的配置文件失败:', parseError);
                 }
             }
-            
+
             // 2. 如果没有保存的配置文件，尝试加载默认配置文件
             if (!config) {
                 console.log('尝试加载默认配置文件...');
@@ -2998,7 +3001,7 @@ class BicQASettings {
                     config = defaultConfig;
                 }
             }
-            
+
             // 设置默认服务URL
             const registerServiceUrl = document.getElementById('registerServiceUrl');
             if (registerServiceUrl) {
@@ -3007,21 +3010,21 @@ class BicQASettings {
             } else {
                 console.warn('未找到registerServiceUrl元素');
             }
-            
+
             // 3. 从本地存储加载已保存的注册信息并回显
             console.log('开始从本地存储加载注册信息...');
             try {
                 const result = await chrome.storage.sync.get(['registration']);
                 const registration = result.registration;
-                
+
                 console.log('从本地存储加载的注册信息:', {
                     registration: !!registration,
                     registerServiceUrl: !!registerServiceUrl
                 });
-                
+
                 if (registration && registration.status === 'registered') {
                     console.log('用户已注册，回显注册信息');
-                    
+
                     // 回显注册信息到表单
                     if (registration.username) {
                         document.getElementById('registerUsername').value = registration.username;
@@ -3035,13 +3038,13 @@ class BicQASettings {
                     if (registration.serviceUrl && registerServiceUrl) {
                         registerServiceUrl.value = registration.serviceUrl;
                     }
-                    
+
                     // 更新表单显示状态
                     this.updateRegistrationFormDisplay(registration);
-                    
+
                     // 添加注册状态指示器
                     this.addRegistrationStatusIndicator();
-                    
+
                 } else {
                     console.log('用户未注册或注册状态异常');
                     this.clearRegistrationStatusIndicator();
@@ -3050,7 +3053,7 @@ class BicQASettings {
                 console.error('从本地存储加载注册信息失败:', storageError);
                 this.clearRegistrationStatusIndicator();
             }
-            
+
         } catch (error) {
             console.error('加载注册配置失败:', error);
             // 设置默认值
@@ -3064,24 +3067,24 @@ class BicQASettings {
     // 添加注册状态指示器
     addRegistrationStatusIndicator() {
         console.log('开始添加注册状态指示器...');
-        
+
         try {
             // 查找注册表单区域
             const registrationSection = document.querySelector('.registration-form');
             console.log('注册表单区域:', registrationSection);
-            
+
             if (!registrationSection) {
                 console.warn('未找到.registration-form元素');
                 return;
             }
-            
+
             // 检查是否已经存在状态指示器
             const existingIndicator = registrationSection.querySelector('.registration-status-indicator');
             if (existingIndicator) {
                 console.log('移除已存在的状态指示器');
                 existingIndicator.remove();
             }
-            
+
             // 创建状态指示器
             const statusIndicator = document.createElement('div');
             statusIndicator.className = 'registration-status-indicator';
@@ -3096,16 +3099,16 @@ class BicQASettings {
                 align-items: center;
                 gap: 8px;
             `;
-            
+
             statusIndicator.innerHTML = `
                 <span style="font-size: 16px;">✅</span>
                 <span>已注册用户 - 信息已自动填充</span>
             `;
-            
+
             // 将状态指示器插入到表单顶部
             registrationSection.insertBefore(statusIndicator, registrationSection.firstChild);
             console.log('状态指示器已添加到表单顶部');
-            
+
         } catch (error) {
             console.error('添加注册状态指示器失败:', error);
         }
@@ -3114,7 +3117,7 @@ class BicQASettings {
     // 清除注册状态指示器
     clearRegistrationStatusIndicator() {
         console.log('开始清除注册状态指示器...');
-        
+
         try {
             const registrationSection = document.querySelector('.registration-form');
             if (!registrationSection) {
@@ -3140,7 +3143,7 @@ class BicQASettings {
             // 首先尝试从保存的配置文件加载
             const savedConfigFile = await chrome.storage.local.get(['knowledgeServiceConfigFile']);
             let config = null;
-            
+
             if (savedConfigFile.knowledgeServiceConfigFile) {
                 try {
                     config = JSON.parse(savedConfigFile.knowledgeServiceConfigFile);
@@ -3149,7 +3152,7 @@ class BicQASettings {
                     console.warn('解析保存的配置文件失败:', parseError);
                 }
             }
-            
+
             // 如果没有保存的配置文件，尝试从默认配置文件加载
             if (!config) {
                 try {
@@ -3162,19 +3165,19 @@ class BicQASettings {
                     console.warn('加载默认配置文件失败:', configError);
                 }
             }
-            
+
             // 然后尝试从Chrome存储中加载用户保存的配置
             const result = await chrome.storage.sync.get(['knowledgeServiceConfig']);
             const savedConfig = result.knowledgeServiceConfig;
-            
+
             const knowledgeServiceUrl = document.getElementById('knowledgeServiceUrl');
             const knowledgeServiceApiKey = document.getElementById('knowledgeServiceApiKey');
             const enableKnowledgeService = document.getElementById('enableKnowledgeService');
-            
+
             if (savedConfig) {
                 // 使用用户保存的配置
                 console.log('加载用户保存的知识库服务配置:', savedConfig);
-                
+
                 if (knowledgeServiceUrl) {
                     knowledgeServiceUrl.value = savedConfig.default_url || '';
                 }
@@ -3187,7 +3190,7 @@ class BicQASettings {
             } else if (config && config.knowledge_service) {
                 // 使用配置文件中的配置
                 console.log('使用配置文件中的知识库服务配置:', config.knowledge_service);
-                
+
                 if (knowledgeServiceUrl) {
                     knowledgeServiceUrl.value = config.knowledge_service.default_url || '';
                 }
@@ -3212,7 +3215,7 @@ class BicQASettings {
         const knowledgeServiceUrl = document.getElementById('knowledgeServiceUrl');
         const knowledgeServiceApiKey = document.getElementById('knowledgeServiceApiKey');
         const enableKnowledgeService = document.getElementById('enableKnowledgeService');
-        
+
         if (knowledgeServiceUrl) {
             knowledgeServiceUrl.value = 'http://www.dbaiops.cn/api/chat/message';
         }
@@ -3245,7 +3248,7 @@ class BicQASettings {
         // 检查是否已注册
         const result = await chrome.storage.sync.get(['registration']);
         const existingRegistration = result.registration;
-        
+
         if (!existingRegistration || existingRegistration.status !== 'registered') {
             // 未注册用户必须勾选协议
             if (!agreeTerms) {
@@ -3256,7 +3259,7 @@ class BicQASettings {
 
         try {
             this.showMessage('正在注册...', 'info');
-            
+
             const response = await fetch(serviceUrl, {
                 method: 'POST',
                 headers: {
@@ -3274,7 +3277,7 @@ class BicQASettings {
                 const result = await response.json();
                 // const errorData = await response.json().catch(() => ({}));
                 this.showMessage(result.message, result.status);
-                
+
                 // 只有在注册成功后才保存注册信息到本地存储
                 const registrationData = {
                     username: username,
@@ -3284,29 +3287,29 @@ class BicQASettings {
                     registeredAt: new Date().toISOString(),
                     status: 'registered'
                 };
-                
+
                 try {
                     await chrome.storage.sync.set({
                         registration: registrationData
                     });
                     console.log('注册信息已保存到本地存储:', registrationData);
-                    
+
                     // 同时更新注册配置文件内容到本地存储
                     await this.updateRegistrationConfigFile(registrationData);
-                    
+
                     // 立即更新表单显示和状态指示器
                     this.updateRegistrationFormDisplay(registrationData);
-                    
+
                 } catch (storageError) {
                     console.error('保存注册信息到本地存储失败:', storageError);
                     this.showMessage('注册成功，但保存本地信息失败', 'warning');
                 }
-                
+
             } else {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.message || response.statusText;
-                console.log(errorData.success+"--------------0----------");
-                if(errorData.success == false){
+                console.log(errorData.success + "--------------0----------");
+                if (errorData.success == false) {
                     this.showMessage(`重复注册: ${errorMessage}`, 'warning');
                     // 如果用户已存在也要保存注册信息到本地存储
                     const registrationData = {
@@ -3322,29 +3325,29 @@ class BicQASettings {
                             registration: registrationData
                         });
                         console.log('注册信息已保存到本地存储:', registrationData);
-                        
+
                         // 同时更新注册配置文件
                         await this.updateRegistrationConfigFile(registrationData);
-                        
+
                         // 立即更新表单显示和状态指示器
                         this.updateRegistrationFormDisplay(registrationData);
-                        
+
                     } catch (storageError) {
                         console.error('保存注册信息到本地存储失败:', storageError);
                         this.showMessage('注册成功，但保存本地信息失败', 'warning');
                     }
-                }else{
+                } else {
                     this.showMessage(`注册失败: ${errorMessage}`, 'error');
                     console.error('注册失败，响应状态:', response.status, '错误信息:', errorMessage);
                 }
-                
-                
+
+
                 // 注册失败时不修改本地存储的数据，保持原有状态
             }
         } catch (error) {
             console.error('注册请求失败:', error);
             this.showMessage('注册失败，请检查网络连接', 'error');
-            
+
             // 网络错误时不修改本地存储的数据，保持原有状态
         }
     }
@@ -3352,27 +3355,146 @@ class BicQASettings {
     // 检查注册状态
     async checkRegisterStatus() {
         try {
-            const result = await chrome.storage.sync.get(['registration']);
-            const registration = result.registration;
-            
-            if (registration && registration.status === 'registered') {
-                this.showMessage(`已注册用户: ${registration.username} (${registration.company})`, 'success');
-                
-                // 更新表单显示
-                this.updateRegistrationFormDisplay(registration);
-                
-            } else {
-                this.showMessage('尚未注册，请先完成注册', 'info');
-                
-                // 清除状态指示器
-                this.clearRegistrationStatusIndicator();
+            // 获取当前邮箱地址
+            const email = document.getElementById('registerEmail').value.trim();
+
+            if (!email) {
+                this.showMessage('请先输入邮箱地址', 'error');
+                return;
             }
+
+            if (!this.validateEmail(email)) {
+                this.showMessage('请输入有效的邮箱地址', 'error');
+                return;
+            }
+
+            this.showMessage('正在检查邮箱注册状态...', 'info');
+
+            // 调用接口检查邮箱注册状态
+            const apiResult = await this.checkEmailStatusFromAPI(email);
+
+            if (apiResult.success) {
+                const statusData = apiResult.data;
+
+                if (statusData.registered) {
+                    // 邮箱已注册
+                    this.showMessage(`邮箱 ${email} 已注册 - ${statusData.message || '注册状态正常'}`, 'success');
+
+                    // 如果接口返回了用户信息，更新本地存储
+                    if (statusData.userInfo) {
+                        const registrationData = {
+                            username: statusData.userInfo.username || '',
+                            company: statusData.userInfo.company || '',
+                            email: email,
+                            serviceUrl: document.getElementById('registerServiceUrl').value.trim(),
+                            registeredAt: statusData.userInfo.registeredAt || new Date().toISOString(),
+                            status: 'registered'
+                        };
+
+                        // 保存到本地存储
+                        await chrome.storage.sync.set({
+                            registration: registrationData
+                        });
+
+                        // 更新表单显示
+                        this.updateRegistrationFormDisplay(registrationData);
+                    }
+
+                } else {
+                    // 邮箱未注册
+                    this.showMessage(`邮箱 ${email} 尚未注册 - ${statusData.message || '请先完成注册'}`, 'info');
+
+                    // 清除状态指示器
+                    this.clearRegistrationStatusIndicator();
+                }
+
+            } else {
+                // API调用失败
+                this.showMessage(`检查注册状态失败: ${apiResult.error}`, 'error');
+
+                // 如果API失败，尝试从本地存储获取状态作为备用
+                const result = await chrome.storage.sync.get(['registration']);
+                const registration = result.registration;
+
+                if (registration && registration.status === 'registered' && registration.email === email) {
+                    this.showMessage(`本地记录显示邮箱 ${email} 已注册`, 'warning');
+                    this.updateRegistrationFormDisplay(registration);
+                } else {
+                    this.showMessage('无法获取注册状态，请检查网络连接', 'error');
+                    this.clearRegistrationStatusIndicator();
+                }
+            }
+
         } catch (error) {
             console.error('检查注册状态失败:', error);
             this.showMessage('检查注册状态失败，请重试', 'error');
         }
     }
+    // 新增：从API检查邮箱注册状态
+    async checkEmailStatusFromAPI(email) {
+        try {
+            console.log('正在调用邮箱状态检查API...');
+            const apiUrl = 'http://www.dbaiops.cn/api/user/checkEmailStatus';
 
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('email', email);
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            });
+
+            console.log('API响应状态:', response.status, response.statusText);
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('API返回数据:', data);
+
+            // 根据API返回的数据结构进行适配
+            let statusData = {};
+
+            if (data.success !== undefined && data.isRegistered !== undefined) {
+                // 格式1: { success: true/false, isRegistered: true/false, message: "..." }
+                statusData = {
+                    registered: data.isRegistered,
+                    message: data.message || '',
+                    success: data.success
+                };
+            } else if (data.status === "success" && data.data) {
+                // 格式2: { status: "success", data: {...} }
+                statusData = data.data;
+            } else if (data.registered !== undefined) {
+                // 格式3: 直接返回状态对象 { registered: true/false, ... }
+                statusData = data;
+            } else {
+                throw new Error('API返回的数据格式不符合预期');
+            }
+
+            // 验证数据格式
+            if (typeof statusData.registered !== 'boolean') {
+                throw new Error('API返回的注册状态格式不正确');
+            }
+
+            return {
+                success: true,
+                data: statusData
+            };
+
+        } catch (error) {
+            console.error('API调用失败:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
     // 保存知识库服务配置
     async saveKnowledgeService() {
         const serviceUrl = document.getElementById('knowledgeServiceUrl').value.trim();
@@ -3475,24 +3597,24 @@ class BicQASettings {
 
         try {
             this.showMessage('正在测试连接...', 'info');
-            
+
             const headers = {
                 'Content-Type': 'application/json'
             };
-            
+
             if (apiKey) {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
-            var testUrl = serviceUrl.replace("/chat/message","/user/validate");
+            var testUrl = serviceUrl.replace("/chat/message", "/user/validate");
             const response = await fetch(`${testUrl}`, {
                 method: 'POST',
                 headers: headers
             });
-            
+
             // 解析JSON响应
             const responseData = await response.json();
             console.log("API响应数据:", responseData);
-            
+
             // 根据返回的valid字段判断连接状态
             if (responseData.valid === true) {
                 this.showMessage(`知识库服务连接正常 - ${responseData.message}`, 'success');
@@ -3511,13 +3633,107 @@ class BicQASettings {
         return emailRegex.test(email);
     }
 
-    // 加载知识库列表
+    // 修改后的 loadKnowledgeBases 函数
     async loadKnowledgeBases() {
         try {
             console.log('开始加载知识库列表...');
+
+            // 优先尝试调用接口获取知识库列表
+            const apiResult = await this.loadKnowledgeBasesFromAPI();
+            if (apiResult.success) {
+                console.log('从API成功获取知识库列表:', apiResult.data);
+                this.knowledgeBases = apiResult.data;
+                this.renderKnowledgeBases();
+                return;
+            }
+
+            // API调用失败，尝试从配置文件加载
+            console.log('API调用失败，尝试从配置文件加载...');
+            await this.loadKnowledgeBasesFromConfig();
+
+        } catch (error) {
+            console.error('加载知识库列表失败:', error);
+            // 如果所有方法都失败，使用硬编码的默认值
+            this.knowledgeBases = this.getDefaultKnowledgeBases();
+            this.renderKnowledgeBases();
+        }
+    }
+
+    // 新增：从API加载知识库列表
+    async loadKnowledgeBasesFromAPI() {
+        try {
+            console.log('正在调用知识库API...');
+            const apiUrl = 'http://www.dbaiops.cn/api/knowledge-datasets/list';
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                // 如果需要发送请求体，可以在这里添加
+                // body: JSON.stringify({})
+            });
+
+            console.log('API响应状态:', response.status, response.statusText);
+            if (!response.ok) {
+                throw new Error(`API请求失败: HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('API返回数据:', data);
+
+            // 根据API返回的数据结构进行适配
+            let knowledgeBases = [];
+
+            if (data.status === "success" && Array.isArray(data.data)) {
+                // 格式1: { status: "success", data: [...] }
+                knowledgeBases = data.data;
+            } else if (data.success && Array.isArray(data.data)) {
+                // 格式2: { success: true, data: [...] }
+                knowledgeBases = data.data;
+            } else if (Array.isArray(data)) {
+                // 格式3: 直接返回数组
+                knowledgeBases = data;
+            } else if (data.knowledge_bases && Array.isArray(data.knowledge_bases)) {
+                // 格式4: { knowledge_bases: [...] }
+                knowledgeBases = data.knowledge_bases;
+            } else {
+                throw new Error('API返回的数据格式不符合预期');
+            }
+
+            // 验证数据格式
+            if (!knowledgeBases.every(kb => (kb.id || kb.code) && kb.name)) {
+                throw new Error('API返回的知识库数据格式不正确');
+            }
+
+            // 数据格式标准化，确保id字段存在
+            knowledgeBases = knowledgeBases.map(kb => ({
+                ...kb,
+                id: kb.code || kb.id // 优先使用code字段作为id
+            }));
+
+            return {
+                success: true,
+                data: knowledgeBases
+            };
+
+        } catch (error) {
+            console.error('API调用失败:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    // 新增：从配置文件加载知识库列表（原来的逻辑）
+    async loadKnowledgeBasesFromConfig() {
+        try {
+            console.log('从配置文件加载知识库列表...');
             const configUrl = chrome.runtime.getURL('config/knowledge_bases.json');
             console.log('配置文件URL:', configUrl);
-            
+
             const response = await fetch(configUrl, {
                 method: 'GET',
                 headers: {
@@ -3525,24 +3741,23 @@ class BicQASettings {
                     'Cache-Control': 'no-cache'
                 }
             });
-            console.log('响应状态:', response.status, response.statusText);
-            
+            console.log('配置文件响应状态:', response.status, response.statusText);
+
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`配置文件加载失败: HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             const config = await response.json();
-            console.log('加载的配置:', config);
-            
+            console.log('加载的配置文件:', config);
+
             this.knowledgeBases = config.knowledge_bases || [];
-            console.log('知识库列表:', this.knowledgeBases);
-            
+            console.log('从配置文件加载的知识库列表:', this.knowledgeBases);
+
             this.renderKnowledgeBases();
+
         } catch (error) {
-            console.error('加载知识库列表失败:', error);
-            // 如果加载失败，使用硬编码的默认值
-            this.knowledgeBases = this.getDefaultKnowledgeBases();
-            this.renderKnowledgeBases();
+            console.error('从配置文件加载知识库列表失败:', error);
+            throw error; // 继续抛出错误，让上层处理
         }
     }
 
@@ -3582,7 +3797,7 @@ class BicQASettings {
     renderKnowledgeBases() {
         const container = document.getElementById('knowledgeBasesList');
         console.log('渲染知识库列表，容器:', container);
-        
+
         if (!container) {
             console.error('找不到知识库列表容器');
             return;
@@ -3617,10 +3832,10 @@ class BicQASettings {
     createKnowledgeBaseElement(kb) {
         const div = document.createElement('div');
         div.className = 'knowledge-base-item';
-        
+
         // 确定分类
-        const category = this.getKnowledgeBaseCategory(kb.id);
-        
+        const category = kb.category || this.getKnowledgeBaseCategory(kb.id || kb.code);
+
         div.innerHTML = `
             <div class="knowledge-base-info">
                 <div class="knowledge-base-id">${kb.id}</div>
@@ -3628,7 +3843,6 @@ class BicQASettings {
                 <div class="knowledge-base-category">${category}</div>
             </div>
         `;
-        
         return div;
     }
 
@@ -3637,13 +3851,11 @@ class BicQASettings {
         const numId = parseInt(id);
         if (numId >= 2101 && numId <= 2117) {
             return '关系型数据库';
-        } else if (numId >= 2201 && numId <= 2209) {
+        } else if (numId >= 2201 && numId <= 2206) {
             return '分布式数据库';
         } else if (numId === 1111) {
             return '操作系统';
-        }else if (numId === 2118 || numId === 2119) {
-            return '集中式数据库';
-        }  else {
+        } else {
             return '其他';
         }
     }
@@ -3663,11 +3875,11 @@ class BicQASettings {
                 export_time: new Date().toISOString(),
                 total_count: this.knowledgeBases.length
             };
-            
+
             const blob = new Blob([JSON.stringify(data, null, 2)], {
                 type: 'application/json'
             });
-            
+
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -3676,7 +3888,7 @@ class BicQASettings {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             this.showMessage('知识库列表已导出', 'success');
         } catch (error) {
             console.error('导出知识库列表失败:', error);
@@ -3706,7 +3918,7 @@ class BicQASettings {
             if (registerServiceUrl && registrationData.serviceUrl) {
                 registerServiceUrl.value = registrationData.serviceUrl;
             }
-            
+
             // 已注册用户默认勾选协议
             if (agreeTerms && registrationData.status === 'registered') {
                 agreeTerms.checked = true;
@@ -3714,9 +3926,9 @@ class BicQASettings {
 
             // 添加状态指示器
             this.addRegistrationStatusIndicator();
-            
+
             console.log('注册表单显示已更新:', registrationData);
-            
+
         } catch (error) {
             console.error('更新注册表单显示失败:', error);
         }
@@ -3725,15 +3937,15 @@ class BicQASettings {
     // 密码切换功能
     togglePassword(inputId) {
         console.log('togglePassword被调用，inputId:', inputId);
-        
+
         const input = document.getElementById(inputId);
         console.log('找到输入框:', input);
-        
+
         if (!input) {
             console.error('找不到输入框:', inputId);
             return;
         }
-        
+
         // 直接切换输入框类型
         if (input.type === 'password') {
             input.type = 'text';
@@ -3742,7 +3954,7 @@ class BicQASettings {
             input.type = 'password';
             console.log('切换到密码模式');
         }
-        
+
         // 更新按钮文本
         const button = input.parentElement.querySelector('.toggle-password');
         if (button) {
@@ -3761,10 +3973,10 @@ class BicQASettings {
     checkAndFixRules() {
         console.log('检查规则数据...');
         console.log('当前规则:', this.rules);
-        
+
         const defaultRules = this.getDefaultRules();
         let hasIssues = false;
-        
+
         // 检查每个默认规则
         defaultRules.forEach(defaultRule => {
             const existingRule = this.rules.find(r => r.id === defaultRule.id);
@@ -3772,15 +3984,15 @@ class BicQASettings {
                 console.log(`检查规则 ${defaultRule.name}:`, existingRule);
                 console.log(`默认值: temperature=${defaultRule.temperature}, similarity=${defaultRule.similarity}, topN=${defaultRule.topN}`);
                 console.log(`当前值: temperature=${existingRule.temperature}, similarity=${existingRule.similarity}, topN=${existingRule.topN}`);
-                
+
                 // 检查temperature值是否正确
                 if (existingRule.temperature !== defaultRule.temperature) {
                     console.log(`发现temperature值错误: 期望 ${defaultRule.temperature}, 实际 ${existingRule.temperature}`);
                     hasIssues = true;
                 }
-                
+
                 // 检查其他关键字段
-                if (existingRule.similarity !== defaultRule.similarity || 
+                if (existingRule.similarity !== defaultRule.similarity ||
                     existingRule.topN !== defaultRule.topN) {
                     console.log(`发现其他字段错误:`, {
                         similarity: { expected: defaultRule.similarity, actual: existingRule.similarity },
@@ -3793,7 +4005,7 @@ class BicQASettings {
                 hasIssues = true;
             }
         });
-        
+
         if (hasIssues) {
             console.log('发现规则数据问题，建议重置为默认规则');
             return false;
@@ -3808,7 +4020,7 @@ class BicQASettings {
         console.log('开始强制修复规则数据...');
         const defaultRules = this.getDefaultRules();
         let hasFixed = false;
-        
+
         // 检查并修复每个内置规则
         defaultRules.forEach(defaultRule => {
             const existingIndex = this.rules.findIndex(r => r.id === defaultRule.id);
@@ -3819,7 +4031,7 @@ class BicQASettings {
                     actual: existingRule.temperature,
                     needsFix: existingRule.temperature !== defaultRule.temperature
                 });
-                
+
                 // 如果温度值不正确，强制修复
                 if (existingRule.temperature !== defaultRule.temperature) {
                     console.log(`修复规则 ${defaultRule.name} 的温度值: ${existingRule.temperature} -> ${defaultRule.temperature}`);
@@ -3833,7 +4045,7 @@ class BicQASettings {
                 }
             }
         });
-        
+
         if (hasFixed) {
             console.log('规则数据已修复，正在保存...');
             await this.saveRules();
@@ -3843,7 +4055,7 @@ class BicQASettings {
             console.log('规则数据无需修复');
             this.showMessage('规则数据正常，无需修复', 'info');
         }
-        
+
         return hasFixed;
     }
 
@@ -3851,7 +4063,7 @@ class BicQASettings {
     quickAddModelForProvider(provider, availableModels) {
         // 显示模型添加表单
         this.showModelForm();
-        
+
         // 预填充服务商信息
         const providerSelect = document.getElementById('modelProvider');
         if (providerSelect) {
@@ -3859,7 +4071,7 @@ class BicQASettings {
             // 触发change事件以加载模型列表
             providerSelect.dispatchEvent(new Event('change'));
         }
-        
+
         // 显示提示信息
         this.showMessage(`已选择服务商: ${provider.name}，请选择要添加的模型`, 'info');
     }
@@ -3870,13 +4082,13 @@ class BicQASettings {
         if (provider.providerType === 'ollama') {
             return true;
         }
-        
+
         // 检查服务商名称
         const providerName = provider.name.toLowerCase();
         if (providerName.includes('ollama')) {
             return true;
         }
-        
+
         // 检查 API 端点
         try {
             let apiEndpoint = provider.apiEndpoint;
@@ -3884,26 +4096,26 @@ class BicQASettings {
             if (apiEndpoint.includes('/chat/completions')) {
                 apiEndpoint = apiEndpoint.replace('/chat/completions', '');
             }
-            
+
             const url = new URL(apiEndpoint);
             const hostname = url.hostname.toLowerCase();
-            
+
             // 检查是否为本地地址或自定义 IP
-            if (hostname === 'localhost' || 
-                hostname === '127.0.0.1' || 
+            if (hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
                 hostname.startsWith('192.168.') ||
                 hostname.startsWith('10.') ||
                 hostname.startsWith('172.')) {
-                
+
                 // 检查端口和路径是否匹配 Ollama 格式
                 const path = url.pathname.toLowerCase();
                 const port = url.port;
-                
+
                 // 支持多种路径格式
-                if (path.includes('/v1') || 
-                    path === '/' || 
+                if (path.includes('/v1') ||
+                    path === '/' ||
                     path === '') {
-                    
+
                     // 检查端口是否为 11434（Ollama 默认端口）
                     if (port === '11434' || port === '') {
                         console.log('检测到 Ollama 服务，路径:', path, '端口:', port);
@@ -3914,7 +4126,7 @@ class BicQASettings {
         } catch (e) {
             console.warn('无法解析 API 端点 URL:', e.message);
         }
-        
+
         return false;
     }
 
@@ -3969,23 +4181,23 @@ class BicQASettings {
             const apiEndpointInput = document.getElementById('apiEndpoint');
             const authTypeSelect = document.getElementById('authType');
             const requestFormatSelect = document.getElementById('requestFormat');
-            
+
             // 总是填充服务商名称和API地址的默认值
             providerNameInput.value = selectedType.name;
             apiEndpointInput.value = selectedType.apiEndpoint;
-            
+
             // 对于认证类型和请求格式，只有在字段为空时才自动填充
             if (!authTypeSelect.value || authTypeSelect.value === '') {
                 authTypeSelect.value = selectedType.authType;
             }
-            
+
             if (!requestFormatSelect.value || requestFormatSelect.value === '') {
                 requestFormatSelect.value = selectedType.requestFormat;
             }
-            
+
             // 显示描述信息
             this.showProviderTypeDescription(selectedType);
-            
+
             console.log('服务商类型已切换，已填充默认值:', {
                 name: selectedType.name,
                 apiEndpoint: selectedType.apiEndpoint,
@@ -4016,7 +4228,7 @@ class BicQASettings {
         // 插入到服务商名称字段后面
         const providerNameField = document.getElementById('providerName');
         providerNameField.parentNode.insertBefore(descriptionDiv, providerNameField.nextSibling);
-        
+
         // 绑定重置按钮事件
         const resetBtn = descriptionDiv.querySelector('#resetToDefaults');
         if (resetBtn) {
@@ -4032,7 +4244,7 @@ class BicQASettings {
         document.getElementById('apiEndpoint').value = providerType.apiEndpoint;
         document.getElementById('authType').value = providerType.authType;
         document.getElementById('requestFormat').value = providerType.requestFormat;
-        
+
         this.showMessage('已重置为默认配置', 'success');
     }
 
@@ -4085,9 +4297,9 @@ class BicQASettings {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(dialog);
-        
+
         // 绑定事件
         this.bindProviderTypeManagerEvents(dialog);
     }
@@ -4100,7 +4312,7 @@ class BicQASettings {
                 dialog.remove();
             });
         }
-        
+
         // 添加新类型按钮
         const addBtn = dialog.querySelector('#addNewProviderType');
         if (addBtn) {
@@ -4108,7 +4320,7 @@ class BicQASettings {
                 this.showAddProviderTypeForm();
             });
         }
-        
+
         // 编辑按钮
         const editBtns = dialog.querySelectorAll('.btn-edit');
         editBtns.forEach(btn => {
@@ -4117,7 +4329,7 @@ class BicQASettings {
                 this.showAddProviderTypeForm(typeId);
             });
         });
-        
+
         // 删除按钮
         const deleteBtns = dialog.querySelectorAll('.btn-delete');
         deleteBtns.forEach(btn => {
@@ -4130,7 +4342,7 @@ class BicQASettings {
                 }
             });
         });
-        
+
         // 取消按钮
         const cancelBtn = dialog.querySelector('#cancelProviderTypeManager');
         if (cancelBtn) {
@@ -4144,18 +4356,18 @@ class BicQASettings {
     showProviderTypeFormInManager(dialog, typeId = null) {
         const isEditing = typeId !== null;
         const type = isEditing ? this.getProviderTypeById(typeId) : null;
-        
+
         // 更新表单标题
         const titleElement = dialog.querySelector('#formSectionTitle');
         if (titleElement) {
             titleElement.textContent = isEditing ? '编辑服务商类型' : '添加服务商类型';
         }
-        
+
         // 填充表单数据
         const form = dialog.querySelector('#providerTypeForm');
         if (form) {
             form.reset();
-            
+
             if (type) {
                 // 编辑模式，填充现有数据
                 form.querySelector('#typeId').value = type.id;
@@ -4171,22 +4383,22 @@ class BicQASettings {
                 form.querySelector('#typeId').readOnly = false;
             }
         }
-        
+
         // 更新提交按钮文本
         const submitBtn = dialog.querySelector('#submitForm');
         if (submitBtn) {
             submitBtn.textContent = isEditing ? '更新' : '添加';
         }
-        
+
         // 存储当前编辑的类型ID
         dialog.setAttribute('data-editing-type-id', typeId || '');
-        
+
         // 显示表单区域
         const formSection = dialog.querySelector('#providerTypeFormSection');
         if (formSection) {
             formSection.style.display = 'block';
         }
-        
+
         // 隐藏类型列表和按钮区域
         const typesList = dialog.querySelector('.provider-types-list');
         const addSection = dialog.querySelector('.add-type-section');
@@ -4201,13 +4413,13 @@ class BicQASettings {
         if (formSection) {
             formSection.style.display = 'none';
         }
-        
+
         // 显示类型列表和按钮区域
         const typesList = dialog.querySelector('.provider-types-list');
         const addSection = dialog.querySelector('.add-type-section');
         if (typesList) typesList.style.display = 'block';
         if (addSection) addSection.style.display = 'flex';
-        
+
         // 清除编辑状态
         dialog.removeAttribute('data-editing-type-id');
     }
@@ -4224,15 +4436,15 @@ class BicQASettings {
             requestFormat: formData.get('typeRequestFormat'),
             description: formData.get('typeDescription')
         };
-        
+
         this.addProviderType(typeConfig);
-        
+
         // 隐藏表单
         this.hideProviderTypeFormInManager(dialog);
-        
+
         // 刷新类型列表
         this.refreshProviderTypeManagerContent(dialog);
-        
+
         // 显示成功消息
         const isEditing = dialog.getAttribute('data-editing-type-id') !== null;
         this.showMessage(`服务商类型${isEditing ? '更新' : '添加'}成功`, 'success');
@@ -4255,7 +4467,7 @@ class BicQASettings {
                     </div>
                 </div>
             `).join('');
-            
+
             // 重新绑定编辑和删除按钮事件
             this.bindEditDeleteButtons(dialog);
         }
@@ -4271,7 +4483,7 @@ class BicQASettings {
                 this.showAddProviderTypeForm(typeId);
             });
         });
-        
+
         // 删除按钮
         const deleteBtns = dialog.querySelectorAll('.btn-delete');
         deleteBtns.forEach(btn => {
@@ -4290,7 +4502,7 @@ class BicQASettings {
     showAddProviderTypeForm(typeId = null) {
         const isEditing = typeId !== null;
         const type = isEditing ? this.getProviderTypeById(typeId) : null;
-        
+
         const dialog = document.createElement('div');
         dialog.className = 'provider-type-form-dialog';
         dialog.innerHTML = `
@@ -4355,9 +4567,9 @@ class BicQASettings {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(dialog);
-        
+
         // 绑定表单事件
         this.bindProviderTypeFormEvents(dialog, typeId);
     }
@@ -4371,7 +4583,7 @@ class BicQASettings {
                 dialog.remove();
             });
         }
-        
+
         // 取消按钮
         const cancelBtn = dialog.querySelector('#cancelProviderTypeForm');
         if (cancelBtn) {
@@ -4379,7 +4591,7 @@ class BicQASettings {
                 dialog.remove();
             });
         }
-        
+
         // 表单提交
         const form = dialog.querySelector('#providerTypeForm');
         if (form) {
@@ -4403,15 +4615,15 @@ class BicQASettings {
             requestFormat: formData.get('typeRequestFormat'),
             description: formData.get('typeDescription')
         };
-        
+
         this.addProviderType(typeConfig);
-        
+
         // 刷新服务商类型管理器（如果存在）
         const manager = document.querySelector('.provider-type-manager-dialog');
         if (manager) {
             this.refreshProviderTypeManagerContent(manager);
         }
-        
+
         this.showMessage(`服务商类型${typeId ? '更新' : '添加'}成功`, 'success');
     }
 
@@ -4459,15 +4671,15 @@ class BicQASettings {
         const temperatureModified = this.compareNumericValues(savedRule.temperature, defaultRule.temperature);
         const similarityModified = this.compareNumericValues(savedRule.similarity, defaultRule.similarity);
         const topNModified = this.compareNumericValues(savedRule.topN, defaultRule.topN);
-        
+
         // 字符串字段的比较
         const promptModified = savedRule.prompt !== defaultRule.prompt;
         const nameModified = savedRule.name !== defaultRule.name;
         const descriptionModified = savedRule.description !== defaultRule.description;
-        
-        const isModified = temperatureModified || similarityModified || topNModified || 
-                          promptModified || nameModified || descriptionModified;
-        
+
+        const isModified = temperatureModified || similarityModified || topNModified ||
+            promptModified || nameModified || descriptionModified;
+
         if (isModified) {
             console.log(`规则 ${savedRule.name} 修改详情:`, {
                 temperature: { saved: savedRule.temperature, default: defaultRule.temperature, modified: temperatureModified },
@@ -4478,22 +4690,22 @@ class BicQASettings {
                 description: { modified: descriptionModified }
             });
         }
-        
+
         return isModified;
     }
-    
+
     // 比较数值的方法（处理数据类型转换）
     compareNumericValues(savedValue, defaultValue) {
         // 转换为数字进行比较
         const savedNum = parseFloat(savedValue);
         const defaultNum = parseFloat(defaultValue);
-        
+
         // 检查是否为有效数字
         if (isNaN(savedNum) || isNaN(defaultNum)) {
             // 如果转换失败，进行字符串比较
             return String(savedValue) !== String(defaultValue);
         }
-        
+
         // 使用小的误差范围进行比较（处理浮点数精度问题）
         const epsilon = 0.0001;
         return Math.abs(savedNum - defaultNum) > epsilon;
@@ -4521,14 +4733,14 @@ class BicQASettings {
 
         try {
             this.showMessage('正在重新获取密钥...', 'info');
-            
+
             // 将注册服务URL中的/register替换为/resend
             const resendUrl = serviceUrl.replace('/register', '/resend');
-            
+
             // 创建FormData对象
             const formData = new FormData();
             formData.append('email', email);
-            
+
             const response = await fetch(resendUrl, {
                 method: 'POST',
                 headers: {
@@ -4539,7 +4751,12 @@ class BicQASettings {
 
             if (response.ok) {
                 const result = await response.json();
-                this.showMessage('密钥重新获取成功！请检查您的邮箱', 'success');
+                if (result.success) {
+                    this.showMessage(result.message, 'success');
+                } else {
+                    this.showMessage(result.message, 'error');
+                }
+                // this.showMessage('密钥重新获取成功！请检查您的邮箱', 'success');
                 console.log('重新获取密钥成功:', result);
             } else {
                 const errorData = await response.json().catch(() => ({}));
@@ -4547,7 +4764,7 @@ class BicQASettings {
                 this.showMessage(`重新获取密钥失败: ${errorMessage}`, 'error');
                 console.error('重新获取密钥失败:', errorData);
             }
-            
+
         } catch (error) {
             console.error('重新获取密钥时发生错误:', error);
             this.showMessage(`重新获取密钥失败: ${error.message}`, 'error');
@@ -4556,11 +4773,11 @@ class BicQASettings {
 }
 
 // 反馈历史相关方法
-BicQASettings.prototype.loadFeedbackHistory = async function() {
+BicQASettings.prototype.loadFeedbackHistory = async function () {
     try {
         const result = await chrome.storage.sync.get(['feedbackHistory']);
         const feedbackHistory = result.feedbackHistory || [];
-        
+
         this.updateFeedbackStats(feedbackHistory);
         this.renderFeedbackList(feedbackHistory);
     } catch (error) {
@@ -4569,32 +4786,32 @@ BicQASettings.prototype.loadFeedbackHistory = async function() {
     }
 };
 
-BicQASettings.prototype.updateFeedbackStats = function(feedbackHistory) {
+BicQASettings.prototype.updateFeedbackStats = function (feedbackHistory) {
     const totalCount = feedbackHistory.length;
     const likeCount = feedbackHistory.filter(f => f.type === 'like').length;
     const dislikeCount = feedbackHistory.filter(f => f.type === 'dislike').length;
-    
+
     document.getElementById('totalFeedbackCount').textContent = totalCount;
     document.getElementById('likeCount').textContent = likeCount;
     document.getElementById('dislikeCount').textContent = dislikeCount;
 };
 
-BicQASettings.prototype.renderFeedbackList = function(feedbackHistory) {
+BicQASettings.prototype.renderFeedbackList = function (feedbackHistory) {
     const container = document.getElementById('feedbackList');
     const emptyFeedback = document.getElementById('emptyFeedback');
-    
+
     if (feedbackHistory.length === 0) {
         container.style.display = 'none';
         emptyFeedback.style.display = 'block';
         return;
     }
-    
+
     container.style.display = 'block';
     emptyFeedback.style.display = 'none';
-    
+
     // 按时间倒序排列
     const sortedFeedback = feedbackHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
+
     container.innerHTML = '';
     sortedFeedback.forEach((feedback, index) => {
         const element = this.createFeedbackElement(feedback, index);
@@ -4602,14 +4819,14 @@ BicQASettings.prototype.renderFeedbackList = function(feedbackHistory) {
     });
 };
 
-BicQASettings.prototype.createFeedbackElement = function(feedback, index) {
+BicQASettings.prototype.createFeedbackElement = function (feedback, index) {
     const div = document.createElement('div');
     div.className = 'feedback-item';
-    
+
     const time = new Date(feedback.timestamp).toLocaleString('zh-CN');
     const typeText = feedback.type === 'like' ? '👍 有帮助' : '👎 没帮助';
     const typeClass = feedback.type === 'like' ? 'like' : 'dislike';
-    
+
     div.innerHTML = `
         <div class="feedback-header-row">
             <div class="feedback-type ${typeClass}">
@@ -4627,28 +4844,28 @@ BicQASettings.prototype.createFeedbackElement = function(feedback, index) {
             ${feedback.pageUrl ? `<div class="feedback-url">🌐 页面: ${this.truncateUrl(feedback.pageUrl)}</div>` : ''}
         </div>
     `;
-    
+
     return div;
 };
 
-BicQASettings.prototype.refreshFeedback = async function() {
+BicQASettings.prototype.refreshFeedback = async function () {
     await this.loadFeedbackHistory();
     this.showMessage('反馈历史已刷新', 'success');
 };
 
-BicQASettings.prototype.exportFeedback = async function() {
+BicQASettings.prototype.exportFeedback = async function () {
     try {
         const result = await chrome.storage.sync.get(['feedbackHistory']);
         const feedbackHistory = result.feedbackHistory || [];
-        
+
         if (feedbackHistory.length === 0) {
             this.showMessage('暂无反馈数据可导出', 'info');
             return;
         }
-        
+
         const dataStr = JSON.stringify(feedbackHistory, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        
+
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
         link.href = url;
@@ -4657,7 +4874,7 @@ BicQASettings.prototype.exportFeedback = async function() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         this.showMessage('反馈数据已导出', 'success');
     } catch (error) {
         console.error('导出反馈失败:', error);
@@ -4665,11 +4882,11 @@ BicQASettings.prototype.exportFeedback = async function() {
     }
 };
 
-BicQASettings.prototype.clearFeedback = async function() {
+BicQASettings.prototype.clearFeedback = async function () {
     if (!confirm('确定要清空所有反馈记录吗？此操作不可恢复。')) {
         return;
     }
-    
+
     try {
         await chrome.storage.sync.remove(['feedbackHistory']);
         this.updateFeedbackStats([]);
@@ -4681,13 +4898,13 @@ BicQASettings.prototype.clearFeedback = async function() {
     }
 };
 
-BicQASettings.prototype.escapeHtml = function(text) {
+BicQASettings.prototype.escapeHtml = function (text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 };
 
-BicQASettings.prototype.truncateUrl = function(url) {
+BicQASettings.prototype.truncateUrl = function (url) {
     try {
         const urlObj = new URL(url);
         return urlObj.hostname + urlObj.pathname.substring(0, 30) + (urlObj.pathname.length > 30 ? '...' : '');
@@ -4752,12 +4969,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.showProviderTypeManager = () => settings.showProviderTypeManager();
     window.addProviderType = (config) => settings.addProviderType(config);
     window.removeProviderType = (id) => settings.removeProviderType(id);
-    
+
     // 添加测试方法
     window.testProviderTypes = () => {
         console.log('测试服务商类型功能...');
         console.log('当前服务商类型:', settings.providerTypes);
-        
+
         // 测试添加新类型
         const testType = {
             id: 'test-provider',
@@ -4768,44 +4985,44 @@ document.addEventListener('DOMContentLoaded', () => {
             requestFormat: 'OpenAI',
             description: '这是一个测试服务商类型'
         };
-        
+
         settings.addProviderType(testType);
         console.log('添加测试类型后:', settings.providerTypes);
-        
+
         // 测试删除
         settings.removeProviderType('test-provider');
         console.log('删除测试类型后:', settings.providerTypes);
     };
-    
+
     // 添加服务商类型管理测试方法
     window.testProviderTypeManager = () => {
         console.log('测试服务商类型管理器...');
         settings.showProviderTypeManager();
     };
-    
+
     // 添加服务商类型表单测试方法
     window.testProviderTypeForm = () => {
         console.log('测试服务商类型表单...');
         settings.showAddProviderTypeForm();
     };
-    
+
     // 添加 Ollama URL 构建测试方法
     window.testOllamaUrls = () => {
         console.log('测试 Ollama URL 构建...');
-        
+
         const testProvider = {
             name: 'Ollama',
             apiEndpoint: 'http://localhost:11434/v1',
             providerType: 'ollama'
         };
-        
+
         console.log('测试服务商:', testProvider);
         console.log('基础URL:', settings.buildOllamaBaseUrl(testProvider));
         console.log('模型列表URL:', settings.buildModelsUrl(testProvider));
         console.log('聊天完成URL:', settings.buildChatCompletionsUrl(testProvider));
         console.log('是否为Ollama服务:', settings.isOllamaService(testProvider));
     };
-    
+
     // 添加服务商类型管理器关闭逻辑测试方法
     window.testProviderTypeManagerClose = () => {
         console.log('测试服务商类型管理器关闭逻辑...');
@@ -4816,7 +5033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('4. 点击"编辑"或"删除"按钮（会执行相应操作）');
         settings.showProviderTypeManager();
     };
-    
+
     // 添加内嵌表单功能测试方法
     window.testInlineForm = () => {
         console.log('测试内嵌表单功能...');
@@ -4827,6 +5044,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('4. 可以通过表单右上角的 × 按钮或取消按钮返回列表');
         settings.showProviderTypeManager();
     };
-    
+
     console.log('Settings对象和调试方法已暴露到全局作用域');
 }); 

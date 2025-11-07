@@ -3,6 +3,8 @@
         "default_url": "http://www.dbaiops.cn/api/chat/message",
         "api_key": "",
         "enabled": false,
+        "letter_limit": 5,
+        "isOpenLetterLimit": true,
         "updated_at": "2024-01-01T00:00:00.000Z"
     }
 } 

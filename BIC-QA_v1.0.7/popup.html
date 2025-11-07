@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BIC-QA - 佰晟智算智能问答助手</title>
     <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
     <div class="container">
         <!-- 左侧边栏 -->
@@ -21,7 +23,7 @@
                     </div> -->
                 </div>
             </div>
-            
+
             <!-- 快捷操作区域 -->
             <div class="quick-actions-sidebar">
                 <div class="action-buttons-vertical">
@@ -35,39 +37,44 @@
                     </button> -->
                     <button id="newSessionBtn" class="sidebar-action-btn">
                         <span class="action-icon">🆕</span>
-                        <span class="action-text">开启新会话</span>
+                        <span class="action-text">开启新会话(New)</span>
                     </button>
                     <button id="historyBtn" class="sidebar-action-btn">
                         <span class="action-icon">📚</span>
-                        <span class="action-text">历史记录</span>
+                        <span class="action-text">历史记录(History)</span>
                     </button>
-                    
+                    <button id="awrAnalysisBtn" class="sidebar-action-btn">
+                        <span class="action-icon">📊</span>
+                        <span class="action-text">AWR分析(Analysis)</span>
+                    </button>
+
                     <!-- 使用说明按钮 -->
                     <button id="helpBtn" class="sidebar-action-btn help-action-btn" title="使用说明">
                         <span class="action-icon">❓</span>
-                        <span class="action-text">使用说明</span>
+                        <span class="action-text">使用说明(Help)</span>
                     </button>
-                    
+
                     <!-- 公告按钮 -->
-                    <a href="http://www.dbaiops.cn/notice.html" target="_blank" class="sidebar-action-btn announcement-btn" title="公告">
+                    <a href="http://www.dbaiops.cn/notice.html" target="_blank"
+                        class="sidebar-action-btn announcement-btn" title="公告">
                         <span class="action-icon">📢</span>
-                        <span class="action-text">公告</span>
+                        <span class="action-text">公告(Notice)</span>
                     </a>
                 </div>
             </div>
-            
+
             <!-- 版本信息 -->
             <div class="help-section">
                 <div class="version-info">
-                    <p class="version-text">BIC-QA <span>v1.0.6</span></p>
+                    <p class="version-text">BIC-QA <span>v1.0.7</span></p>
                 </div>
             </div>
-            
+
         </aside>
-        
+
         <!-- 右侧主内容区域 -->
         <main class="main-content">
-            
+
             <!-- 搜索和问答区域 -->
             <div class="content-area">
                 <!-- 搜索区域 -->
@@ -84,7 +91,7 @@
                             <div class="knowledge-base-selector">
                                 <label for="knowledgeBaseSelect">选择知识库：</label>
                                 <select id="knowledgeBaseSelect" class="knowledge-base-select">
-                                    <option value="">不使用知识库</option>
+                                    <option value="">不使用知识库(None)</option>
                                 </select>
                             </div>
                             <span class="selector-divider">/</span>
@@ -98,7 +105,7 @@
                         <div class="selector-right">
                             <button id="settingsBtn" class="settings-button" title="设置">
                                 <span class="settings-icon">⚙️</span>
-                                <span>设置</span>
+                                <span>设置(Setting)</span>
                             </button>
                             <!-- <button id="openFullPageBtn" class="settings-button" title="打开完整页面" style="margin-left: 10px;">
                                 <span class="settings-icon">🖥️</span>
@@ -106,7 +113,7 @@
                             </button> -->
                         </div>
                     </div>
-                    
+
                     <!-- 结果区域 -->
                     <div class="result-section">
                         <div id="resultContainer" class="result-container" style="display: none;">
@@ -126,7 +133,7 @@
                                             <div id="questionText" class="question-text"></div>
                                         </div>
                                     </div>
-                                    
+
                                     <div id="aiDisplay" class="ai-display" style="display: none;">
                                         <div class="ai-header">
                                             <div class="ai-avatar">
@@ -138,12 +145,13 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <h3 class="result-title">回答：</h3>
                                     <div id="resultText" class="result-text">
                                         <p class="result-text-tips"></p>
                                         <div class="result-text-content"></div>
                                         <div class="result-text-knowlist"></div>
+
                                     </div>
                                     <div class="result-actions">
                                         <div class="action-icons-row">
@@ -159,30 +167,26 @@
                                             <button id="likeButton" class="action-icon-btn like-btn" title="点赞 - 回答有帮助">
                                                 <img src="icons/good.svg" alt="点赞" class="action-icon-svg">
                                             </button>
-                                            <button id="dislikeButton" class="action-icon-btn dislike-btn" title="否定 - 回答没有帮助">
+                                            <button id="dislikeButton" class="action-icon-btn dislike-btn"
+                                                title="否定 - 回答没有帮助">
                                                 <img src="icons/bad.svg" alt="否定" class="action-icon-svg">
                                             </button>
-                                        </div> 
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="input-center-wrapper">
                         <div class="input-header">
                             <h2 class="input-title">BIC-QA</h2>
-                            <p class="input-subtitle">国产数据库智能问答</p>
-                            
+                            <p class="input-subtitle">国产数据库智能问答(Database Intelligent Q&A)</p>
+
                         </div>
                         <div class="input-container">
-                            <textarea 
-                                id="questionInput" 
-                                class="question-input" 
-                                placeholder="请输入您的问题..."
-                                rows="3"
-                                maxlength="500"
-                            ></textarea>
+                            <textarea id="questionInput" class="question-input"
+                                placeholder="请输入您的问题(Please enter your question)..." rows="3"></textarea>
                             <div class="character-count">
                                 <span id="charCount">0</span>/500
                             </div>
@@ -193,20 +197,24 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 底部版本信息 -->
                 <footer class="footer">
                     <!-- <p class="version">版本 1.0.5</p> -->
-                    <p class="input-subtitle">"不胡说八道的知识库，我们会不断改进知识库，今天无法回答的问题，我们也会很快补充完善，请帮我们不断完善这个公共知识库吧！"</p>
+                    <p class="input-subtitle">"不胡说八道的知识库，我们会不断改进知识库，今天无法回答的问题，我们也会很快补充完善，请帮我们不断完善这个公共知识库吧！<br>A
+                        knowledge
+                        base that doesn't talk nonsense. We will continuously improve the knowledge base. For questions
+                        that cannot be answered today, we will soon supplement and refine the content. Please help us
+                        keep improving this public knowledge base!</p>
                 </footer>
             </div>
-            
+
             <!-- 回到顶部按钮 -->
             <button id="backToTopBtn" class="back-to-top-btn" title="回到顶部" style="display: none;">
                 <span class="back-to-top-icon">↑</span>
             </button>
         </main>
-        
+
         <!-- 历史记录对话框 -->
         <div id="historyDialog" class="dialog-overlay" style="display: none;">
             <div class="dialog-container">
@@ -215,9 +223,9 @@
                     <button id="closeHistoryDialog" class="close-btn">×</button>
                 </div>
                 <div class="dialog-content">
-                    <div class="history-controls">
+                    <div class="history-controls" style="display: none;">
                         <button id="clearHistoryBtn" class="clear-btn">清空历史</button>
-                        <button id="exportHistoryBtn" class="export-btn">导出历史</button>
+                        <button id="exportHistoryBtn" class="export-btn" style="display: none;">导出历史</button>
                     </div>
                     <div id="historyList" class="history-list">
                         <!-- 历史记录将在这里动态生成 -->
@@ -225,10 +233,136 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- AWR分析对话框 -->
+        <div id="awrAnalysisDialog" class="dialog-overlay" style="display: none;">
+            <div class="dialog-container awr-dialog-container">
+                <div class="dialog-header">
+                    <h3>AWR分析(Analysis)</h3>
+                    <button id="closeAwrDialog" class="close-btn">×</button>
+                </div>
+
+                <!-- 选项卡导航 -->
+                <div class="awr-tabs">
+                    <button class="awr-tab-btn active" data-tab="new">新建分析(New Analysis)</button>
+                    <button class="awr-tab-btn" data-tab="history">历史记录(History)</button>
+                </div>
+
+                <div class="dialog-content">
+                    <!-- 新建分析表单视图 -->
+                    <div id="awrNewAnalysisView" class="awr-tab-content active">
+                        <form id="awrAnalysisForm" class="awr-form">
+                            <!-- 系统问题概述 -->
+                            <div class="form-group">
+                                <label for="awrProblemDescription" class="form-label">系统问题概述(System Issue
+                                    Overview)</label>
+                                <textarea id="awrProblemDescription" class="form-textarea" rows="4"
+                                    placeholder="请输入系统问题描述(Please enter your question)..."></textarea>
+                                <p class="form-description">填写相对明确的系统问题，不确定不用输入，否则会误导大模型(Please provide a relatively
+                                    clear system issue description. If you are unsure about any details, it's better not
+                                    to input them, as they might mislead the large language model.)</p>
+                            </div>
+
+                            <!-- 接收邮箱 -->
+                            <div class="form-group">
+                                <label for="awrEmail" class="form-label required">接收邮箱(Email)</label>
+                                <input type="email" id="awrEmail" class="form-input" placeholder="请输入接收分析报告的邮箱"
+                                    required />
+                                <input type="hidden" id="awrUserName" class="form-input" />
+                            </div>
+
+                            <!-- 上传文件 -->
+                            <div class="form-group">
+                                <label for="awrFileDisplay" class="form-label required">上传文件(Upload)</label>
+                                <div class="file-upload-container">
+                                    <input type="text" id="awrFileDisplay" class="form-input file-display-input"
+                                        placeholder="未选择文件" readonly />
+                                    <input type="file" id="awrFileInput" class="file-input-hidden" accept="*/*" />
+                                    <button type="button" id="awrFileUploadBtn"
+                                        class="file-upload-btn">上传文件(Upload)</button>
+                                </div>
+                            </div>
+
+                            <!-- 语言选择 -->
+                            <div class="form-group">
+                                <label for="awrLanguage" class="form-label">语言(Language)</label>
+                                <select id="awrLanguage" class="form-input">
+                                    <option value="zh" selected>中文</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="form-actions">
+                                <button type="button" id="awrCancelBtn" class="btn-cancel">关闭(Close)</button>
+                                <button type="submit" id="awrSaveBtn" class="btn-save">执行分析(Run)</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 历史记录列表视图 -->
+                    <div id="awrHistoryView" class="awr-tab-content">
+                        <!-- 搜索和筛选区域 -->
+                        <div class="awr-history-filters">
+                            <label for="awrStartTime" class="awr-filter-label">开始时间(Start Time)：</label>
+                            <input type="datetime-local" id="awrStartTime" class="form-input awr-filter-input">
+
+                            <label for="awrEndTime" class="awr-filter-label">结束时间(End Time)：</label>
+                            <input type="datetime-local" id="awrEndTime" class="form-input awr-filter-input">
+
+                            <label for="awrStatusFilter" class="awr-filter-label">任务状态(Status)：</label>
+                            <select id="awrStatusFilter" class="form-input awr-filter-select">
+                                <option value="">全部(All)</option>
+                                <option value="0">未分析(Pending)</option>
+                                <option value="1">成功(Success)</option>
+                                <option value="2">失败(Failed)</option>
+                                <option value="3">执行中(Running)</option>
+                            </select>
+
+                            <button id="awrRefreshHistoryBtn" class="awr-search-btn">
+                                搜索(Search)
+                            </button>
+
+                            <button id="awrResetBtn" class="awr-reset-btn">
+                                重置(Reset)
+                            </button>
+                        </div>
+
+                        <!-- 历史记录表格 -->
+                        <div class="awr-history-table-container">
+                            <table id="awrHistoryTable" class="awr-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>创建时间(Create Time)</th>
+                                        <th>状态(Status)</th>
+                                        <th>文件名(Filename)</th>
+                                        <th>问题描述(Description)</th>
+                                        <th>邮箱(Email)</th>
+                                        <th>语言(Language)</th>
+                                        <th>操作(Action)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="awrHistoryList">
+                                    <!-- 表格行将通过JS动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 分页控件 -->
+                        <div class="awr-pagination">
+                            <button id="awrPrevPageBtn" class="pagination-btn" disabled>上一页(Previous)</button>
+                            <span id="awrPageInfo" class="pagination-info">第 1 页，共 1 页 (Page 1 of 1)</span>
+                            <button id="awrNextPageBtn" class="pagination-btn" disabled>下一页(Next)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script src="js/knowledge_base_simple.js"></script>
         <script src="popup.js"></script>
         <script src="js/help-button.js"></script>
     </div>
 </body>
-</html> 
+
+</html>

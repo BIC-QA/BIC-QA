@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BIC-QA 设置 - 佰晟智算智能问答助手</title>
     <link rel="stylesheet" href="settings.css">
 </head>
+
 <body>
     <div class="container">
         <header class="header">
@@ -26,24 +28,24 @@
                 </div>
             </div>
         </header>
-        
+
         <main class="main">
             <!-- 大模型配置区域 -->
             <section class="config-section">
                 <h2 class="section-title">大模型接口配置</h2>
-                
+
                 <!-- 服务商列表 -->
                 <div class="providers-container">
                     <div class="providers-header">
                         <h3>服务商配置</h3>
                         <button id="addProviderBtn" class="add-btn">+ 添加服务商</button>
                     </div>
-                    
+
                     <div id="providersList" class="providers-list">
                         <!-- 服务商配置项将在这里动态生成 -->
                     </div>
                 </div>
-                
+
                 <!-- 添加服务商表单 -->
                 <div id="addProviderForm" class="form-overlay" style="display: none;">
                     <div class="form-container">
@@ -51,42 +53,42 @@
                             <h3>添加服务商</h3>
                             <button id="closeProviderForm" class="close-btn">×</button>
                         </div>
-                        
+
                         <form id="providerForm">
                             <div class="form-group">
                                 <label for="providerType">服务商类型</label>
                                 <div class="provider-type-selector">
                                     <select id="providerType" name="providerType">
                                     </select>
-                                    <button type="button" id="manageProviderTypes" class="btn-manage-types" title="管理服务商类型">
+                                    <button type="button" id="manageProviderTypes" class="btn-manage-types"
+                                        title="管理服务商类型">
                                         ⚙️
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="providerName">服务商名称 *</label>
-                                <input type="text" id="providerName" name="providerName" required 
-                                       placeholder="例如：OpenAI、百度文心、阿里通义等">
+                                <input type="text" id="providerName" name="providerName" required
+                                    placeholder="例如：OpenAI、百度文心、阿里通义等">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="apiEndpoint">API地址 *</label>
-                                <input type="url" id="apiEndpoint" name="apiEndpoint" required 
-                                       placeholder="例如：https://api.openai.com/v1/chat/completions">
+                                <input type="url" id="apiEndpoint" name="apiEndpoint" required
+                                    placeholder="例如：https://api.openai.com/v1/chat/completions">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="apiKey">API密钥</label>
                                 <div class="password-input">
-                                    <input type="password" id="apiKey" name="apiKey" 
-                                           placeholder="请输入API密钥">
+                                    <input type="password" id="apiKey" name="apiKey" placeholder="请输入API密钥">
                                     <button type="button" class="toggle-password" data-input-id="apiKey">
                                         👁
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="authType">认证类型</label>
                                 <select id="authType" name="authType">
@@ -95,7 +97,7 @@
                                     <option value="Custom">自定义</option>
                                 </select>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="requestFormat">请求格式</label>
                                 <select id="requestFormat" name="requestFormat">
@@ -104,7 +106,7 @@
                                     <option value="Custom">自定义格式</option>
                                 </select>
                             </div>
-                            
+
                             <div class="form-actions">
                                 <button type="button" id="cancelProvider" class="btn-secondary">取消</button>
                                 <button type="submit" class="btn-primary">保存服务商</button>
@@ -113,22 +115,22 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- 模型配置区域 -->
             <section class="config-section">
                 <h2 class="section-title">模型配置</h2>
-                
+
                 <div class="models-container">
                     <div class="models-header">
                         <h3>模型列表</h3>
                         <button id="addModelBtn" class="add-btn">+ 添加模型</button>
                     </div>
-                    
+
                     <div id="modelsList" class="models-list">
                         <!-- 模型配置项将在这里动态生成 -->
                     </div>
                 </div>
-                
+
                 <!-- 添加模型表单 -->
                 <div id="addModelForm" class="form-overlay" style="display: none;">
                     <div class="form-container">
@@ -136,7 +138,7 @@
                             <h3>添加模型</h3>
                             <button id="closeModelForm" class="close-btn">×</button>
                         </div>
-                        
+
                         <form id="modelForm">
                             <div class="form-group">
                                 <label for="modelProvider">所属服务商 *</label>
@@ -144,37 +146,37 @@
                                     <option value="">请选择服务商</option>
                                 </select>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="modelName">模型名称 *</label>
-                                <input type="text" id="modelName" name="modelName" required 
-                                       placeholder="例如：gpt-3.5-turbo、gpt-4等">
+                                <input type="text" id="modelName" name="modelName" required
+                                    placeholder="例如：gpt-3.5-turbo、gpt-4等">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="modelDisplayName">显示名称</label>
-                                <input type="text" id="modelDisplayName" name="modelDisplayName" 
-                                       placeholder="例如：GPT-3.5 Turbo">
+                                <input type="text" id="modelDisplayName" name="modelDisplayName"
+                                    placeholder="例如：GPT-3.5 Turbo">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="maxTokens">最大Token数</label>
-                                <input type="number" id="maxTokens" name="maxTokens" 
-                                       placeholder="例如：4096" min="1" max="100000">
+                                <input type="number" id="maxTokens" name="maxTokens" placeholder="例如：4096" min="1"
+                                    max="100000">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="temperature">温度参数</label>
-                                <input type="number" id="temperature" name="temperature" 
-                                       placeholder="例如：0.7" min="0" max="2" step="0.1">
+                                <input type="number" id="temperature" name="temperature" placeholder="例如：0.7" min="0"
+                                    max="2" step="0.1">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="isDefault">设为默认模型</label>
                                 <input type="checkbox" id="isDefault" name="isDefault">
                                 <span class="checkbox-label">将此模型设为默认模型</span>
                             </div>
-                            
+
                             <div class="form-actions">
                                 <button type="button" id="cancelModel" class="btn-secondary">取消</button>
                                 <button type="submit" class="btn-primary">保存模型</button>
@@ -183,44 +185,41 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- 用户注册区域 -->
             <section class="config-section">
                 <h2 class="section-title">用户注册</h2>
                 <p class="section-description">注册BIC-QA服务，获取更多功能</p>
-                
+
                 <div class="registration-form">
                     <div class="form-group">
                         <label for="registerServiceUrl">注册服务URL</label>
-                        <input type="url" id="registerServiceUrl" name="registerServiceUrl" 
-                               placeholder="https://api.dbaiops.cn/register">
+                        <input type="url" id="registerServiceUrl" name="registerServiceUrl"
+                            placeholder="https://api.dbaiops.cn/register">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="registerUsername">用户名 *</label>
-                        <input type="text" id="registerUsername" name="registerUsername" required 
-                               placeholder="请输入用户名">
+                        <input type="text" id="registerUsername" name="registerUsername" required placeholder="请输入用户名">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="registerCompany">所属企业名称 *</label>
-                        <input type="text" id="registerCompany" name="registerCompany" required 
-                               placeholder="请输入企业名称">
+                        <input type="text" id="registerCompany" name="registerCompany" required placeholder="请输入企业名称">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="registerEmail">邮箱 *</label>
-                        <input type="email" id="registerEmail" name="registerEmail" required 
-                               placeholder="请输入邮箱地址">
+                        <input type="email" id="registerEmail" name="registerEmail" required placeholder="请输入邮箱地址">
                     </div>
-                    
+
                     <div class="form-actions">
                         <div class="agreement-section">
                             <label class="agreement-label">
                                 <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
-                                <span class="checkbox-text">注册即代表已阅读并同意我们的 
-                                    <a href="user-agreement.html" target="_blank" class="agreement-link">用户协议</a> 
-                                    与 
+                                <span class="checkbox-text">注册即代表已阅读并同意我们的
+                                    <a href="user-agreement.html" target="_blank" class="agreement-link">用户协议</a>
+                                    与
                                     <a href="privacy-policy.html" target="_blank" class="agreement-link">隐私政策</a>
                                 </span>
                             </label>
@@ -233,48 +232,48 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- 知识库服务配置区域 -->
             <section class="config-section" id="knowledge-service-config">
                 <h2 class="section-title">知识库服务配置</h2>
                 <p class="section-description">配置知识库服务的连接信息</p>
-                
+
                 <div class="knowledge-service-form">
                     <div class="form-group">
                         <label for="knowledgeServiceUrl">服务URL</label>
-                        <input type="url" id="knowledgeServiceUrl" name="knowledgeServiceUrl" 
-                               placeholder="https://api.dbaiops.cn/knowledge">
+                        <input type="url" id="knowledgeServiceUrl" name="knowledgeServiceUrl"
+                            placeholder="https://api.dbaiops.cn/knowledge">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="knowledgeServiceApiKey">API密钥（注册后邮箱内接收邮件的密钥）</label>
                         <div class="password-input">
-                            <input type="password" id="knowledgeServiceApiKey" name="knowledgeServiceApiKey" 
-                                   placeholder="请输入API密钥">
+                            <input type="password" id="knowledgeServiceApiKey" name="knowledgeServiceApiKey"
+                                placeholder="请输入API密钥">
                             <button type="button" class="toggle-password" data-input-id="knowledgeServiceApiKey">
                                 👁
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="form-group" style="display: none;">
                         <label for="enableKnowledgeService">启用知识库服务</label>
                         <input type="checkbox" id="enableKnowledgeService" name="enableKnowledgeService">
                         <span class="checkbox-label">启用知识库服务功能</span>
                     </div>
-                    
+
                     <div class="form-actions">
                         <button id="saveKnowledgeServiceBtn" class="btn-primary">保存配置</button>
                         <button id="testKnowledgeServiceBtn" class="btn-secondary">测试连接</button>
                     </div>
                 </div>
             </section>
-            
+
             <!-- 知识库管理区域 -->
             <section class="config-section">
                 <h2 class="section-title">知识库管理</h2>
                 <p class="section-description">查看和管理支持的知识库类型列表</p>
-                
+
                 <div class="knowledge-bases-container">
                     <div class="knowledge-bases-header">
                         <h3>支持的知识库类型</h3>
@@ -283,22 +282,22 @@
                             <button id="exportKnowledgeBasesBtn" class="btn-secondary">导出列表</button>
                         </div>
                     </div>
-                    
+
                     <div id="knowledgeBasesList" class="knowledge-bases-list">
                         <!-- 知识库列表将在这里动态生成 -->
                     </div>
-                    
+
                     <div class="knowledge-bases-info">
                         <p>默认知识库列表已包含在插件中，无需手动配置。您可以在主界面的知识库选择框中使用这些知识库。</p>
                     </div>
                 </div>
             </section>
-            
+
             <!-- 知识库参数规则配置区域 -->
             <section class="config-section">
                 <h2 class="section-title">知识库参数规则配置</h2>
                 <p class="section-description">配置知识库检索的参数规则，支持多个规则的添加、修改和删除</p>
-                
+
                 <div class="rules-container">
                     <div class="rules-header">
                         <h3>参数规则列表</h3>
@@ -307,12 +306,12 @@
                             <button id="resetDefaultRulesBtn" class="reset-btn">🔄 恢复初始设置</button>
                         </div>
                     </div>
-                    
+
                     <div id="rulesList" class="rules-list">
                         <!-- 规则配置项将在这里动态生成 -->
                     </div>
                 </div>
-                
+
                 <!-- 添加规则表单 -->
                 <div id="addRuleForm" class="form-overlay" style="display: none;">
                     <div class="form-container">
@@ -320,48 +319,46 @@
                             <h3>添加参数规则</h3>
                             <button id="closeRuleForm" class="close-btn">×</button>
                         </div>
-                        
+
                         <form id="ruleForm">
                             <div class="form-group">
                                 <label for="ruleName">规则名称 *</label>
-                                <input type="text" id="ruleName" name="ruleName" required 
-                                       placeholder="例如：高精度检索、快速检索等">
+                                <input type="text" id="ruleName" name="ruleName" required placeholder="例如：高精度检索、快速检索等">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="similarity">相似度阈值 *</label>
-                                <input type="number" id="similarity" name="similarity" required 
-                                       placeholder="0.9" min="0" max="1" step="0.01">
+                                <input type="number" id="similarity" name="similarity" required placeholder="0.9"
+                                    min="0" max="1" step="0.01">
                                 <small class="form-help">取值范围：0-1，数值越高匹配越精确</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="topN">TOP N *</label>
-                                <input type="number" id="topN" name="topN" required 
-                                       placeholder="5" min="1" max="10">
+                                <input type="number" id="topN" name="topN" required placeholder="5" min="1" max="10">
                                 <small class="form-help">取值范围：1-10，返回最相关的N个结果</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="ruleTemperature">温度 *</label>
-                                <input type="number" id="ruleTemperature" name="temperature" required 
-                                       placeholder="0.7" min="0" max="2" step="0.1">
+                                <input type="number" id="ruleTemperature" name="temperature" required placeholder="0.7"
+                                    min="0" max="2" step="0.1">
                                 <small class="form-help">取值范围：0-2，控制回答的创造性，0为确定性回答，2为创造性回答</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="rulePrompt">提示词</label>
                                 <textarea id="rulePrompt" name="rulePrompt" rows="4"
-                                          placeholder="请输入提示词，用于指导AI如何基于知识库内容回答问题"></textarea>
+                                    placeholder="请输入提示词，用于指导AI如何基于知识库内容回答问题"></textarea>
                                 <small class="form-help">例如：请基于知识库内容，提供准确、详细的回答。如果知识库中没有相关信息，请明确说明。</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="isDefaultRule">设为默认规则</label>
                                 <input type="checkbox" id="isDefaultRule" name="isDefaultRule">
                                 <span class="checkbox-label">将此规则设为默认参数规则</span>
                             </div>
-                            
+
                             <div class="form-actions">
                                 <button type="button" id="cancelRule" class="btn-secondary">取消</button>
                                 <button type="submit" class="btn-primary">保存规则</button>
@@ -370,11 +367,11 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- 通用设置区域 -->
             <section class="config-section" style="display: none;">
                 <h2 class="section-title">通用设置</h2>
-                
+
                 <div class="settings-list">
                     <div class="setting-item">
                         <label for="defaultLanguage">默认语言</label>
@@ -384,7 +381,7 @@
                             <option value="ja-JP">日本語</option>
                         </select>
                     </div>
-                    
+
                     <div class="setting-item">
                         <label for="theme">主题</label>
                         <select id="theme">
@@ -393,24 +390,24 @@
                             <option value="auto">跟随系统</option>
                         </select>
                     </div>
-                    
+
                     <div class="setting-item">
                         <label for="enableNotifications">启用通知</label>
                         <input type="checkbox" id="enableNotifications">
                     </div>
-                    
+
                     <div class="setting-item">
                         <label for="autoTranslate">自动翻译</label>
                         <input type="checkbox" id="autoTranslate">
                     </div>
                 </div>
             </section>
-            
+
             <!-- 反馈历史区域 -->
             <section class="config-section" style="display: none;">
                 <h2 class="section-title">反馈历史</h2>
                 <p class="section-description">查看和管理您的问答反馈记录</p>
-                
+
                 <div class="feedback-container">
                     <div class="feedback-header">
                         <h3>反馈记录</h3>
@@ -420,7 +417,7 @@
                             <button id="clearFeedbackBtn" class="btn-secondary">清空反馈</button>
                         </div>
                     </div>
-                    
+
                     <div class="feedback-stats">
                         <div class="stat-item">
                             <span class="stat-label">总反馈数</span>
@@ -435,11 +432,11 @@
                             <span id="dislikeCount" class="stat-value dislike-stat">0</span>
                         </div>
                     </div>
-                    
+
                     <div id="feedbackList" class="feedback-list">
                         <!-- 反馈记录将在这里动态生成 -->
                     </div>
-                    
+
                     <div id="emptyFeedback" class="empty-feedback" style="display: none;">
                         <div class="empty-icon">📝</div>
                         <p class="empty-text">暂无反馈记录</p>
@@ -447,7 +444,7 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- 操作按钮 -->
             <section class="actions-section">
                 <button id="saveSettings" class="btn-primary">保存所有设置</button>
@@ -457,13 +454,14 @@
                 <button id="importSettings" class="btn-secondary">导入配置</button>
             </section>
         </main>
-        
+
         <footer class="footer">
-            <p class="version">BIC-QA <span>v1.0.6</span> | 佰晟智算</p>
+            <p class="version">BIC-QA <span>v1.0.7</span> | 佰晟智算</p>
         </footer>
     </div>
-    
+
     <script src="js/url-params.js"></script>
     <script src="settings.js"></script>
 </body>
-</html> 
+
+</html>
