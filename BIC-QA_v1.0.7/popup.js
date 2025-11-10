@@ -134,6 +134,13 @@ class BicQAPopup {
         this.awrFileDisplay = document.getElementById('awrFileDisplay');
         this.awrFileUploadBtn = document.getElementById('awrFileUploadBtn');
         this.awrLanguage = document.getElementById('awrLanguage');
+        this.awrAgreeTerms = document.getElementById('agreeTerms');
+        this.policyDialogs = {};
+        document.querySelectorAll('.policy-dialog').forEach(dialog => {
+            this.policyDialogs[dialog.id] = dialog;
+        });
+        this.policyOpenButtons = Array.from(document.querySelectorAll('.js-open-policy'));
+        this.policyCloseButtons = Array.from(document.querySelectorAll('.js-close-policy'));
         this.awrCancelBtn = document.getElementById('awrCancelBtn');
         this.awrSaveBtn = document.getElementById('awrSaveBtn');
         this.selectedFile = null;
@@ -365,6 +372,53 @@ class BicQAPopup {
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => this.openSettings());
         }
+
+        // 政策弹窗事件
+        if (this.policyOpenButtons && this.policyOpenButtons.length > 0) {
+            this.policyOpenButtons.forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const targetId = btn.dataset.target;
+                    if (targetId) {
+                        this.showPolicyDialog(targetId);
+                    }
+                });
+            });
+        }
+        if (this.policyCloseButtons && this.policyCloseButtons.length > 0) {
+            this.policyCloseButtons.forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const targetId = btn.dataset.target;
+                    if (targetId) {
+                        this.hidePolicyDialog(targetId);
+                    }
+                });
+            });
+        }
+        Object.values(this.policyDialogs).forEach(dialog => {
+            dialog.addEventListener('click', (event) => {
+                if (event.target === dialog) {
+                    this.hidePolicyDialog(dialog.id);
+                }
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                let handled = false;
+                Object.entries(this.policyDialogs).forEach(([dialogId, dialog]) => {
+                    if (dialog.style.display === 'flex') {
+                        this.hidePolicyDialog(dialogId);
+                        handled = true;
+                    }
+                });
+                if (handled) {
+                    event.stopPropagation();
+                }
+            }
+        });
+
         // 在 bindEvents() 方法中添加（大约在第320行附近）
         // 历史记录对话框事件
         if (this.closeHistoryDialog) {
@@ -6432,6 +6486,31 @@ ${text}
         this.historyDialog.style.display = 'none';
     }
 
+    showPolicyDialog(dialogId) {
+        if (!dialogId || !this.policyDialogs || !this.policyDialogs[dialogId]) return;
+        const dialog = this.policyDialogs[dialogId];
+        dialog.style.display = 'flex';
+        dialog.setAttribute('aria-hidden', 'false');
+        const focusTarget = dialog.querySelector('.js-close-policy') || dialog.querySelector('.close-btn');
+        if (focusTarget) {
+            setTimeout(() => focusTarget.focus(), 0);
+        }
+    }
+
+    hidePolicyDialog(dialogId) {
+        if (!dialogId || !this.policyDialogs || !this.policyDialogs[dialogId]) return;
+        const dialog = this.policyDialogs[dialogId];
+        dialog.style.display = 'none';
+        dialog.setAttribute('aria-hidden', 'true');
+    }
+
+    hideAllPolicyDialogs() {
+        if (!this.policyDialogs) return;
+        Object.keys(this.policyDialogs).forEach(dialogId => {
+            this.hidePolicyDialog(dialogId);
+        });
+    }
+
     // 显示AWR分析对话框
     async showAwrAnalysisDialog() {
         if (this.awrAnalysisDialog) {
@@ -6509,6 +6588,9 @@ ${text}
         if (this.awrLanguage) {
             this.awrLanguage.value = 'zh';
         }
+        if (this.awrAgreeTerms) {
+            this.awrAgreeTerms.checked = false;
+        }
         this.selectedFile = null;
     }
 
@@ -6557,6 +6639,13 @@ ${text}
         if (!this.selectedFile) {
             this.showMessage('请选择要上传的文件(Please select the file to upload)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
             this.awrFileUploadBtn?.focus();
+            return;
+        }
+
+        // 验证声明勾选
+        if (!this.awrAgreeTerms || !this.awrAgreeTerms.checked) {
+            this.showMessage('请先阅读并勾选免责声明和安全声明(Please review and agree to the Disclaimer and Security Statement)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.awrAgreeTerms?.focus();
             return;
         }
 
@@ -6813,6 +6902,12 @@ ${text}
         if (tabName === 'new') {
             if (newView) newView.classList.add('active');
             if (historyView) historyView.classList.remove('active');
+            // 切换到新建分析时，如果用户名为空，重新获取用户信息
+            if (!this.awrUserName?.value.trim()) {
+                this.populateUserProfileFromApi().catch(e => {
+                    console.error('切换到新建分析时获取用户信息失败:', e);
+                });
+            }
         } else {
             if (newView) newView.classList.remove('active');
             if (historyView) historyView.classList.add('active');
@@ -6860,7 +6955,7 @@ ${text}
             }
 
             // 获取用户名作为查询条件（只能查看自己的记录）
-            let username = this.awrUserName?.value.trim() || '-';
+            let username = this.awrUserName?.value.trim() || '';
 
             // 如果输入框中没有用户名，尝试从注册信息中获取
             if (!username) {
@@ -6879,7 +6974,17 @@ ${text}
                 }
             }
 
+            // 如果还是获取不到用户名，尝试从API获取
             if (!username) {
+                try {
+                    await this.populateUserProfileFromApi();
+                    username = this.awrUserName?.value.trim() || '';
+                } catch (error) {
+                    console.error('从API获取用户信息失败:', error);
+                }
+            }
+
+            if (!username || username === '-') {
                 this.showMessage('无法获取用户信息，请确保API密钥正确(Unable to get user information, please ensure the API key is correct)', 'error');
                 return;
             }
@@ -6975,13 +7080,7 @@ ${text}
             }
 
             this.hideLoadingOverlay();
-            // 每次查询后重置隐藏的用户输入框
-            if (this.awrUserName) {
-                this.awrUserName.value = '';
-            }
-            if (this.awrEmail) {
-                this.awrEmail.value = '';
-            }
+            // 注意：不在查询成功后清空用户名和邮箱，因为新建分析也需要用到这些信息
         } catch (error) {
             console.error('加载AWR历史记录失败:', error);
             this.hideLoadingOverlay();

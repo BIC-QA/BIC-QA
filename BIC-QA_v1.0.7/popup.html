@@ -292,11 +292,31 @@
                                 </select>
                             </div>
 
+                            
+                        <div style="display: flex;align-items: center;justify-content: space-between;">
+                            <div class="agreement-section">
+                            <label class="agreement-label" style="display: flex;align-items: center;gap: 10px;">
+                                <input type="checkbox" id="agreeTerms" name="agreeTerms">
+                                <span class="checkbox-text" style="display: inline-block;">
+                                    我已阅读并同意
+                                    <button type="button" class="link-button js-open-policy" data-target="disclaimerDialogZh">免责声明</button>
+                                    和
+                                    <button type="button" class="link-button js-open-policy" data-target="securityDialogZh">安全声明</button>，
+                                    同意上传 AWR 报告进行分析。
+                                    (I have read and agree to the
+                                    <button type="button" class="link-button js-open-policy" data-target="disclaimerDialogEn">Disclaimer</button>
+                                    and
+                                    <button type="button" class="link-button js-open-policy" data-target="securityDialogEn">Security Statement</button>,
+                                    and agree to upload the AWR report for analysis.)
+                                </span>
+                            </label>
+                        </div>
                             <!-- 操作按钮 -->
                             <div class="form-actions">
                                 <button type="button" id="awrCancelBtn" class="btn-cancel">关闭(Close)</button>
                                 <button type="submit" id="awrSaveBtn" class="btn-save">执行分析(Run)</button>
                             </div>
+                        </div>
                         </form>
                     </div>
 
@@ -355,6 +375,156 @@
                             <button id="awrNextPageBtn" class="pagination-btn" disabled>下一页(Next)</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 免责声明弹窗（中文） -->
+        <div id="disclaimerDialogZh" class="dialog-overlay policy-dialog" style="display: none;" role="dialog"
+            aria-modal="true" aria-labelledby="disclaimerDialogZhTitle" aria-hidden="true">
+            <div class="dialog-container policy-dialog-container">
+                <div class="dialog-header">
+                    <h3 id="disclaimerDialogZhTitle">免责声明</h3>
+                    <button type="button" class="close-btn js-close-policy" data-target="disclaimerDialogZh"
+                        aria-label="关闭">×</button>
+                </div>
+                <div class="dialog-content policy-dialog-content">
+                    <p>重要提示：在使用 BIC-QA AWR 分析服务前，请仔细阅读以下免责声明。</p>
+                    <ol>
+                        <li>
+                            <strong>服务性质</strong>
+                            <p>BIC-QA AWR 分析服务是基于人工智能技术的辅助分析工具，分析结果仅供参考，不构成任何形式的专业建议或保证。</p>
+                        </li>
+                        <li>
+                            <strong>数据使用</strong>
+                            <p>您上传的 AWR 报告仅用于本次分析任务，任务完成后系统将自动删除报告。BIC 承诺不保留任何形式的报告副本，不会将报告用于除本次分析外的任何其他目的。</p>
+                        </li>
+                        <li>
+                            <strong>分析结果</strong>
+                            <p>分析结果基于上传的 AWR 报告数据生成，可能存在误差或不完整的情况。用户应结合实际情况和专业判断使用分析结果，BIC 不对分析结果的准确性、完整性或适用性承担任何责任。</p>
+                        </li>
+                        <li>
+                            <strong>服务中断</strong>
+                            <p>BIC 保留因系统维护、升级或其他原因暂停或中断服务的权利，不承担因此造成的任何损失。</p>
+                        </li>
+                        <li>
+                            <strong>责任限制</strong>
+                            <p>在法律允许的最大范围内，BIC 不对因使用本服务而产生的任何直接、间接、偶然或后果性损失承担责任。</p>
+                        </li>
+                    </ol>
+                    <p>使用本服务即表示您已充分理解并同意上述免责声明。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 免责声明弹窗（英文） -->
+        <div id="disclaimerDialogEn" class="dialog-overlay policy-dialog" style="display: none;" role="dialog"
+            aria-modal="true" aria-labelledby="disclaimerDialogEnTitle" aria-hidden="true">
+            <div class="dialog-container policy-dialog-container">
+                <div class="dialog-header">
+                    <h3 id="disclaimerDialogEnTitle">Disclaimer</h3>
+                    <button type="button" class="close-btn js-close-policy" data-target="disclaimerDialogEn"
+                        aria-label="Close">×</button>
+                </div>
+                <div class="dialog-content policy-dialog-content">
+                    <p>Important Notice: Please read this disclaimer carefully before using the BIC-QA AWR analysis service.</p>
+                    <ol>
+                        <li>
+                            <strong>Service Nature</strong>
+                            <p>The BIC-QA AWR analysis service is an AI-assisted tool. The analysis results are for reference only and do not constitute professional advice or guarantees of any kind.</p>
+                        </li>
+                        <li>
+                            <strong>Data Usage</strong>
+                            <p>Your uploaded AWR report is used solely for this analysis task. The system automatically deletes the report after completion. BIC will not retain any copies of the report nor use it for any purpose beyond this analysis.</p>
+                        </li>
+                        <li>
+                            <strong>Analysis Results</strong>
+                            <p>The analysis results are generated based on the uploaded AWR report and may contain inaccuracies or be incomplete. Users should apply professional judgment when using the results. BIC assumes no responsibility for the accuracy, completeness, or suitability of the analysis outcomes.</p>
+                        </li>
+                        <li>
+                            <strong>Service Interruptions</strong>
+                            <p>BIC reserves the right to suspend or interrupt the service for maintenance, upgrades, or other reasons and is not liable for any resulting losses.</p>
+                        </li>
+                        <li>
+                            <strong>Limitation of Liability</strong>
+                            <p>To the maximum extent permitted by law, BIC is not liable for any direct, indirect, incidental, or consequential damages resulting from the use of this service.</p>
+                        </li>
+                    </ol>
+                    <p>By using this service, you acknowledge that you have read, understood, and agreed to the above disclaimer.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 安全声明弹窗（中文） -->
+        <div id="securityDialogZh" class="dialog-overlay policy-dialog" style="display: none;" role="dialog"
+            aria-modal="true" aria-labelledby="securityDialogZhTitle" aria-hidden="true">
+            <div class="dialog-container policy-dialog-container">
+                <div class="dialog-header">
+                    <h3 id="securityDialogZhTitle">安全声明</h3>
+                    <button type="button" class="close-btn js-close-policy" data-target="securityDialogZh"
+                        aria-label="关闭">×</button>
+                </div>
+                <div class="dialog-content policy-dialog-content">
+                    <p>数据安全承诺：BIC 高度重视用户数据安全和隐私保护。</p>
+                    <h4>1. 数据隐私保护</h4>
+                    <p>您上传的 AWR 报告仅用于本次分析任务，任务完成后系统将立即删除报告。BIC 承诺：</p>
+                    <ul>
+                        <li>不保留任何形式的报告副本；</li>
+                        <li>不会向第三方泄露、分享或出售用户数据；</li>
+                        <li>不会将报告用于除本次分析外的任何其他目的；</li>
+                        <li>严格遵守相关数据保护法律法规。</li>
+                    </ul>
+                    <h4>2. 数据传输安全</h4>
+                    <p>所有数据传输均采用加密技术，确保数据在传输过程中的安全性。</p>
+                    <h4>3. 敏感数据建议</h4>
+                    <p>重要提示：对于包含敏感数据的 AWR 报告，BIC 强烈建议：</p>
+                    <ul>
+                        <li>使用商业版服务，而非公有云版本；</li>
+                        <li>在提交前对敏感信息进行脱敏处理；</li>
+                        <li>仅上传必要的分析数据，避免包含过多敏感信息。</li>
+                    </ul>
+                    <h4>4. 数据存储</h4>
+                    <p>分析任务完成后，系统将自动删除上传的 AWR 报告文件。分析结果（不包含原始报告）可能被保留用于服务改进，但不会包含任何可识别用户身份的信息。</p>
+                    <h4>5. 用户责任</h4>
+                    <p>用户应确保上传的 AWR 报告不包含违反法律法规或侵犯他人权益的内容。用户应对上传内容承担全部责任。</p>
+                    <p>我们致力于保护您的数据安全，但建议您在使用前评估数据敏感性，必要时选择更安全的服务版本。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 安全声明弹窗（英文） -->
+        <div id="securityDialogEn" class="dialog-overlay policy-dialog" style="display: none;" role="dialog"
+            aria-modal="true" aria-labelledby="securityDialogEnTitle" aria-hidden="true">
+            <div class="dialog-container policy-dialog-container">
+                <div class="dialog-header">
+                    <h3 id="securityDialogEnTitle">Security Statement</h3>
+                    <button type="button" class="close-btn js-close-policy" data-target="securityDialogEn"
+                        aria-label="Close">×</button>
+                </div>
+                <div class="dialog-content policy-dialog-content">
+                    <p>Data Security Commitment: BIC places the highest priority on safeguarding user data security and privacy.</p>
+                    <h4>1. Data Privacy Protection</h4>
+                    <p>Your uploaded AWR report is used exclusively for this analysis task and is automatically deleted once the task is completed. BIC guarantees that it:</p>
+                    <ul>
+                        <li>Does not retain any copies of the report;</li>
+                        <li>Does not disclose, share, or sell user data to third parties;</li>
+                        <li>Does not use the report for any purpose other than this analysis;</li>
+                        <li>Strictly complies with applicable data protection laws and regulations.</li>
+                    </ul>
+                    <h4>2. Data Transmission Security</h4>
+                    <p>All data transmissions are encrypted to ensure security throughout the transfer process.</p>
+                    <h4>3. Sensitive Data Recommendations</h4>
+                    <p>Important: For AWR reports containing sensitive data, BIC strongly recommends that you:</p>
+                    <ul>
+                        <li>Use the commercial edition instead of the public cloud version;</li>
+                        <li>Mask or anonymize sensitive information before submission;</li>
+                        <li>Upload only the data required for analysis and avoid excessive sensitive content.</li>
+                    </ul>
+                    <h4>4. Data Storage</h4>
+                    <p>The system automatically deletes uploaded AWR report files once the analysis is complete. Analysis results (excluding the original report) may be retained to improve services, but they will not contain any information that can identify individual users.</p>
+                    <h4>5. User Responsibility</h4>
+                    <p>Users must ensure that the uploaded AWR reports do not violate laws, regulations, or infringe upon the rights of others. Users bear full responsibility for the content they submit.</p>
+                    <p>We are committed to safeguarding your data, but we encourage you to assess data sensitivity before use and select a more secure service option when necessary.</p>
                 </div>
             </div>
         </div>
