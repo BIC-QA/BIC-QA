@@ -1,17 +1,33 @@
 // 使用说明按钮事件处理
 document.addEventListener('DOMContentLoaded', () => {
     const helpBtn = document.getElementById('helpBtn');
+
     if (helpBtn) {
         helpBtn.addEventListener('click', () => {
+            const datasetPath = helpBtn.dataset.userGuidePath;
+            const guideFile = datasetPath || 'user-guide.html';
+
             try {
-                const userGuideUrl = chrome.runtime.getURL('user-guide.html');
-                chrome.tabs.create({
-                    url: userGuideUrl,
-                    active: true
-                });
+                const userGuideUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
+                    ? chrome.runtime.getURL(guideFile)
+                    : guideFile;
+
+                if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+                    chrome.tabs.create({
+                        url: userGuideUrl,
+                        active: true
+                    }, () => {
+                        if (chrome.runtime?.lastError) {
+                            console.error('打开使用说明页面失败:', chrome.runtime.lastError);
+                            window.open(userGuideUrl, '_blank');
+                        }
+                    });
+                } else {
+                    window.open(userGuideUrl, '_blank');
+                }
             } catch (error) {
                 console.error('打开使用说明页面失败:', error);
-                window.open('user-guide.html', '_blank');
+                window.open(guideFile, '_blank');
             }
         });
     }

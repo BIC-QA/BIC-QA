@@ -9,6 +9,39 @@ class BicQASettings {
         this.editingModel = null;
         this.editingRule = null;
 
+        if (typeof I18nService !== 'undefined') {
+            this.i18n = new I18nService({
+                defaultLanguage: 'zhcn',
+                fallbackLanguage: 'zhcn',
+                defaultNamespace: 'settings',
+                languageAliases: {
+                    zh: 'zhcn',
+                    'zh-cn': 'zhcn',
+                    'zh-CN': 'zhcn',
+                    'zh-tw': 'zh-tw',
+                    'zh-TW': 'zh-tw',
+                    en: 'en',
+                    'en-us': 'en',
+                    'en-US': 'en',
+                    ja: 'jap',
+                    'ja-jp': 'jap',
+                    'ja-JP': 'jap'
+                }
+            });
+        } else {
+            console.warn('I18nService 未定义，使用默认翻译实现。');
+            const fallbackLanguage = 'zhcn';
+            this.i18n = {
+                defaultLanguage: fallbackLanguage,
+                fallbackLanguage,
+                setLanguage: async () => fallbackLanguage,
+                ensureLanguage: async () => ({}),
+                getIntlLocale: () => 'zh-CN',
+                t: (key) => key
+            };
+        }
+        this.currentLanguage = this.i18n?.defaultLanguage || 'zhcn';
+
         // 预设服务商类型配置
         this.providerTypes = [
             {
@@ -52,8 +85,177 @@ class BicQASettings {
         this.init();
     }
 
+    async initI18n() {
+        if (!this.i18n) {
+            return;
+        }
+
+        try {
+            await this.i18n.ensureLanguage(this.i18n.defaultLanguage);
+        } catch (error) {
+            console.error('预加载语言资源失败:', error);
+        }
+
+        let languageToUse = this.i18n.defaultLanguage;
+        try {
+            const stored = await this.getStoredLanguagePreference();
+            if (stored && stored.uiLanguage) {
+                languageToUse = stored.uiLanguage;
+            }
+        } catch (error) {
+            console.error('读取语言偏好失败，使用默认语言:', error);
+        }
+
+        await this.applyLanguage(languageToUse, { persist: false });
+    }
+
+    getStoredLanguagePreference() {
+        const defaultLanguage = this.i18n?.defaultLanguage || 'zhcn';
+        return new Promise((resolve) => {
+            if (typeof chrome === 'undefined' || !chrome.storage?.sync?.get) {
+                resolve({ uiLanguage: defaultLanguage });
+                return;
+            }
+            try {
+                chrome.storage.sync.get({ uiLanguage: defaultLanguage }, (items) => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('读取语言偏好失败:', chrome.runtime.lastError);
+                        resolve({ uiLanguage: defaultLanguage });
+                    } else {
+                        resolve(items);
+                    }
+                });
+            } catch (error) {
+                console.error('读取语言偏好异常:', error);
+                resolve({ uiLanguage: defaultLanguage });
+            }
+        });
+    }
+
+    translateStaticElements(language) {
+        if (!this.i18n) return;
+
+        const translate = (key) => {
+            if (!key) return undefined;
+            const value = this.i18n.t(key, language);
+            return typeof value === 'string' ? value : undefined;
+        };
+
+        const setAttribute = (el, attr, key) => {
+            const translation = translate(key);
+            if (translation !== undefined) {
+                el.setAttribute(attr, translation);
+            }
+        };
+
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            const translation = translate(el.dataset.i18n);
+            if (translation !== undefined) {
+                el.textContent = translation;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+            const translation = translate(el.dataset.i18nHtml);
+            if (translation !== undefined) {
+                el.innerHTML = translation;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+            setAttribute(el, 'placeholder', el.dataset.i18nPlaceholder);
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+            setAttribute(el, 'title', el.dataset.i18nTitle);
+        });
+
+        document.querySelectorAll('[data-i18n-alt]').forEach((el) => {
+            setAttribute(el, 'alt', el.dataset.i18nAlt);
+        });
+
+        document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+            setAttribute(el, 'aria-label', el.dataset.i18nAriaLabel);
+        });
+
+        document.querySelectorAll('[data-i18n-value]').forEach((el) => {
+            const translation = translate(el.dataset.i18nValue);
+            if (translation !== undefined) {
+                el.value = translation;
+            }
+        });
+    }
+
+    async applyLanguage(language, options = {}) {
+        if (!this.i18n) return language;
+
+        const { persist = true } = options;
+        let normalizedLanguage = language;
+
+        try {
+            normalizedLanguage = await this.i18n.setLanguage(language);
+        } catch (error) {
+            console.error('设置语言失败，使用回退语言:', error);
+            normalizedLanguage = await this.i18n.setLanguage(this.i18n.fallbackLanguage);
+        }
+
+        this.currentLanguage = normalizedLanguage;
+        this.translateStaticElements(normalizedLanguage);
+
+        if (typeof document !== 'undefined') {
+            const htmlLocale = this.i18n.getIntlLocale(normalizedLanguage);
+            if (document.documentElement) {
+                document.documentElement.lang = htmlLocale;
+            }
+            const translatedTitle = this.t('settings.meta.title');
+            if (translatedTitle && typeof translatedTitle === 'string') {
+                document.title = translatedTitle;
+            }
+        }
+
+        if (persist && typeof chrome !== 'undefined' && chrome.storage?.sync?.set) {
+            try {
+                chrome.storage.sync.set({ uiLanguage: normalizedLanguage }, () => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('保存语言设置失败:', chrome.runtime.lastError);
+                    }
+                });
+            } catch (error) {
+                console.error('保存语言设置异常:', error);
+            }
+        }
+
+        // 语言改变时重新加载默认规则
+        await this.loadSettings();
+
+        return normalizedLanguage;
+    }
+
+    t(key, params = undefined) {
+        if (!this.i18n) return key;
+        return this.i18n.t(key, this.currentLanguage, params);
+    }
+
+    m(key, fallback, params = {}) {
+        const translated = this.t(key, params);
+        if (translated && translated !== key) {
+            return translated;
+        }
+        return this.formatWithParams(fallback, params);
+    }
+
+    formatWithParams(template, params = {}) {
+        if (!template) return template;
+        return Object.keys(params).reduce((acc, paramKey) => {
+            const rawValue = params[paramKey] ?? '';
+            const value = typeof rawValue === 'string' ? rawValue : String(rawValue);
+            return acc.replace(new RegExp(`{{\s*${paramKey}\s*}}`, 'g'), value);
+        }, template);
+    }
+
     async init() {
         try {
+            await this.initI18n();
             await this.loadSettings();
             await this.loadProviderTypes(); // 加载服务商类型配置
             this.renderProviders();
@@ -81,7 +283,7 @@ class BicQASettings {
             console.log('BIC-QA 设置页面初始化完成');
         } catch (error) {
             console.error('初始化失败:', error);
-            this.showMessage('初始化失败: ' + error.message, 'error');
+            this.showMessage(this.m('settings.message.initFailed', '初始化失败: {{error}}', { error: error.message }), 'error');
         }
     }
 
@@ -228,7 +430,7 @@ class BicQASettings {
             // 检查并修复默认模型问题
             this.ensureSingleDefaultModel();
 
-            // 获取默认规则和保存的规则
+            // 获取默认规则和保存的规则（根据当前语言）
             const defaultRules = this.getDefaultRules();
             const savedRules = result.rules || [];
             const defaultRulesModified = result.defaultRulesModified || false;
@@ -270,15 +472,30 @@ class BicQASettings {
         };
     }
 
-    getDefaultRules() {
-        return [
+    getDefaultRules(language = null) {
+        // 如果没有指定语言，使用当前语言
+        const currentLanguage = language || this.currentLanguage || 'zhcn';
+
+        // 根据语言映射获取对应的语言标识
+        const languageMap = {
+            'zhcn': 'zh-CN',
+            'zh-tw': 'zh-CN', // 繁体中文也显示中文规则
+            'en': 'en-US',
+            'jap': 'ja-JP'
+        };
+
+        const targetLanguage = languageMap[currentLanguage] || 'zh-CN';
+
+        // 所有默认规则，按语言分组
+        const allDefaultRules = [
             {
                 "description": "适用于快速检索场景，返回更多相关结果",
                 "id": "default-fast-search",
                 "isDefault": true,
-                "name": "精准检索(Precise search)",
+                "name": "精准检索",
                 "similarity": 0.7,
                 "topN": 6,
+                "language": "zh-CN",
                 "temperature": 0.7,
                 "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供准确、实用的解答。\n\n## 回答要求\n1. 内容准确性：\n   - 严格基于提供的知识库内容回答\n   - 优先使用高相关性内容\n   - 确保信息的准确性和完整性\n   - 可以适度补充相关知识背景\n\n2. 实用性强：\n   - 提供可操作的建议和步骤\n   - 结合实际应用场景\n   - 包含必要的注意事项和最佳实践\n   - 适当添加示例和说明\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 如有必要，提供具体示例\n   - 适当补充相关背景知识\n\n5. 特殊情况处理：\n   - 如果信息不完整，明确指出信息的局限性\n   - 如果存在版本差异，清晰说明各版本的区别\n   - 可以适度提供相关建议\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、准确、实用，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
             },
@@ -286,18 +503,66 @@ class BicQASettings {
                 "description": "适用于创新思维场景，提供多角度分析和创新解决方案",
                 "id": "default-flexible-search",
                 "isDefault": false,
-                "name": "灵活检索(Flexible search)",
+                "name": "灵活检索",
                 "similarity": 0.6,
                 "topN": 8,
+                "language": "zh-CN",
                 "temperature": 1.0,
                 "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供创新、全面的解答。\n\n## 回答要求\n1. 创新思维：\n   - 基于知识库内容进行多角度分析\n   - 提供创新的解决方案和思路\n   - 结合行业趋势和最佳实践\n   - 鼓励探索性思维\n\n2. 全面性：\n   - 不仅回答直接问题，还要考虑相关因素\n   - 提供多种可能的解决方案\n   - 分析不同场景下的适用性\n   - 包含风险评估和优化建议\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 提供多种思路和方案\n   - 包含创新性建议和未来趋势\n\n5. 特殊情况处理：\n   - 如果信息不完整，提供多种可能的解决方案\n   - 如果存在版本差异，分析各版本的优劣势\n   - 可以适度提供创新性建议和未来发展方向\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、创新、全面，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
+            },
+            {
+                "description": "Suitable for fast search scenarios, returns more relevant results",
+                "id": "default-fast-search-en",
+                "isDefault": true,
+                "name": "Precise Search",
+                "similarity": 0.7,
+                "topN": 6,
+                "language": "en-US",
+                "temperature": 0.7,
+                "prompt": "You are a professional database expert. Your task is to provide accurate and practical answers to users based on the provided knowledge base content.\n\n## Answer Requirements\n1. Content Accuracy:\n   - Strictly answer based on the provided knowledge base content\n   - Prioritize high-relevance content\n   - Ensure information accuracy and completeness\n   - Can appropriately supplement relevant knowledge background\n\n2. Practicality:\n   - Provide actionable advice and steps\n   - Combine with actual application scenarios\n   - Include necessary precautions and best practices\n   - Add examples and explanations appropriately\n\n3. Version Information Handling:\n   - Note at the beginning: > Applicable Version: {{version_info}}\n   - If there are differences between versions, clearly indicate them\n   - Confirm again at the end: > Applicable Version: {{version_info}}\n\n4. Answer Structure:\n   - First summarize the core points\n   - Expand in detail point by point\n   - Provide specific examples if necessary\n   - Supplement relevant background knowledge appropriately\n\n5. Special Case Handling:\n   - If information is incomplete, clearly indicate the limitations\n   - If version differences exist, clearly explain the differences between versions\n   - Can appropriately provide relevant suggestions\n\n## Important: Streaming Output Requirements\n- Please start answering directly, do not use <think> tags for thinking\n- Immediately start outputting content to achieve a true real-time streaming experience\n- Think while outputting, allowing users to see the answering process in real-time\n\nPlease ensure answers are professional, accurate, and practical, and always pay attention to version compatibility. When analyzing Oracle error numbers ORA-XXXXX, do not arbitrarily match other similar error numbers. You must strictly match the number, only allowing removal of leading zeros or padding zeros on the left to make it 5 digits."
+            },
+            {
+                "description": "Suitable for innovative thinking scenarios, provides multi-angle analysis and innovative solutions",
+                "id": "default-flexible-search-en",
+                "isDefault": false,
+                "name": "Flexible Search",
+                "similarity": 0.6,
+                "topN": 8,
+                "language": "en-US",
+                "temperature": 1.0,
+                "prompt": "You are a professional database expert. Your task is to provide innovative and comprehensive answers to users based on the provided knowledge base content.\n\n## Answer Requirements\n1. Innovative Thinking:\n   - Conduct multi-angle analysis based on knowledge base content\n   - Provide innovative solutions and ideas\n   - Combine industry trends and best practices\n   - Encourage exploratory thinking\n\n2. Comprehensiveness:\n   - Not only answer direct questions but also consider related factors\n   - Provide multiple possible solutions\n   - Analyze applicability in different scenarios\n   - Include risk assessment and optimization suggestions\n\n3. Version Information Handling:\n   - Note at the beginning: > Applicable Version: {{version_info}}\n   - If there are differences between versions, clearly indicate them\n   - Confirm again at the end: > Applicable Version: {{version_info}}\n\n4. Answer Structure:\n   - First summarize the core points\n   - Expand in detail point by point\n   - Provide multiple ideas and solutions\n   - Include innovative suggestions and future trends\n\n5. Special Case Handling:\n   - If information is incomplete, provide multiple possible solutions\n   - If version differences exist, analyze the advantages and disadvantages of each version\n   - Can appropriately provide innovative suggestions and future development directions\n\n## Important: Streaming Output Requirements\n- Please start answering directly, do not use <think> tags for thinking\n- Immediately start outputting content to achieve a true real-time streaming experience\n- Think while outputting, allowing users to see the answering process in real-time\n\nPlease ensure answers are professional, innovative, and comprehensive, and always pay attention to version compatibility. When analyzing Oracle error numbers ORA-XXXXX, do not arbitrarily match other similar error numbers. You must strictly match the number, only allowing removal of leading zeros or padding zeros on the left to make it 5 digits."
+            },
+            {
+                "description": "高速検索シーンに適用され、より関連性の高い結果を返します",
+                "id": "default-fast-search-ja",
+                "isDefault": true,
+                "name": "精密検索",
+                "similarity": 0.7,
+                "topN": 6,
+                "language": "ja-JP",
+                "temperature": 0.7,
+                "prompt": "あなたは専門的なデータベースエキスパートです。あなたのタスクは、提供されたナレッジベースのコンテンツに基づいて、ユーザーに正確で実用的な回答を提供することです。\n\n## 回答要件\n1. コンテンツの正確性：\n   - 提供されたナレッジベースのコンテンツに厳密に基づいて回答する\n   - 高関連性のコンテンツを優先的に使用する\n   - 情報の正確性と完全性を確保する\n   - 関連する知識背景を適度に補足できる\n\n2. 実用性：\n   - 実行可能なアドバイスと手順を提供する\n   - 実際のアプリケーションシナリオと組み合わせる\n   - 必要な注意事項とベストプラクティスを含める\n   - 例と説明を適切に追加する\n\n3. バージョン情報の処理：\n   - 冒頭に注記：> 適用バージョン：{{version_info}}\n   - 異なるバージョンに差異がある場合は、明確に指摘する\n   - 最後に再度確認：> 適用バージョン：{{version_info}}\n\n4. 回答構造：\n   - まず核心ポイントを要約する\n   - ポイントごとに詳細に展開する\n   - 必要に応じて具体的な例を提供する\n   - 関連する背景知識を適切に補足する\n\n5. 特殊ケースの処理：\n   - 情報が不完全な場合、情報の限界を明確に指摘する\n   - バージョンの差異が存在する場合、各バージョンの違いを明確に説明する\n   - 関連する提案を適度に提供できる\n\n## 重要：ストリーミング出力要件\n- <think>タグを使用して思考せず、直接回答を開始してください\n- コンテンツの出力を即座に開始し、真のリアルタイムストリーミング体験を実現する\n- 出力しながら思考し、ユーザーが回答プロセスをリアルタイムで確認できるようにする\n\n回答が専門的で、正確で、実用的であることを確保し、常にバージョン互換性に注意してください。Oracleのエラー番号ORA-XXXXXを分析する場合、他の類似するエラー番号を任意に一致させてはいけません。番号を厳密に一致させる必要があり、左側の0を削除するか、左側に0を埋めて5桁にすることを許可するのみです。"
+            },
+            {
+                "description": "革新的な思考シーンに適用され、多角的な分析と革新的なソリューションを提供します",
+                "id": "default-flexible-search-ja",
+                "isDefault": false,
+                "name": "柔軟検索",
+                "similarity": 0.6,
+                "topN": 8,
+                "language": "ja-JP",
+                "temperature": 1.0,
+                "prompt": "あなたは専門的なデータベースエキスパートです。あなたのタスクは、提供されたナレッジベースのコンテンツに基づいて、ユーザーに革新的で包括的な回答を提供することです。\n\n## 回答要件\n1. 革新的な思考：\n   - ナレッジベースのコンテンツに基づいて多角的な分析を行う\n   - 革新的なソリューションとアイデアを提供する\n   - 業界のトレンドとベストプラクティスを組み合わせる\n   - 探索的思考を奨励する\n\n2. 包括性：\n   - 直接的な質問に答えるだけでなく、関連する要因も考慮する\n   - 複数の可能なソリューションを提供する\n   - 異なるシナリオでの適用性を分析する\n   - リスク評価と最適化提案を含める\n\n3. バージョン情報の処理：\n   - 冒頭に注記：> 適用バージョン：{{version_info}}\n   - 異なるバージョンに差異がある場合は、明確に指摘する\n   - 最後に再度確認：> 適用バージョン：{{version_info}}\n\n4. 回答構造：\n   - まず核心ポイントを要約する\n   - ポイントごとに詳細に展開する\n   - 複数のアイデアとソリューションを提供する\n   - 革新的な提案と将来のトレンドを含める\n\n5. 特殊ケースの処理：\n   - 情報が不完全な場合、複数の可能なソリューションを提供する\n   - バージョンの差異が存在する場合、各バージョンの優劣を分析する\n   - 革新的な提案と将来の発展方向を適度に提供できる\n\n## 重要：ストリーミング出力要件\n- <think>タグを使用して思考せず、直接回答を開始してください\n- コンテンツの出力を即座に開始し、真のリアルタイムストリーミング体験を実現する\n- 出力しながら思考し、ユーザーが回答プロセスをリアルタイムで確認できるようにする\n\n回答が専門的で、革新的で、包括的であることを確保し、常にバージョン互換性に注意してください。Oracleのエラー番号ORA-XXXXXを分析する場合、他の類似するエラー番号を任意に一致させてはいけません。番号を厳密に一致させる必要があり、左側の0を删除するか、左側に0を埋めて5桁にすることを許可するのみです。"
             }
         ];
+
+        // 根据目标语言过滤规则
+        return allDefaultRules.filter(rule => rule.language === targetLanguage);
     }
 
     // 判断是否为内置规则
     isBuiltInRule(ruleId) {
-        const builtInIds = ['default-fast-search', 'default-flexible-search'];
+        const builtInIds = ['default-fast-search', 'default-flexible-search', 'default-fast-search-en', 'default-flexible-search-en', 'default-fast-search-ja', 'default-flexible-search-ja'];
         return builtInIds.includes(ruleId);
     }
 
@@ -368,7 +633,7 @@ class BicQASettings {
         container.innerHTML = '';
 
         if (this.providers.length === 0) {
-            container.innerHTML = '<p class="empty-message">暂无服务商配置，请添加服务商</p>';
+            container.innerHTML = `<p class="empty-message">${this.t('settings.emptyState.noProviders')}</p>`;
             return;
         }
 
@@ -386,7 +651,7 @@ class BicQASettings {
         // 构建自定义端点信息
         const customEndpointInfo = provider.modelsEndpoint ?
             `<div class="detail-item">
-                <div class="detail-label">自定义模型端点</div>
+                <div class="detail-label">${this.t('settings.providerList.detail.customEndpoint')}</div>
                 <div class="detail-value">${provider.modelsEndpoint}</div>
             </div>` : '';
 
@@ -397,28 +662,28 @@ class BicQASettings {
                     ${provider.name}
                 </div>
                 <div class="provider-actions">
-                    <button class="action-btn test-btn" data-action="test" data-index="${index}">模型发现</button>
-                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}">编辑</button>
-                    <button class="action-btn delete-btn" data-action="delete" data-index="${index}">删除</button>
+                    <button class="action-btn test-btn" data-action="test" data-index="${index}" title="${this.t('settings.providerList.actions.testTooltip')}">${this.t('settings.providerList.actions.test')}</button>
+                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}">${this.t('settings.providerList.actions.edit')}</button>
+                    <button class="action-btn delete-btn" data-action="delete" data-index="${index}">${this.t('settings.providerList.actions.delete')}</button>
                 </div>
             </div>
             <div class="provider-details">
                 <div class="detail-item">
-                    <div class="detail-label">API地址</div>
+                    <div class="detail-label">${this.t('settings.providerList.detail.apiEndpoint')}</div>
                     <div class="detail-value">${provider.apiEndpoint}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">认证类型</div>
+                    <div class="detail-label">${this.t('settings.providerList.detail.authType')}</div>
                     <div class="detail-value">${provider.authType}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">请求格式</div>
+                    <div class="detail-label">${this.t('settings.providerList.detail.requestFormat')}</div>
                     <div class="detail-value">${provider.requestFormat}</div>
                 </div>
                 ${customEndpointInfo}
                 <div class="detail-item">
-                    <div class="detail-label">关联模型</div>
-                    <div class="detail-value">${this.getProviderModels(provider.name).length} 个</div>
+                    <div class="detail-label">${this.t('settings.providerList.detail.modelCount')}</div>
+                    <div class="detail-value">${this.getProviderModels(provider.name).length} ${this.t('settings.providerList.detail.itemsSuffix')}</div>
                 </div>
             </div>
         `;
@@ -431,7 +696,7 @@ class BicQASettings {
         container.innerHTML = '';
 
         if (this.models.length === 0) {
-            container.innerHTML = '<p class="empty-message">暂无模型配置，请添加模型</p>';
+            container.innerHTML = `<p class="empty-message">${this.t('settings.emptyState.noModels')}</p>`;
             return;
         }
 
@@ -451,8 +716,8 @@ class BicQASettings {
         if (this.rules.length === 0) {
             rulesList.innerHTML = `
                 <div class="empty-state">
-                    <p>暂无参数规则配置</p>
-                    <p>点击"添加规则"按钮开始配置</p>
+                    <p>${this.t('settings.emptyState.noRules')}</p>
+                    <p>${this.t('settings.emptyState.noRulesHint')}</p>
                 </div>
             `;
             return;
@@ -475,27 +740,27 @@ class BicQASettings {
                     ${model.isDefault ? '<span class="default-badge">默认</span>' : ''}
                 </div>
                 <div class="model-actions">
-                    <button class="action-btn test-btn" data-action="test" data-index="${index}" title="测试模型聊天功能">聊天测试</button>
-                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}">编辑</button>
-                    <button class="action-btn delete-btn" data-action="delete" data-index="${index}">删除</button>
+                    <button class="action-btn test-btn" data-action="test" data-index="${index}" title="${this.t('settings.modelList.testTooltip')}">${this.t('settings.modelList.testButton')}</button>
+                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}">${this.t('settings.modelList.editButton')}</button>
+                    <button class="action-btn delete-btn" data-action="delete" data-index="${index}">${this.t('settings.modelList.deleteButton')}</button>
                 </div>
             </div>
             <div class="model-details">
                 <div class="detail-item">
-                    <div class="detail-label">模型名称</div>
+                    <div class="detail-label">${this.t('settings.modelList.detail.name')}</div>
                     <div class="detail-value">${model.name}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">所属服务商</div>
+                    <div class="detail-label">${this.t('settings.modelList.detail.provider')}</div>
                     <div class="detail-value">${model.provider}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">最大Token</div>
-                    <div class="detail-value">${model.maxTokens || '未设置'}</div>
+                    <div class="detail-label">${this.t('settings.modelList.detail.maxTokens')}</div>
+                    <div class="detail-value">${model.maxTokens || this.t('settings.modelList.detail.notSet')}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">温度参数</div>
-                    <div class="detail-value">${model.temperature || '未设置'}</div>
+                    <div class="detail-label">${this.t('settings.modelList.detail.temperature')}</div>
+                    <div class="detail-value">${model.temperature || this.t('settings.modelList.detail.notSet')}</div>
                 </div>
             </div>
         `;
@@ -507,8 +772,8 @@ class BicQASettings {
         const ruleElement = document.createElement('div');
         ruleElement.className = 'rule-item';
 
-        const defaultBadge = rule.isDefault ? '<span class="default-badge">默认</span>' : '';
-        const builtInBadge = this.isBuiltInRule(rule.id) ? '<span class="built-in-badge">内置</span>' : '';
+        const defaultBadge = rule.isDefault ? `<span class="default-badge">${this.t('settings.rules.badge.default')}</span>` : '';
+        const builtInBadge = this.isBuiltInRule(rule.id) ? `<span class="built-in-badge">${this.t('settings.rules.badge.builtin')}</span>` : '';
 
         // 判断是否为内置规则
         const isBuiltIn = this.isBuiltInRule(rule.id);
@@ -519,30 +784,30 @@ class BicQASettings {
                     ${rule.name} ${defaultBadge} ${builtInBadge}
                 </div>
                 <div class="rule-actions">
-                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}" title="编辑规则">
-                        编辑
+                    <button class="action-btn edit-btn" data-action="edit" data-index="${index}" title="${this.t('settings.rules.action.editTooltip')}">
+                        ${this.t('settings.rules.action.edit')}
                     </button>
-                    ${!isBuiltIn ? `<button class="action-btn delete-btn" data-action="delete" data-index="${index}" title="删除规则">
-                        删除
+                    ${!isBuiltIn ? `<button class="action-btn delete-btn" data-action="delete" data-index="${index}" title="${this.t('settings.rules.action.deleteTooltip')}">
+                        ${this.t('settings.rules.action.delete')}
                     </button>` : ''}
                 </div>
             </div>
             <div class="rule-details">
                 <div class="detail-item">
-                    <span class="detail-label">相似度阈值</span>
+                    <span class="detail-label">${this.t('settings.rules.detail.similarityLabel')}</span>
                     <span class="detail-value">${rule.similarity}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">TOP N</span>
+                    <span class="detail-label">${this.t('settings.rules.detail.topNLabel')}</span>
                     <span class="detail-value">${rule.topN}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">温度</span>
+                    <span class="detail-label">${this.t('settings.rules.detail.temperatureLabel')}</span>
                     <span class="detail-value">${rule.temperature}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">提示词</span>
-                    <span class="detail-value">${rule.prompt || '无提示词'}</span>
+                    <span class="detail-label">${this.t('settings.rules.detail.promptLabel')}</span>
+                    <span class="detail-value">${rule.prompt || this.t('settings.rules.detail.noPrompt')}</span>
                 </div>
             </div>
         `;
@@ -556,7 +821,15 @@ class BicQASettings {
 
     updateModelProviderOptions() {
         const select = document.getElementById('modelProvider');
-        select.innerHTML = '<option value="">请选择服务商</option>';
+        if (!select) return;
+
+        const previousValue = select.value;
+        select.innerHTML = '';
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = this.t('settings.modelForm.providerPlaceholder');
+        select.appendChild(placeholderOption);
 
         this.providers.forEach(provider => {
             const option = document.createElement('option');
@@ -564,6 +837,10 @@ class BicQASettings {
             option.textContent = provider.name;
             select.appendChild(option);
         });
+
+        if (previousValue) {
+            select.value = previousValue;
+        }
     }
 
     showProviderForm(provider = null) {
@@ -574,11 +851,12 @@ class BicQASettings {
         // 初始化服务商类型下拉框
         this.populateProviderTypeOptions();
 
+        const providerTitleKey = provider ? 'settings.providerForm.title.edit' : 'settings.providerForm.title.add';
+        title.textContent = this.t(providerTitleKey);
+
         if (provider) {
-            title.textContent = '编辑服务商';
             this.fillProviderForm(provider);
         } else {
-            title.textContent = '添加服务商';
             document.getElementById('providerForm').reset();
 
             // 设置默认的服务商类型（如果有的话）
@@ -660,7 +938,7 @@ class BicQASettings {
 
             // 如果名称改变了，需要检查唯一性
             if (originalName !== provider.name && existingProviderIndex !== -1 && existingProviderIndex !== this.editingProviderIndex) {
-                this.showMessage(`❌ 服务商名称 "${provider.name}" 已存在，请使用其他名称`, 'error');
+                this.showMessage(this.m('settings.message.providerNameExists', '❌ 服务商名称 "{{name}}" 已存在，请使用其他名称', { name: provider.name }), 'error');
                 return;
             }
 
@@ -678,7 +956,7 @@ class BicQASettings {
         } else {
             // 添加新服务商
             if (existingProviderIndex !== -1) {
-                this.showMessage(`❌ 服务商名称 "${provider.name}" 已存在，请使用其他名称`, 'error');
+                this.showMessage(this.m('settings.message.providerNameExists', '❌ 服务商名称 "{{name}}" 已存在，请使用其他名称', { name: provider.name }), 'error');
                 return;
             }
             this.providers.push(provider);
@@ -689,7 +967,7 @@ class BicQASettings {
         this.renderProviders();
         this.renderModels(); // 重新渲染模型列表以更新关联信息
         this.hideProviderForm();
-        this.showMessage('服务商配置已保存', 'success');
+        this.showMessage(this.m('settings.message.providerSaved', '服务商配置已保存'), 'success');
     }
 
     showModelForm(model = null) {
@@ -700,11 +978,12 @@ class BicQASettings {
         // 确保服务商选项已更新
         this.updateModelProviderOptions();
 
+        const modelTitleKey = model ? 'settings.modelForm.title.edit' : 'settings.modelForm.title.add';
+        title.textContent = this.t(modelTitleKey);
+
         if (model) {
-            title.textContent = '编辑模型';
             this.fillModelForm(model);
         } else {
-            title.textContent = '添加模型';
             document.getElementById('modelForm').reset();
         }
 
@@ -782,7 +1061,7 @@ class BicQASettings {
 
         // 设置输入框的list属性
         modelNameInput.setAttribute('list', 'modelNameOptions');
-        modelNameInput.placeholder = `选择或输入模型名称 (${availableModels.length} 个可用模型)`;
+        modelNameInput.placeholder = this.m('settings.modelForm.modelNamePlaceholderWithCount', '选择或输入模型名称 ({{count}} 个可用模型)', { count: availableModels.length });
 
         // 添加刷新按钮
         this.addRefreshModelsButton(availableModels.length);
@@ -811,8 +1090,10 @@ class BicQASettings {
             }
         }
 
+        const summaryText = this.m('settings.modelForm.refreshSummary', '已加载 {{count}} 个可用模型', { count: modelCount });
+        const refreshLabel = this.t('settings.modelForm.refreshButton');
         refreshContainer.innerHTML = `
-            <span>�� 已加载 ${modelCount} 个可用模型</span>
+            <span>✅ ${summaryText}</span>
             <button type="button" id="refreshModelsBtn" style="
                 background: #007bff;
                 color: white;
@@ -821,7 +1102,7 @@ class BicQASettings {
                 border-radius: 4px;
                 font-size: 11px;
                 cursor: pointer;
-            ">🔄 刷新</button>
+            ">🔄 ${refreshLabel}</button>
         `;
 
         // 绑定刷新按钮事件
@@ -835,12 +1116,12 @@ class BicQASettings {
     async refreshModelsList() {
         const providerSelect = document.getElementById('modelProvider');
         if (!providerSelect || !providerSelect.value) {
-            this.showMessage('请先选择服务商', 'warning');
+            this.showMessage(this.m('settings.message.selectProviderFirst', '请先选择服务商'), 'warning');
             return;
         }
 
         try {
-            this.showMessage('正在刷新模型列表...', 'info');
+            this.showMessage(this.m('settings.message.refreshingModels', '正在刷新模型列表...'), 'info');
 
             const provider = this.providers.find(p => p.name === providerSelect.value);
             if (!provider) {
@@ -850,14 +1131,14 @@ class BicQASettings {
             const availableModels = await this.getAvailableModels(provider);
             if (availableModels && availableModels.length > 0) {
                 this.populateModelNameOptions(availableModels);
-                this.showMessage(`已刷新模型列表，共 ${availableModels.length} 个模型`, 'success');
+                this.showMessage(this.m('settings.message.modelsRefreshed', '已刷新模型列表，共 {{count}} 个模型', { count: availableModels.length }), 'success');
             } else {
                 throw new Error('无法获取模型列表');
             }
 
         } catch (error) {
             console.error('刷新模型列表失败:', error);
-            this.showMessage('刷新模型列表失败: ' + error.message, 'error');
+            this.showMessage(this.m('settings.message.refreshModelsFailed', '刷新模型列表失败: {{error}}', { error: error.message }), 'error');
         }
     }
 
@@ -866,7 +1147,7 @@ class BicQASettings {
         const modelNameInput = document.getElementById('modelName');
         if (modelNameInput) {
             modelNameInput.removeAttribute('list');
-            modelNameInput.placeholder = '输入模型名称';
+            modelNameInput.placeholder = this.t('settings.modelForm.modelNamePlaceholder');
         }
     }
 
@@ -875,11 +1156,12 @@ class BicQASettings {
         const form = document.getElementById('addRuleForm');
         const title = form.querySelector('.form-header h3');
 
+        const ruleTitleKey = rule ? 'settings.ruleForm.title.edit' : 'settings.ruleForm.title.add';
+        title.textContent = this.t(ruleTitleKey);
+
         if (rule) {
-            title.textContent = '编辑参数规则';
             this.fillRuleForm(rule);
         } else {
-            title.textContent = '添加参数规则';
             document.getElementById('ruleForm').reset();
         }
 
@@ -895,6 +1177,39 @@ class BicQASettings {
     hideRuleForm() {
         document.getElementById('addRuleForm').style.display = 'none';
         this.editingRule = null;
+
+        if (typeof I18nService !== 'undefined') {
+            this.i18n = new I18nService({
+                defaultLanguage: 'zhcn',
+                fallbackLanguage: 'zhcn',
+                defaultNamespace: 'settings',
+                languageAliases: {
+                    zh: 'zhcn',
+                    'zh-cn': 'zhcn',
+                    'zh-CN': 'zhcn',
+                    'zh-tw': 'zh-tw',
+                    'zh-TW': 'zh-tw',
+                    en: 'en',
+                    'en-us': 'en',
+                    'en-US': 'en',
+                    ja: 'jap',
+                    'ja-jp': 'jap',
+                    'ja-JP': 'jap'
+                }
+            });
+        } else {
+            console.warn('I18nService 未定义，使用默认翻译实现。');
+            const fallbackLanguage = 'zhcn';
+            this.i18n = {
+                defaultLanguage: fallbackLanguage,
+                fallbackLanguage,
+                setLanguage: async () => fallbackLanguage,
+                ensureLanguage: async () => ({}),
+                getIntlLocale: () => 'zh-CN',
+                t: (key) => key
+            };
+        }
+        this.currentLanguage = this.i18n?.defaultLanguage || 'zhcn';
     }
 
     fillModelForm(model) {
@@ -978,7 +1293,7 @@ class BicQASettings {
             // 如果模型名称或服务商改变了，需要检查唯一性
             if ((originalModel.name !== model.name || originalModel.provider !== model.provider) &&
                 existingModelIndex !== -1 && existingModelIndex !== this.editingModelIndex) {
-                this.showMessage(`❌ 模型 "${model.name}" 在服务商 "${model.provider}" 下已存在，请使用其他名称或选择其他服务商`, 'error');
+                this.showMessage(this.m('settings.message.modelExists', '❌ 模型 "{{model}}" 在服务商 "{{provider}}" 下已存在，请使用其他名称或选择其他服务商', { model: model.name, provider: model.provider }), 'error');
                 return;
             }
 
@@ -987,7 +1302,7 @@ class BicQASettings {
         } else {
             // 添加新模型
             if (existingModelIndex !== -1) {
-                this.showMessage(`❌ 模型 "${model.name}" 在服务商 "${model.provider}" 下已存在，请使用其他名称或选择其他服务商`, 'error');
+                this.showMessage(this.m('settings.message.modelExists', '❌ 模型 "{{model}}" 在服务商 "{{provider}}" 下已存在，请使用其他名称或选择其他服务商', { model: model.name, provider: model.provider }), 'error');
                 return;
             }
             this.models.push(model);
@@ -1021,7 +1336,7 @@ class BicQASettings {
         console.log('模型保存成功，当前模型列表:', this.models);
         this.renderModels();
         this.hideModelForm();
-        this.showMessage('模型配置已保存', 'success');
+        this.showMessage(this.m('settings.message.modelSaved', '模型配置已保存'), 'success');
     }
 
     async handleRuleSubmit(e) {
@@ -1069,22 +1384,22 @@ class BicQASettings {
 
         // 验证数据
         if (!ruleData.name || ruleData.name.trim() === '') {
-            this.showMessage('请输入规则名称', 'error');
+            this.showMessage(this.m('settings.message.enterRuleName', '请输入规则名称'), 'error');
             return;
         }
 
         if (isNaN(ruleData.similarity) || ruleData.similarity < 0 || ruleData.similarity > 1) {
-            this.showMessage('相似度必须在0-1之间', 'error');
+            this.showMessage(this.m('settings.message.similarityRange', '相似度必须在0-1之间'), 'error');
             return;
         }
 
         if (isNaN(ruleData.topN) || ruleData.topN < 1 || ruleData.topN > 10) {
-            this.showMessage('TOP N必须在1-10之间', 'error');
+            this.showMessage(this.m('settings.message.topNRange', 'TOP N必须在1-10之间'), 'error');
             return;
         }
 
         if (isNaN(ruleData.temperature) || ruleData.temperature < 0 || ruleData.temperature > 2) {
-            this.showMessage('温度必须在0-2之间', 'error');
+            this.showMessage(this.m('settings.message.temperatureRange', '温度必须在0-2之间'), 'error');
             return;
         }
 
@@ -1107,7 +1422,7 @@ class BicQASettings {
                         // 移除强制保持原有isDefault状态的逻辑，允许用户修改
                     };
                     console.log('更新后的规则:', this.rules[index]);
-                    this.showMessage('规则更新成功', 'success');
+                    this.showMessage(this.m('settings.message.ruleUpdated', '规则更新成功'), 'success');
                 }
             } else {
                 // 添加模式
@@ -1117,7 +1432,7 @@ class BicQASettings {
                     ...ruleData
                 };
                 this.rules.push(newRule);
-                this.showMessage('规则添加成功', 'success');
+                this.showMessage(this.m('settings.message.ruleAdded', '规则添加成功'), 'success');
             }
 
             // 如果设置为默认规则，取消其他规则的默认状态
@@ -1135,7 +1450,7 @@ class BicQASettings {
 
         } catch (error) {
             console.error('保存规则失败:', error);
-            this.showMessage('保存规则失败: ' + error.message, 'error');
+            this.showMessage(this.m('settings.message.saveRuleFailed', '保存规则失败: {{error}}', { error: error.message }), 'error');
         }
     }
 
@@ -1183,7 +1498,7 @@ class BicQASettings {
             const confirm = window.confirm(
                 `删除服务商"${provider.name}"将同时删除其关联的${relatedModels.length}个模型，确定继续吗？`
             );
-            if (!confirm) return;
+            if (!confirmed) return;
 
             // 删除关联的模型
             this.models = this.models.filter(model => model.provider !== provider.name);
@@ -1194,7 +1509,7 @@ class BicQASettings {
         await this.saveProviders();
         this.renderProviders();
         this.renderModels();
-        this.showMessage('服务商已删除', 'success');
+        this.showMessage(this.m('settings.message.providerDeleted', '服务商已删除'), 'success');
     }
 
     async deleteModel(index) {
@@ -1207,7 +1522,7 @@ class BicQASettings {
 
             await this.saveModels();
             this.renderModels();
-            this.showMessage('模型删除成功', 'success');
+            this.showMessage(this.m('settings.message.modelDeleted', '模型删除成功'), 'success');
         }
     }
 
@@ -1220,7 +1535,7 @@ class BicQASettings {
             const confirm = window.confirm(
                 `"${rule.name}" 是内置规则，删除后将恢复为默认值。确定继续吗？`
             );
-            if (!confirm) return;
+            if (!confirmed) return;
 
             // 恢复默认规则
             const defaultRules = this.getDefaultRules();
@@ -1229,7 +1544,7 @@ class BicQASettings {
                 this.rules[index] = { ...defaultRule };
                 await this.saveRules();
                 this.renderRules();
-                this.showMessage('规则已恢复为默认值', 'success');
+                this.showMessage(this.m('settings.message.ruleRestored', '规则已恢复为默认值'), 'success');
                 return;
             }
         }
@@ -1239,7 +1554,7 @@ class BicQASettings {
             this.rules.splice(index, 1);
             await this.saveRules();
             this.renderRules();
-            this.showMessage('规则删除成功', 'success');
+            this.showMessage(this.m('settings.message.ruleDeleted', '规则删除成功'), 'success');
         }
     }
 
@@ -1248,15 +1563,15 @@ class BicQASettings {
         const provider = this.providers[index];
 
         // 显示初始测试提示
-        this.showMessage('正在测试服务商连接...', 'info');
+        this.showMessage(this.m('settings.message.testingProviderConnection', '正在测试服务商连接...'), 'info');
 
         try {
             // 首先测试API Key的有效性
-            this.showMessage('正在验证API Key...', 'info');
+            this.showMessage(this.m('settings.message.validatingApiKey', '正在验证API Key...'), 'info');
             await this.validateAPIKey(provider);
 
             // 显示获取模型列表的提示
-            this.showMessage('API Key验证成功，正在获取可用模型列表...', 'info');
+            this.showMessage(this.m('settings.message.apiKeyValidatedFetchingModels', 'API Key验证成功，正在获取可用模型列表...'), 'info');
 
             // 然后进行完整的API测试
             const testResult = await this.performAPITest(provider);
@@ -1268,7 +1583,7 @@ class BicQASettings {
 
             // 显示最终成功消息，明确说明测试内容
             const testType = this.isOllamaService(provider) ? '' : '';
-            this.showMessage(`✅ 服务商"${provider.name}"连接测试成功${testType}！发现 ${modelCount} 个模型: ${modelNames}${moreModels}`, 'success');
+            this.showMessage(this.m('settings.message.providerTestSuccess', '✅ 服务商"{{name}}"连接测试成功{{type}}！发现 {{count}} 个模型: {{models}}{{more}}', { name: provider.name, type: testType, count: modelCount, models: modelNames, more: moreModels }), 'success');
 
             // 如果模型数量较多，在控制台显示完整列表
             if (modelCount > 3) {
@@ -1285,7 +1600,7 @@ class BicQASettings {
 
         } catch (error) {
             console.error('API测试失败:', error);
-            this.showMessage(`❌ 服务商"${provider.name}"连接测试失败: ${error.message}`, 'error');
+            this.showMessage(this.m('settings.message.providerTestFailed', '❌ 服务商"{{name}}"连接测试失败: {{error}}', { name: provider.name, error: error.message }), 'error');
             this.updateProviderStatus(index, 'inactive');
         }
     }
@@ -1315,7 +1630,9 @@ class BicQASettings {
         // 弹窗标题
         const title = document.createElement('h3');
         const testType = this.isOllamaService(provider) ? '' : '';
-        title.innerHTML = `✅ 连接测试成功${testType} - 选择要纳管的模型 <span style="color:#666;font-size:14px;font-weight:normal;">(${provider.name} - 发现 ${availableModels.length} 个模型)</span>`;
+        const titleText = this.m('settings.modelSelection.title', '连接测试成功{{type}} - 选择要纳管的模型', { type: testType });
+        const subtitleText = this.m('settings.modelSelection.subtitle', '{{provider}} - 发现 {{count}} 个模型', { provider: provider.name, count: availableModels.length });
+        title.innerHTML = `✅ ${titleText} <span style="color:#666;font-size:14px;font-weight:normal;">(${subtitleText})</span>`;
 
         // 模型列表容器
         const modelList = document.createElement('div');
@@ -1330,7 +1647,7 @@ class BicQASettings {
 
         const selectAllLabel = document.createElement('label');
         selectAllLabel.htmlFor = 'selectAllModels';
-        selectAllLabel.textContent = '全选/取消全选';
+        selectAllLabel.textContent = this.t('settings.modelSelection.selectAll');
 
         selectAllContainer.appendChild(selectAllCheckbox);
         selectAllContainer.appendChild(selectAllLabel);
@@ -1364,7 +1681,7 @@ class BicQASettings {
         const batchSettings = document.createElement('div');
 
         const batchTitle = document.createElement('h4');
-        batchTitle.textContent = '批量设置参数';
+        batchTitle.textContent = this.t('settings.modelSelection.batchTitle');
 
         const batchForm = document.createElement('div');
 
@@ -1372,11 +1689,11 @@ class BicQASettings {
         const maxTokensGroup = document.createElement('div');
 
         const maxTokensLabel = document.createElement('label');
-        maxTokensLabel.textContent = '最大Token数:';
+        maxTokensLabel.textContent = this.t('settings.modelSelection.maxTokensLabel');
 
         const maxTokensInput = document.createElement('input');
         maxTokensInput.type = 'number';
-        maxTokensInput.placeholder = '例如: 4096';
+        maxTokensInput.placeholder = this.t('settings.modelSelection.maxTokensPlaceholder');
 
         maxTokensGroup.appendChild(maxTokensLabel);
         maxTokensGroup.appendChild(maxTokensInput);
@@ -1385,14 +1702,14 @@ class BicQASettings {
         const temperatureGroup = document.createElement('div');
 
         const temperatureLabel = document.createElement('label');
-        temperatureLabel.textContent = '温度参数:';
+        temperatureLabel.textContent = this.t('settings.modelSelection.temperatureLabel');
 
         const temperatureInput = document.createElement('input');
         temperatureInput.type = 'number';
         temperatureInput.step = '0.1';
         temperatureInput.min = '0';
         temperatureInput.max = '2';
-        temperatureInput.placeholder = '例如: 0.7';
+        temperatureInput.placeholder = this.t('settings.modelSelection.temperaturePlaceholder');
 
         temperatureGroup.appendChild(temperatureLabel);
         temperatureGroup.appendChild(temperatureInput);
@@ -1407,10 +1724,10 @@ class BicQASettings {
         const buttonContainer = document.createElement('div');
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = '取消';
+        cancelBtn.textContent = this.t('settings.common.cancel');
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = '确认纳管';
+        confirmBtn.textContent = this.t('settings.modelSelection.confirmButton');
 
         buttonContainer.appendChild(cancelBtn);
         buttonContainer.appendChild(confirmBtn);
@@ -1457,7 +1774,7 @@ class BicQASettings {
             });
 
             if (selectedModels.length === 0) {
-                alert('请至少选择一个模型');
+                alert(this.t('settings.modelSelection.chooseAtLeastOne'));
                 return;
             }
 
@@ -1478,7 +1795,7 @@ class BicQASettings {
 
             // 如果没有新模型，提示用户
             if (newModels.length === 0) {
-                alert('所有选中的模型都已存在，无需重复添加');
+                alert(this.t('settings.modelSelection.allModelsAlreadyAdded'));
                 document.body.removeChild(dialog);
                 return;
             }
@@ -1514,7 +1831,7 @@ class BicQASettings {
             this.renderModels();
 
             document.body.removeChild(dialog);
-            this.showMessage(`已增量添加 ${newModels.length} 个新模型到模型列表`, 'success');
+            this.showMessage(this.m('settings.message.modelsIncrementAdded', '已增量添加 {{count}} 个新模型到模型列表', { count: newModels.length }), 'success');
         });
 
         // 点击背景关闭弹窗
@@ -1537,7 +1854,7 @@ class BicQASettings {
     // 同步服务商的模型列表
     async syncModelsFromProvider(provider, availableModels) {
         try {
-            this.showMessage('正在同步模型列表...', 'info');
+            this.showMessage(this.m('settings.message.syncingModels', '正在同步模型列表...'), 'info');
 
             // 检查是否已有该服务商的默认模型
             const existingDefaultModel = this.models.find(model =>
@@ -1567,7 +1884,7 @@ class BicQASettings {
 
             // 如果没有新模型，提示用户
             if (newModels.length === 0) {
-                this.showMessage('该服务商下的所有模型都已存在，无需重复添加', 'info');
+                this.showMessage(this.m('settings.message.modelsAlreadyExist', '该服务商下的所有模型都已存在，无需重复添加'), 'info');
                 return;
             }
 
@@ -1610,11 +1927,11 @@ class BicQASettings {
             // 重新渲染模型列表
             this.renderModels();
 
-            this.showMessage(`已增量添加 ${newModels.length} 个新模型到模型列表`, 'success');
+            this.showMessage(this.m('settings.message.modelsIncrementAdded', '已增量添加 {{count}} 个新模型到模型列表', { count: newModels.length }), 'success');
 
         } catch (error) {
             console.error('同步模型列表失败:', error);
-            this.showMessage('同步模型列表失败: ' + error.message, 'error');
+            this.showMessage(this.m('settings.message.syncModelsFailed', '同步模型列表失败: {{error}}', { error: error.message }), 'error');
         }
     }
 
@@ -2353,7 +2670,7 @@ class BicQASettings {
     async testModel(index) {
         console.log('测试模型:', index, this.models[index]);
         const model = this.models[index];
-        this.showMessage('正在查找关联服务商...', 'info');
+        this.showMessage(this.m('settings.message.findingProvider', '正在查找关联服务商...'), 'info');
 
         try {
             // 获取关联的服务商
@@ -2362,7 +2679,7 @@ class BicQASettings {
                 throw new Error('找不到关联的服务商');
             }
 
-            this.showMessage(`找到服务商: ${provider.name}，正在测试模型聊天功能...`, 'info');
+            this.showMessage(this.m('settings.message.foundProviderForChatTest', '找到服务商: {{name}}，正在测试模型聊天功能...', { name: provider.name }), 'info');
 
             // 直接调用聊天接口进行模型测试
             const testResult = await this.performModelChatTest(provider, model.name);
@@ -2370,7 +2687,7 @@ class BicQASettings {
             // 显示详细的成功信息
             const modelDisplayName = model.displayName || model.name;
 
-            this.showMessage(`模型"${modelDisplayName}"聊天测试成功！模型可以正常响应对话`, 'success');
+            this.showMessage(this.m('settings.message.modelChatTestSuccess', '模型"{{name}}"聊天测试成功！模型可以正常响应对话', { name: modelDisplayName }), 'success');
 
             // 更新模型状态
             this.updateModelStatus(index, 'active');
@@ -2378,7 +2695,7 @@ class BicQASettings {
         } catch (error) {
             console.error('模型聊天测试失败:', error);
             const modelDisplayName = model.displayName || model.name;
-            this.showMessage(`模型"${modelDisplayName}"聊天测试失败: ${error.message}`, 'error');
+            this.showMessage(this.m('settings.message.modelChatTestFailed', '模型"{{name}}"聊天测试失败: {{error}}', { name: modelDisplayName, error: error.message }), 'error');
             this.updateModelStatus(index, 'inactive');
         }
     }
@@ -2610,6 +2927,8 @@ class BicQASettings {
         };
 
         try {
+            console.log(this,'1221211');
+            
             await chrome.storage.sync.set({
                 providers: this.providers,
                 models: this.models,
@@ -2617,10 +2936,10 @@ class BicQASettings {
                 generalSettings: this.currentSettings,
                 knowledgeServiceConfig: knowledgeServiceConfig
             });
-            this.showMessage('所有设置已保存', 'success');
+            this.showMessage(this.m('settings.message.settingsSaved', '所有设置已保存'), 'success');
         } catch (error) {
             console.error('保存设置失败:', error);
-            this.showMessage('保存设置失败', 'error');
+            this.showMessage(this.m('settings.message.saveSettingsFailed', '保存设置失败'), 'error');
         }
     }
 
@@ -2685,8 +3004,8 @@ class BicQASettings {
     // 恢复默认规则设置
     async resetDefaultRules() {
         try {
-            const confirm = window.confirm('确定要重置所有参数规则为默认值吗？这将删除所有自定义规则。');
-            if (!confirm) return;
+            const confirmed = window.confirm(this.m('settings.confirm.resetRules', 'Reset all parameter rules to defaults? This will remove all custom rules.'));
+            if (!confirmed) return;
 
             // 获取默认规则
             const defaultRules = this.getDefaultRules();
@@ -2709,18 +3028,18 @@ class BicQASettings {
             // 重新渲染规则列表
             this.renderRules();
 
-            this.showMessage('参数规则已重置为默认值', 'success');
+            this.showMessage(this.m('settings.message.rulesReset', '参数规则已重置为默认值'), 'success');
 
             console.log('重置后的规则:', this.rules);
         } catch (error) {
             console.error('重置默认规则失败:', error);
-            this.showMessage('重置默认规则失败: ' + error.message, 'error');
+            this.showMessage(this.m('settings.message.resetRulesFailed', '重置默认规则失败: {{error}}', { error: error.message }), 'error');
         }
     }
 
     async resetSettings() {
-        const confirm = window.confirm('确定要重置所有设置吗？此操作不可撤销。');
-        if (!confirm) return;
+        const confirmed = window.confirm(this.m('settings.confirm.resetSettings', '确定要重置所有设置吗？此操作不可撤销。'));
+        if (!confirmed) return;
 
         this.providers = [];
         this.models = [];
@@ -2734,14 +3053,14 @@ class BicQASettings {
             this.renderRules();
             this.loadGeneralSettings();
             this.loadKnowledgeServiceConfig(); // 重新加载知识库服务配置
-            this.showMessage('设置已重置', 'success');
+            this.showMessage(this.m('settings.message.settingsReset', '设置已重置'), 'success');
         } catch (error) {
             console.error('重置设置失败:', error);
-            this.showMessage('重置设置失败', 'error');
+            this.showMessage(this.m('settings.message.resetSettingsFailed', '重置设置失败'), 'error');
         }
     }
     async clearSettings() {
-        const confirm = window.confirm('确定要清除所有缓存吗？此操作不可撤销。');
+        const confirmed = window.confirm(this.m('settings.confirm.clearCache', '确定要清除所有缓存吗？此操作不可撤销。'));
         if (!confirm) return;
 
         try {
@@ -2796,7 +3115,7 @@ class BicQASettings {
         a.click();
         URL.revokeObjectURL(url);
 
-        this.showMessage('配置已导出', 'success');
+        this.showMessage(this.m('settings.message.configExported', '配置已导出'), 'success');
     }
 
     importSettings() {
@@ -2839,13 +3158,13 @@ class BicQASettings {
                     this.renderModels();
                     this.renderRules();
                     this.loadGeneralSettings();
-                    this.showMessage('配置已导入', 'success');
+                    this.showMessage(this.m('settings.message.configImported', '配置已导入'), 'success');
                 } else {
                     throw new Error('无效的配置文件格式');
                 }
             } catch (error) {
                 console.error('导入配置失败:', error);
-                this.showMessage('导入配置失败: ' + error.message, 'error');
+                this.showMessage(this.m('settings.message.importConfigFailed', '导入配置失败: {{error}}', { error: error.message }), 'error');
             }
         };
         input.click();
@@ -3100,10 +3419,18 @@ class BicQASettings {
                 gap: 8px;
             `;
 
-            statusIndicator.innerHTML = `
-                <span style="font-size: 16px;">✅</span>
-                <span>已注册用户 - 信息已自动填充</span>
-            `;
+            const indicatorIcon = document.createElement('span');
+            indicatorIcon.style.fontSize = '16px';
+            indicatorIcon.textContent = '✅';
+
+            const indicatorText = document.createElement('span');
+            const indicatorMessage = this.t('settings.registration.autoFillIndicator');
+            indicatorText.textContent = (indicatorMessage && indicatorMessage !== 'settings.registration.autoFillIndicator')
+                ? indicatorMessage
+                : '已注册用户 - 信息已自动填充';
+
+            statusIndicator.appendChild(indicatorIcon);
+            statusIndicator.appendChild(indicatorText);
 
             // 将状态指示器插入到表单顶部
             registrationSection.insertBefore(statusIndicator, registrationSection.firstChild);
@@ -3236,12 +3563,12 @@ class BicQASettings {
         const agreeTerms = document.getElementById('agreeTerms').checked;
 
         if (!username || !company || !email) {
-            this.showMessage('请填写所有必填字段', 'error');
+            this.showMessage(this.m('settings.message.fillRequiredFields', '请填写所有必填字段'), 'error');
             return;
         }
 
         if (!this.validateEmail(email)) {
-            this.showMessage('请输入有效的邮箱地址', 'error');
+            this.showMessage(this.m('settings.message.enterValidEmail', '请输入有效的邮箱地址'), 'error');
             return;
         }
 
@@ -3252,13 +3579,13 @@ class BicQASettings {
         if (!existingRegistration || existingRegistration.status !== 'registered') {
             // 未注册用户必须勾选协议
             if (!agreeTerms) {
-                this.showMessage('请先勾选用户协议和隐私政策', 'error');
+                this.showMessage(this.m('settings.message.agreeTermsFirst', '请先勾选用户协议和隐私政策'), 'error');
                 return;
             }
         }
 
         try {
-            this.showMessage('正在注册...', 'info');
+            this.showMessage(this.m('settings.message.registering', '正在注册...'), 'info');
 
             const response = await fetch(serviceUrl, {
                 method: 'POST',
@@ -3302,7 +3629,7 @@ class BicQASettings {
 
                 } catch (storageError) {
                     console.error('保存注册信息到本地存储失败:', storageError);
-                    this.showMessage('注册成功，但保存本地信息失败', 'warning');
+            this.showMessage(this.m('settings.message.registerSuccessLocalSaveFailed', 'Registration succeeded, but saving to local storage failed'), 'warning');
                 }
 
             } else {
@@ -3310,7 +3637,7 @@ class BicQASettings {
                 const errorMessage = errorData.message || response.statusText;
                 console.log(errorData.success + "--------------0----------");
                 if (errorData.success == false) {
-                    this.showMessage(`重复注册: ${errorMessage}`, 'warning');
+                    this.showMessage(this.m('settings.message.repeatedRegistration', '重复注册: {{error}}', { error: errorMessage }), 'warning');
                     // 如果用户已存在也要保存注册信息到本地存储
                     const registrationData = {
                         username: username,
@@ -3334,10 +3661,10 @@ class BicQASettings {
 
                     } catch (storageError) {
                         console.error('保存注册信息到本地存储失败:', storageError);
-                        this.showMessage('注册成功，但保存本地信息失败', 'warning');
+                        this.showMessage(this.m('settings.message.registerSuccessLocalSaveFailed', 'Registration succeeded, but saving to local storage failed'), 'warning');
                     }
                 } else {
-                    this.showMessage(`注册失败: ${errorMessage}`, 'error');
+                    this.showMessage(this.m('settings.message.registerFailed', '注册失败: {{error}}', { error: errorMessage }), 'error');
                     console.error('注册失败，响应状态:', response.status, '错误信息:', errorMessage);
                 }
 
@@ -3346,7 +3673,7 @@ class BicQASettings {
             }
         } catch (error) {
             console.error('注册请求失败:', error);
-            this.showMessage('注册失败，请检查网络连接', 'error');
+            this.showMessage(this.m('settings.message.registerNetworkFailed', '注册失败，请检查网络连接'), 'error');
 
             // 网络错误时不修改本地存储的数据，保持原有状态
         }
@@ -3359,16 +3686,16 @@ class BicQASettings {
             const email = document.getElementById('registerEmail').value.trim();
 
             if (!email) {
-                this.showMessage('请先输入邮箱地址', 'error');
+                this.showMessage(this.m('settings.message.enterEmailFirst', '请先输入邮箱地址'), 'error');
                 return;
             }
 
             if (!this.validateEmail(email)) {
-                this.showMessage('请输入有效的邮箱地址', 'error');
+                this.showMessage(this.m('settings.message.enterValidEmail', '请输入有效的邮箱地址'), 'error');
                 return;
             }
 
-            this.showMessage('正在检查邮箱注册状态...', 'info');
+            this.showMessage(this.m('settings.message.checkingEmailStatus', '正在检查邮箱注册状态...'), 'info');
 
             // 调用接口检查邮箱注册状态
             const apiResult = await this.checkEmailStatusFromAPI(email);
@@ -3378,7 +3705,10 @@ class BicQASettings {
 
                 if (statusData.registered) {
                     // 邮箱已注册
-                    this.showMessage(`邮箱 ${email} 已注册 - ${statusData.message || '注册状态正常'}`, 'success');
+                    (() => {
+                        const statusMessage = statusData.message || this.t('settings.message.registerStatusNormal');
+                        this.showMessage(this.m('settings.message.emailRegistered', '邮箱 {{email}} 已注册 - {{status}}', { email, status: statusMessage }), 'success');
+                    })();
 
                     // 如果接口返回了用户信息，更新本地存储
                     if (statusData.userInfo) {
@@ -3402,7 +3732,10 @@ class BicQASettings {
 
                 } else {
                     // 邮箱未注册
-                    this.showMessage(`邮箱 ${email} 尚未注册 - ${statusData.message || '请先完成注册'}`, 'info');
+                    (() => {
+                        const statusMessage = statusData.message || this.t('settings.message.registerStatusPending');
+                        this.showMessage(this.m('settings.message.emailNotRegistered', '邮箱 {{email}} 尚未注册 - {{status}}', { email, status: statusMessage }), 'info');
+                    })();
 
                     // 清除状态指示器
                     this.clearRegistrationStatusIndicator();
@@ -3410,24 +3743,24 @@ class BicQASettings {
 
             } else {
                 // API调用失败
-                this.showMessage(`检查注册状态失败: ${apiResult.error}`, 'error');
+                this.showMessage(this.m('settings.message.checkRegisterStatusError', '检查注册状态失败: {{error}}', { error: apiResult.error }), 'error');
 
                 // 如果API失败，尝试从本地存储获取状态作为备用
                 const result = await chrome.storage.sync.get(['registration']);
                 const registration = result.registration;
 
                 if (registration && registration.status === 'registered' && registration.email === email) {
-                    this.showMessage(`本地记录显示邮箱 ${email} 已注册`, 'warning');
+                    this.showMessage(this.m('settings.message.localEmailRegistered', '本地记录显示邮箱 {{email}} 已注册', { email }), 'warning');
                     this.updateRegistrationFormDisplay(registration);
                 } else {
-                    this.showMessage('无法获取注册状态，请检查网络连接', 'error');
+                    this.showMessage(this.m('settings.message.fetchRegisterStatusFailed', '无法获取注册状态，请检查网络连接'), 'error');
                     this.clearRegistrationStatusIndicator();
                 }
             }
 
         } catch (error) {
             console.error('检查注册状态失败:', error);
-            this.showMessage('检查注册状态失败，请重试', 'error');
+            this.showMessage(this.m('settings.message.checkRegisterStatusFailed', '检查注册状态失败，请重试'), 'error');
         }
     }
     // 新增：从API检查邮箱注册状态
@@ -3502,12 +3835,12 @@ class BicQASettings {
         const enabled = document.getElementById('enableKnowledgeService').checked;
 
         if (!serviceUrl) {
-            this.showMessage('请输入知识库服务URL', 'error');
+            this.showMessage(this.m('settings.message.enterKnowledgeServiceUrl', '请输入知识库服务URL'), 'error');
             return;
         }
 
         if (enabled && !apiKey) {
-            this.showMessage('启用知识库服务时需要提供API密钥', 'error');
+            this.showMessage(this.m('settings.message.enterKnowledgeServiceApiKey', '启用知识库服务时需要提供API密钥'), 'error');
             return;
         }
 
@@ -3528,10 +3861,10 @@ class BicQASettings {
             // 同时更新配置文件内容到本地存储
             await this.updateKnowledgeServiceConfigFile(knowledgeServiceConfig);
 
-            this.showMessage('知识库服务配置已保存', 'success');
+            this.showMessage(this.m('settings.message.knowledgeServiceSaved', '知识库服务配置已保存'), 'success');
         } catch (error) {
             console.error('保存知识库服务配置失败:', error);
-            this.showMessage('保存配置失败', 'error');
+            this.showMessage(this.m('settings.message.saveConfigFailed', '保存配置失败'), 'error');
         }
     }
 
@@ -3591,12 +3924,12 @@ class BicQASettings {
         const apiKey = document.getElementById('knowledgeServiceApiKey').value.trim();
 
         if (!serviceUrl) {
-            this.showMessage('请输入知识库服务URL', 'error');
+            this.showMessage(this.m('settings.message.enterKnowledgeServiceUrl', '请输入知识库服务URL'), 'error');
             return;
         }
 
         try {
-            this.showMessage('正在测试连接...', 'info');
+            this.showMessage(this.m('settings.message.testingConnection', '正在测试连接...'), 'info');
 
             const headers = {
                 'Content-Type': 'application/json'
@@ -3617,13 +3950,16 @@ class BicQASettings {
 
             // 根据返回的valid字段判断连接状态
             if (responseData.valid === true) {
-                this.showMessage(`知识库服务连接正常 - ${responseData.message}`, 'success');
+                this.showMessage(this.m('settings.message.knowledgeServiceConnectionOk', '知识库服务连接正常 - {{message}}', { message: responseData.message }), 'success');
             } else {
-                this.showMessage(`连接失败: ${responseData.message || '未知错误'}`, 'error');
+                (() => {
+                    const message = responseData.message || this.t('settings.message.unknownError');
+                    this.showMessage(this.m('settings.message.connectionFailedWithMessage', '连接失败: {{message}}', { message }), 'error');
+                })();
             }
         } catch (error) {
             console.error('测试知识库服务连接失败:', error);
-            this.showMessage('连接测试失败，请检查URL和网络连接', 'error');
+            this.showMessage(this.m('settings.message.connectionTestFailed', '连接测试失败，请检查URL和网络连接'), 'error');
         }
     }
 
@@ -3862,9 +4198,9 @@ class BicQASettings {
 
     // 刷新知识库列表
     async refreshKnowledgeBases() {
-        this.showMessage('正在刷新知识库列表...', 'info');
+        this.showMessage(this.m('settings.message.refreshingKnowledgeBases', '正在刷新知识库列表...'), 'info');
         await this.loadKnowledgeBases();
-        this.showMessage('知识库列表已刷新', 'success');
+        this.showMessage(this.m('settings.message.knowledgeBasesRefreshed', '知识库列表已刷新'), 'success');
     }
 
     // 导出知识库列表
@@ -3889,10 +4225,10 @@ class BicQASettings {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            this.showMessage('知识库列表已导出', 'success');
+            this.showMessage(this.m('settings.message.knowledgeBasesExported', '知识库列表已导出'), 'success');
         } catch (error) {
             console.error('导出知识库列表失败:', error);
-            this.showMessage('导出失败', 'error');
+            this.showMessage(this.m('settings.message.exportFailed', '导出失败'), 'error');
         }
     }
 
@@ -4050,10 +4386,10 @@ class BicQASettings {
             console.log('规则数据已修复，正在保存...');
             await this.saveRules();
             this.renderRules();
-            this.showMessage('规则数据已修复', 'success');
+            this.showMessage(this.m('settings.message.ruleDataFixed', '规则数据已修复'), 'success');
         } else {
             console.log('规则数据无需修复');
-            this.showMessage('规则数据正常，无需修复', 'info');
+            this.showMessage(this.m('settings.message.ruleDataHealthy', '规则数据正常，无需修复'), 'info');
         }
 
         return hasFixed;
@@ -4073,7 +4409,7 @@ class BicQASettings {
         }
 
         // 显示提示信息
-        this.showMessage(`已选择服务商: ${provider.name}，请选择要添加的模型`, 'info');
+        this.showMessage(this.m('settings.message.providerSelectedChooseModels', '已选择服务商: {{name}}，请选择要添加的模型', { name: provider.name }), 'info');
     }
 
     // 检测是否为 Ollama 服务
@@ -4221,7 +4557,7 @@ class BicQASettings {
             <div class="description-content">
                 <span class="description-icon">ℹ️</span>
                 <span class="description-text">${providerType.description}</span>
-                <button type="button" class="btn-reset-defaults" id="resetToDefaults">重置为默认值</button>
+                <button type="button" class="btn-reset-defaults" id="resetToDefaults">${this.t('settings.providerType.resetDefaultsButton')}</button>
             </div>
         `;
 
@@ -4245,7 +4581,7 @@ class BicQASettings {
         document.getElementById('authType').value = providerType.authType;
         document.getElementById('requestFormat').value = providerType.requestFormat;
 
-        this.showMessage('已重置为默认配置', 'success');
+        this.showMessage(this.m('settings.message.resetToDefaults', '已重置为默认配置'), 'success');
     }
 
     populateProviderTypeOptions() {
@@ -4271,7 +4607,7 @@ class BicQASettings {
         dialog.innerHTML = `
             <div class="dialog-content">
                 <div class="dialog-header">
-                    <h3>服务商类型管理</h3>
+                    <h3>${this.t('settings.providerType.managerTitle')}</h3>
                     <button class="close-btn" id="closeProviderTypeManager">×</button>
                 </div>
                 <div class="dialog-body">
@@ -4284,15 +4620,15 @@ class BicQASettings {
                                     <div class="type-endpoint">${type.apiEndpoint}</div>
                                 </div>
                                 <div class="type-actions">
-                                    <button class="btn-edit" data-type-id="${type.id}">编辑</button>
-                                    <button class="btn-delete" data-type-id="${type.id}">删除</button>
+                                    <button class="btn-edit" data-type-id="${type.id}">${this.t('settings.providerType.editButton')}</button>
+                                    <button class="btn-delete" data-type-id="${type.id}">${this.t('settings.providerType.deleteButton')}</button>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
                     <div class="add-type-section">
-                        <button class="btn-add-type" id="addNewProviderType">+ 添加新类型</button>
-                        <button class="btn-cancel-manager" id="cancelProviderTypeManager">取消</button>
+                        <button class="btn-add-type" id="addNewProviderType">${this.t('settings.providerType.addNewButton')}</button>
+                        <button class="btn-cancel-manager" id="cancelProviderTypeManager">${this.t('settings.common.cancel')}</button>
                     </div>
                 </div>
             </div>
@@ -4335,10 +4671,10 @@ class BicQASettings {
         deleteBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const typeId = e.target.getAttribute('data-type-id');
-                if (confirm('确定要删除这个服务商类型吗？')) {
+                if (confirm(this.m('settings.confirm.deleteProviderType', '确定要删除这个服务商类型吗？'))) {
                     this.deleteProviderType(typeId);
                     this.refreshProviderTypeManagerContent(dialog);
-                    this.showMessage('服务商类型删除成功', 'success');
+                    this.showMessage(this.m('settings.message.providerTypeDeleted', '服务商类型删除成功'), 'success');
                 }
             });
         });
@@ -4360,7 +4696,8 @@ class BicQASettings {
         // 更新表单标题
         const titleElement = dialog.querySelector('#formSectionTitle');
         if (titleElement) {
-            titleElement.textContent = isEditing ? '编辑服务商类型' : '添加服务商类型';
+            const titleKey = isEditing ? 'settings.providerType.formTitle.edit' : 'settings.providerType.formTitle.add';
+            titleElement.textContent = this.t(titleKey);
         }
 
         // 填充表单数据
@@ -4387,7 +4724,8 @@ class BicQASettings {
         // 更新提交按钮文本
         const submitBtn = dialog.querySelector('#submitForm');
         if (submitBtn) {
-            submitBtn.textContent = isEditing ? '更新' : '添加';
+            const submitKey = isEditing ? 'settings.providerType.submit.edit' : 'settings.providerType.submit.add';
+            submitBtn.textContent = this.t(submitKey);
         }
 
         // 存储当前编辑的类型ID
@@ -4447,7 +4785,8 @@ class BicQASettings {
 
         // 显示成功消息
         const isEditing = dialog.getAttribute('data-editing-type-id') !== null;
-        this.showMessage(`服务商类型${isEditing ? '更新' : '添加'}成功`, 'success');
+        const providerTypeMessageKey = isEditing ? 'settings.message.providerTypeUpdated' : 'settings.message.providerTypeAdded';
+        this.showMessage(this.t(providerTypeMessageKey), 'success');
     }
 
     // 刷新管理器的类型列表内容
@@ -4462,8 +4801,8 @@ class BicQASettings {
                         <div class="type-endpoint">${type.apiEndpoint}</div>
                     </div>
                     <div class="type-actions">
-                        <button class="btn-edit" data-type-id="${type.id}">编辑</button>
-                        <button class="btn-delete" data-type-id="${type.id}">删除</button>
+                        <button class="btn-edit" data-type-id="${type.id}">${this.t('settings.providerType.editButton')}</button>
+                        <button class="btn-delete" data-type-id="${type.id}">${this.t('settings.providerType.deleteButton')}</button>
                     </div>
                 </div>
             `).join('');
@@ -4489,10 +4828,10 @@ class BicQASettings {
         deleteBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const typeId = e.target.getAttribute('data-type-id');
-                if (confirm('确定要删除这个服务商类型吗？')) {
+                if (confirm(this.m('settings.confirm.deleteProviderType', '确定要删除这个服务商类型吗？'))) {
                     this.deleteProviderType(typeId);
                     this.refreshProviderTypeManagerContent(dialog);
-                    this.showMessage('服务商类型删除成功', 'success');
+                    this.showMessage(this.m('settings.message.providerTypeDeleted', '服务商类型删除成功'), 'success');
                 }
             });
         });
@@ -4508,60 +4847,60 @@ class BicQASettings {
         dialog.innerHTML = `
             <div class="dialog-content">
                 <div class="dialog-header">
-                    <h3>${isEditing ? '编辑' : '添加'}服务商类型</h3>
+                    <h3>${this.t(isEditing ? 'settings.providerType.formTitle.edit' : 'settings.providerType.formTitle.add')}</h3>
                     <button class="close-btn" id="closeProviderTypeForm">×</button>
                 </div>
                 <div class="dialog-body">
                     <form id="providerTypeForm">
                         <div class="form-group">
-                            <label for="typeId">类型ID *</label>
+                            <label for="typeId">${this.t('settings.providerType.form.typeIdLabel')}</label>
                             <input type="text" id="typeId" name="typeId" required 
                                    value="${type ? type.id : ''}" 
                                    ${isEditing ? 'readonly' : ''}
-                                   placeholder="例如：ollama、openai">
+                                   placeholder="${this.t('settings.providerType.form.typeIdPlaceholder')}">
                         </div>
                         <div class="form-group">
-                            <label for="typeName">类型名称 *</label>
+                            <label for="typeName">${this.t('settings.providerType.form.typeNameLabel')}</label>
                             <input type="text" id="typeName" name="typeName" required 
                                    value="${type ? type.name : ''}" 
-                                   placeholder="例如：Ollama">
+                                   placeholder="${this.t('settings.providerType.form.typeNamePlaceholder')}">
                         </div>
                         <div class="form-group">
-                            <label for="typeDisplayName">显示名称 *</label>
+                            <label for="typeDisplayName">${this.t('settings.providerType.form.displayNameLabel')}</label>
                             <input type="text" id="typeDisplayName" name="typeDisplayName" required 
                                    value="${type ? type.displayName : ''}" 
-                                   placeholder="例如：Ollama (本地部署)">
+                                   placeholder="${this.t('settings.providerType.form.displayNamePlaceholder')}">
                         </div>
                         <div class="form-group">
-                            <label for="typeEndpoint">API地址 *</label>
+                            <label for="typeEndpoint">${this.t('settings.providerType.form.endpointLabel')}</label>
                             <input type="url" id="typeEndpoint" name="typeEndpoint" required 
                                    value="${type ? type.apiEndpoint : ''}" 
-                                   placeholder="例如：http://localhost:11434/v1">
+                                   placeholder="${this.t('settings.providerType.form.endpointPlaceholder')}">
                         </div>
                         <div class="form-group">
-                            <label for="typeAuthType">认证类型</label>
+                            <label for="typeAuthType">${this.t('settings.providerType.form.authTypeLabel')}</label>
                             <select id="typeAuthType" name="typeAuthType">
-                                <option value="Bearer" ${type && type.authType === 'Bearer' ? 'selected' : ''}>Bearer Token</option>
-                                <option value="API-Key" ${type && type.authType === 'API-Key' ? 'selected' : ''}>API Key</option>
-                                <option value="Custom" ${type && type.authType === 'Custom' ? 'selected' : ''}>自定义</option>
+                                <option value="Bearer" ${type && type.authType === 'Bearer' ? 'selected' : ''}>${this.t('settings.providerType.form.authType.bearer')}</option>
+                                <option value="API-Key" ${type && type.authType === 'API-Key' ? 'selected' : ''}>${this.t('settings.providerType.form.authType.apiKey')}</option>
+                                <option value="Custom" ${type && type.authType === 'Custom' ? 'selected' : ''}>${this.t('settings.providerType.form.authType.custom')}</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="typeRequestFormat">请求格式</label>
+                            <label for="typeRequestFormat">${this.t('settings.providerType.form.requestFormatLabel')}</label>
                             <select id="typeRequestFormat" name="typeRequestFormat">
-                                <option value="OpenAI" ${type && type.requestFormat === 'OpenAI' ? 'selected' : ''}>OpenAI格式</option>
-                                <option value="Claude" ${type && type.requestFormat === 'Claude' ? 'selected' : ''}>Claude格式</option>
-                                <option value="Custom" ${type && type.requestFormat === 'Custom' ? 'selected' : ''}>自定义格式</option>
+                                <option value="OpenAI" ${type && type.requestFormat === 'OpenAI' ? 'selected' : ''}>${this.t('settings.providerType.form.requestFormat.openai')}</option>
+                                <option value="Claude" ${type && type.requestFormat === 'Claude' ? 'selected' : ''}>${this.t('settings.providerType.form.requestFormat.claude')}</option>
+                                <option value="Custom" ${type && type.requestFormat === 'Custom' ? 'selected' : ''}>${this.t('settings.providerType.form.requestFormat.custom')}</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="typeDescription">描述</label>
+                            <label for="typeDescription">${this.t('settings.providerType.form.descriptionLabel')}</label>
                             <textarea id="typeDescription" name="typeDescription" 
-                                      placeholder="例如：本地部署的大语言模型服务">${type ? type.description : ''}</textarea>
+                                      placeholder="${this.t('settings.providerType.form.descriptionPlaceholder')}">${type ? type.description : ''}</textarea>
                         </div>
                         <div class="form-actions">
-                            <button type="button" class="btn-secondary" id="cancelProviderTypeForm">取消</button>
-                            <button type="submit" class="btn-primary">${isEditing ? '更新' : '添加'}</button>
+                            <button type="button" class="btn-secondary" id="cancelProviderTypeForm">${this.t('settings.common.cancel')}</button>
+                            <button type="submit" class="btn-primary" id="submitForm">${this.t(isEditing ? 'settings.providerType.submit.edit' : 'settings.providerType.submit.add')}</button>
                         </div>
                     </form>
                 </div>
@@ -4624,7 +4963,8 @@ class BicQASettings {
             this.refreshProviderTypeManagerContent(manager);
         }
 
-        this.showMessage(`服务商类型${typeId ? '更新' : '添加'}成功`, 'success');
+        const providerTypeSaveMessageKey = typeId ? 'settings.message.providerTypeUpdated' : 'settings.message.providerTypeAdded';
+        this.showMessage(this.t(providerTypeSaveMessageKey), 'success');
     }
 
     // URL处理工具方法
@@ -4717,22 +5057,22 @@ class BicQASettings {
         const serviceUrl = document.getElementById('registerServiceUrl').value.trim();
 
         if (!email) {
-            this.showMessage('请填写邮箱地址', 'error');
+            this.showMessage(this.m('settings.message.enterEmail', '请填写邮箱地址'), 'error');
             return;
         }
 
         if (!this.validateEmail(email)) {
-            this.showMessage('请输入有效的邮箱地址', 'error');
+            this.showMessage(this.m('settings.message.enterValidEmail', '请输入有效的邮箱地址'), 'error');
             return;
         }
 
         if (!serviceUrl) {
-            this.showMessage('请填写注册服务URL', 'error');
+            this.showMessage(this.m('settings.message.enterRegisterServiceUrl', '请填写注册服务URL'), 'error');
             return;
         }
 
         try {
-            this.showMessage('正在重新获取密钥...', 'info');
+            this.showMessage(this.m('settings.message.resendingKey', '正在重新获取密钥...'), 'info');
 
             // 将注册服务URL中的/register替换为/resend
             const resendUrl = serviceUrl.replace('/register', '/resend');
@@ -4761,13 +5101,13 @@ class BicQASettings {
             } else {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.message || response.statusText;
-                this.showMessage(`重新获取密钥失败: ${errorMessage}`, 'error');
+                this.showMessage(this.m('settings.message.resendKeyFailedWithMessage', '重新获取密钥失败: {{error}}', { error: errorMessage }), 'error');
                 console.error('重新获取密钥失败:', errorData);
             }
 
         } catch (error) {
             console.error('重新获取密钥时发生错误:', error);
-            this.showMessage(`重新获取密钥失败: ${error.message}`, 'error');
+            this.showMessage(this.m('settings.message.resendKeyFailedWithMessage', '重新获取密钥失败: {{error}}', { error: error.message }), 'error');
         }
     }
 }
@@ -4782,7 +5122,7 @@ BicQASettings.prototype.loadFeedbackHistory = async function () {
         this.renderFeedbackList(feedbackHistory);
     } catch (error) {
         console.error('加载反馈历史失败:', error);
-        this.showMessage('加载反馈历史失败', 'error');
+        this.showMessage(this.m('settings.message.loadFeedbackFailed', '加载反馈历史失败'), 'error');
     }
 };
 
@@ -4850,7 +5190,7 @@ BicQASettings.prototype.createFeedbackElement = function (feedback, index) {
 
 BicQASettings.prototype.refreshFeedback = async function () {
     await this.loadFeedbackHistory();
-    this.showMessage('反馈历史已刷新', 'success');
+    this.showMessage(this.m('settings.message.feedbackRefreshed', '反馈历史已刷新'), 'success');
 };
 
 BicQASettings.prototype.exportFeedback = async function () {
@@ -4859,7 +5199,7 @@ BicQASettings.prototype.exportFeedback = async function () {
         const feedbackHistory = result.feedbackHistory || [];
 
         if (feedbackHistory.length === 0) {
-            this.showMessage('暂无反馈数据可导出', 'info');
+            this.showMessage(this.m('settings.message.noFeedbackToExport', '暂无反馈数据可导出'), 'info');
             return;
         }
 
@@ -4875,15 +5215,15 @@ BicQASettings.prototype.exportFeedback = async function () {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        this.showMessage('反馈数据已导出', 'success');
+        this.showMessage(this.m('settings.message.feedbackExported', '反馈数据已导出'), 'success');
     } catch (error) {
         console.error('导出反馈失败:', error);
-        this.showMessage('导出反馈失败', 'error');
+        this.showMessage(this.m('settings.message.exportFeedbackFailed', '导出反馈失败'), 'error');
     }
 };
 
 BicQASettings.prototype.clearFeedback = async function () {
-    if (!confirm('确定要清空所有反馈记录吗？此操作不可恢复。')) {
+    if (!confirm(this.m('settings.confirm.clearFeedback', '确定要清空所有反馈记录吗？此操作不可恢复。'))) {
         return;
     }
 
@@ -4891,10 +5231,10 @@ BicQASettings.prototype.clearFeedback = async function () {
         await chrome.storage.sync.remove(['feedbackHistory']);
         this.updateFeedbackStats([]);
         this.renderFeedbackList([]);
-        this.showMessage('反馈记录已清空', 'success');
+        this.showMessage(this.m('settings.message.feedbackCleared', '反馈记录已清空'), 'success');
     } catch (error) {
         console.error('清空反馈失败:', error);
-        this.showMessage('清空反馈失败', 'error');
+        this.showMessage(this.m('settings.message.clearFeedbackFailed', '清空反馈失败'), 'error');
     }
 };
 

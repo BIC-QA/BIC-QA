@@ -41,9 +41,9 @@ BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据�
 
 ## 🚀 立即下载
 
-[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.7-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.7/BIC-QA_v1.0.7.zip)
+[![Download](https://img.shields.io/badge/📥_立即下载_BIC--QA_v1.0.8.2-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.8.2/BIC-QA_v1.0.8.2.zip)
 
-**版本**: v1.0.7 | **大小**: ~15MB | **更新日期**: 2025年11月
+**版本**: v1.0.8.2 | **大小**: ~1MB | **更新日期**: 2025年11月
 
 </div>
 
@@ -391,6 +391,7 @@ ollama list
 - **GitHub**：[提交 Issue](https://gitee.com/BIC-QA/BIC-QA/issues)
 
 ### 🔄 更新日志
+- **v1.0.8.2**：新增多语言支持，修复已知BUG
 - **v1.0.7**：新增 AWR 报告分析功能，支持 Oracle 数据库性能诊断
 - **v1.0.6**：支持添加大模型服务商，修复已知问题
 - **v1.0.5**：优化性能，修复已知问题
@@ -403,8 +404,8 @@ ollama list
 
 **BIC-QA 智能问答助手** - 让知识检索更智能，让问答更高效
 
-**版本**：v1.0.7 | **更新日期**：2025年11月
+**版本**：v1.0.8.2 | **更新日期**：2025年11月
 
-[⭐ 给我们一个星标](https://github.com/your-repo/BIC-QA) | [🐛 报告问题](https://github.com/your-repo/BIC-QA/issues)
+[⭐ 给我们一个星标](https://github.com/your-repo/BIC-QA)  | [🐛 报告问题](https://github.com/your-repo/BIC-QA/issues)
 
 </div>

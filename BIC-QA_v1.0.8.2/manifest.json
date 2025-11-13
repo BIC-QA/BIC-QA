@@ -54,6 +54,8 @@
         "user-guide.html",
         "user-agreement.html",
         "privacy-policy.html",
+        "notice.html",
+        "i18n/*",
         "config/*",
         "js/*"
       ],

@@ -1,0 +1,189 @@
+{
+  "knowledge_bases": [
+    {
+      "id": "2101",
+      "name": "Oracle",
+      "dataset_name": "Oracle Knowledge Base",
+      "description": "Oracle database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2102",
+      "name": "MySQL Compatible",
+      "dataset_name": "MySQL Compatible Knowledge Base",
+      "description": "MySQL-compatible database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2103",
+      "name": "Dameng",
+      "dataset_name": "Dameng Knowledge Base",
+      "description": "Dameng database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2104",
+      "name": "PostgreSQL Compatible Ecosystem",
+      "dataset_name": "PostgreSQL Compatible Ecosystem Knowledge Base",
+      "description": "PostgreSQL-compatible ecosystem knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2105",
+      "name": "SQL Server",
+      "dataset_name": "SQL Server Knowledge Base",
+      "description": "SQL Server database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2106",
+      "name": "Shentong OSCAR",
+      "dataset_name": "Shentong OSCAR Knowledge Base",
+      "description": "Shentong OSCAR database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2107",
+      "name": "YashanDB",
+      "dataset_name": "YashanDB Knowledge Base",
+      "description": "YashanDB database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2108",
+      "name": "Redis",
+      "dataset_name": "Redis Knowledge Base",
+      "description": "Redis cache database knowledge",
+      "category": "NoSQL Database"
+    },
+    {
+      "id": "2109",
+      "name": "MongoDB",
+      "dataset_name": "MongoDB Knowledge Base",
+      "description": "MongoDB document database knowledge",
+      "category": "NoSQL Database"
+    },
+    {
+      "id": "2110",
+      "name": "Redis Cluster",
+      "dataset_name": "Redis Cluster Knowledge Base",
+      "description": "Redis cluster knowledge",
+      "category": "NoSQL Database"
+    },
+    {
+      "id": "2111",
+      "name": "DB2",
+      "dataset_name": "DB2 Knowledge Base",
+      "description": "IBM DB2 database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2114",
+      "name": "Kingbase",
+      "dataset_name": "Kingbase Knowledge Base",
+      "description": "Kingbase database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2115",
+      "name": "GBase",
+      "dataset_name": "GBase Knowledge Base",
+      "description": "GBase database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2116",
+      "name": "Panwei",
+      "dataset_name": "Panwei Knowledge Base",
+      "description": "Panwei database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2117",
+      "name": "openGauss",
+      "dataset_name": "openGauss Knowledge Base",
+      "description": "openGauss database knowledge",
+      "category": "Relational Database"
+    },
+    {
+      "id": "2201",
+      "name": "TDSQL",
+      "dataset_name": "TDSQL Knowledge Base",
+      "description": "Tencent Cloud TDSQL distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2202",
+      "name": "GaussDB",
+      "dataset_name": "GaussDB Knowledge Base",
+      "description": "Huawei GaussDB distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2203",
+      "name": "OceanBase",
+      "dataset_name": "OceanBase Knowledge Base",
+      "description": "Ant Group OceanBase distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2204",
+      "name": "TiDB",
+      "dataset_name": "TiDB Knowledge Base",
+      "description": "PingCAP TiDB distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2205",
+      "name": "GoldenDB",
+      "dataset_name": "GoldenDB Knowledge Base",
+      "description": "ZTE GoldenDB distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2206",
+      "name": "GBase Distributed",
+      "dataset_name": "GBase Distributed Knowledge Base",
+      "description": "GBase distributed database knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2208",
+      "name": "GBase 8a",
+      "dataset_name": "GBase 8a Knowledge Base",
+      "description": "GBase 8a MPP knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2209",
+      "name": "HashData",
+      "dataset_name": "HashData Knowledge Base",
+      "description": "HashData data warehouse knowledge",
+      "category": "Distributed Database"
+    },
+    {
+      "id": "2118",
+      "name": "GreatSQL",
+      "dataset_name": "GreatSQL Knowledge Base",
+      "description": "GreatSQL database knowledge",
+      "category": "Centralized Database"
+    },
+    {
+      "id": "2119",
+      "name": "Xugu Database",
+      "dataset_name": "Xugu Database Knowledge Base",
+      "description": "Xugu (centralized / distributed) database knowledge",
+      "category": "Centralized Database"
+    },
+    {
+      "id": "1111",
+      "name": "Operating Systems",
+      "dataset_name": "Operating Systems Knowledge Base",
+      "description": "Operating system knowledge",
+      "category": "System Software"
+    }
+  ],
+  "version": "1.0.0",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "total_count": 26
+}

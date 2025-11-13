@@ -18,12 +18,78 @@ class BicQAPopup {
         this.progressMessageReplacementInterval = null;
         this.userInteractionTimeout = null;
         this.lastUserInteraction = Date.now();
+        this.previousKnowledgeBaseValue = '';
+        this.hasStoredLanguagePreference = false;
+
+        if (typeof I18nService === 'function') {
+            this.i18n = new I18nService({
+                defaultLanguage: 'zhcn',
+                fallbackLanguage: 'zhcn',
+                supportedLanguages: ['zhcn', 'en', 'zh-tw', 'jap'],
+                languageAliases: {
+                    'zh-CN': 'zhcn',
+                    'zh_cn': 'zhcn',
+                    'zhCN': 'zhcn',
+                    'en-US': 'en',
+                    'en_us': 'en',
+                    'zh-TW': 'zh-tw',
+                    'zh_tw': 'zh-tw',
+                    'ja-JP': 'jap',
+                    'ja_jp': 'jap'
+                }
+            });
+        } else {
+            console.warn('I18nService 未定义，使用默认翻译实现。');
+            const fallbackLanguage = 'zhcn';
+            this.i18n = {
+                defaultLanguage: fallbackLanguage,
+                fallbackLanguage,
+                currentLanguage: fallbackLanguage,
+                setLanguage: async () => fallbackLanguage,
+                ensureLanguage: async () => ({}),
+                getIntlLocale: () => 'zh-CN',
+                t: (key) => key
+            };
+        }
+        this.currentLanguage = this.i18n.defaultLanguage;
+        this.languageResources = {
+            'zhcn': {
+                userGuide: 'user-guide.html',
+                notice: 'notice.html'
+            },
+            'en': {
+                userGuide: 'user-guide.html',
+                notice: 'notice.html'
+            },
+            'zh-tw': {
+                userGuide: 'user-guide.html',
+                notice: 'notice.html'
+            },
+            'jap': {
+                userGuide: 'user-guide.html',
+                notice: 'notice.html'
+            }
+        };
+        this.dateTimeFilterInputs = [];
+        this.dateTimePickerInitialized = false;
+        this.activeDateTimeInput = null;
+        this.dateTimePickerElements = null;
+        this.dateTimePickerState = {
+            viewDate: new Date(),
+            selectedDate: null
+        };
+        this.handleDateTimePickerOutsideClick = this.handleDateTimePickerOutsideClick.bind(this);
+        this.handleDateTimePickerKeydown = this.handleDateTimePickerKeydown.bind(this);
+
+        this.defaultAwrDatabaseType = '2101';
+        this.storedAwrDatabaseType = null;
 
         this.initElements();
         this.bindEvents();
 
         // 确保页面完全加载后再初始化
         this.initializeAfterLoad();
+
     }
 
     // 新增方法：确保页面完全加载后再初始化
@@ -46,6 +112,13 @@ class BicQAPopup {
 
         // 加载设置
         await this.loadSettings();
+        await this.i18n.ensureLanguage(this.i18n.defaultLanguage);
+        await this.initLanguagePreference();
+        this.setupDateTimeFilters();
+        if (!this.hasStoredLanguagePreference) {
+            this.resetLanguageSwitcherSelection();
+        }
+        await this.loadStoredAwrDatabaseType();
 
         // 根据浏览器兼容性调整延迟时间
         const delay = this.chromeCompatibilityDelay || 1000;
@@ -60,6 +133,7 @@ class BicQAPopup {
     // 新增方法：启动时清理缓存
     async clearCacheOnStartup() {
         try {
+            const locale = this.i18n?.getIntlLocale(this.currentLanguage);
             console.log('开始清理缓存数据...');
 
             // 清理本地存储（配置文件等）
@@ -102,9 +176,12 @@ class BicQAPopup {
         this.translateBtn = document.getElementById('translateBtn');
         this.historyBtn = document.getElementById('historyBtn');
         this.awrAnalysisBtn = document.getElementById('awrAnalysisBtn');
+        this.inspectionBtn = document.getElementById('inspectionBtn');
         this.newSessionBtn = document.getElementById('newSessionBtn');
         this.helpBtn = document.getElementById('helpBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
+        this.announcementBtn = document.getElementById('announcementBtn');
+        this.languageSwitcher = document.getElementById('languageSwitcher');
         // 字符计数元素
         this.charCount = document.getElementById('charCount');
         this.charCountContainer = document.querySelector('.character-count');
@@ -134,6 +211,7 @@ class BicQAPopup {
         this.awrFileDisplay = document.getElementById('awrFileDisplay');
         this.awrFileUploadBtn = document.getElementById('awrFileUploadBtn');
         this.awrLanguage = document.getElementById('awrLanguage');
+        this.awrDatabaseType = document.getElementById('awrDatabaseType');
         this.awrAgreeTerms = document.getElementById('agreeTerms');
         this.policyDialogs = {};
         document.querySelectorAll('.policy-dialog').forEach(dialog => {
@@ -153,6 +231,23 @@ class BicQAPopup {
         this.awrHistoryList = [];
         this.awrHistorySearchKeyword = '';
 
+        // 巡检诊断对话框元素
+        this.inspectionDialog = document.getElementById('inspectionDialog');
+        this.closeInspectionDialog = document.getElementById('closeInspectionDialog');
+        this.inspectionForm = document.getElementById('inspectionForm');
+        this.inspectionProblemDescription = document.getElementById('inspectionProblemDescription');
+        this.inspectionEmail = document.getElementById('inspectionEmail');
+        this.inspectionUserName = document.getElementById('inspectionUserName');
+        this.inspectionFileInput = document.getElementById('inspectionFileInput');
+        this.inspectionFileDisplay = document.getElementById('inspectionFileDisplay');
+        this.inspectionFileUploadBtn = document.getElementById('inspectionFileUploadBtn');
+        this.inspectionLanguage = document.getElementById('inspectionLanguage');
+        this.inspectionDatabaseType = document.getElementById('inspectionDatabaseType');
+        this.inspectionAgreeTerms = document.getElementById('inspectionAgreeTerms');
+        this.inspectionCancelBtn = document.getElementById('inspectionCancelBtn');
+        this.inspectionSaveBtn = document.getElementById('inspectionSaveBtn');
+        this.inspectionSelectedFile = null;
+
         // 回到顶部按钮
         this.backToTopBtn = document.getElementById('backToTopBtn');
 
@@ -168,6 +263,7 @@ class BicQAPopup {
 
         // 初始化字符计数显示
         // this.updateCharacterCount();
+
     }
 
     bindEvents() {
@@ -273,10 +369,10 @@ class BicQAPopup {
                         this.questionInput.dispatchEvent(new Event('input'));
 
                         // 显示提示信息
-                        this.showMessage(`粘贴内容已截断，最多只能输入${maxLength}个字符`, 'warning');
+                        this.showMessage(this.t('popup.message.pasteTruncated', { maxLength }), 'warning');
                     } else {
                         // 没有空间可以粘贴
-                        this.showMessage(`输入框已满，无法粘贴更多内容（最多${maxLength}个字符）`, 'warning');
+                        this.showMessage(this.t('popup.message.inputFull', { maxLength }), 'warning');
                     }
                 }
             });
@@ -364,6 +460,14 @@ class BicQAPopup {
         if (this.awrAnalysisBtn) {
             this.awrAnalysisBtn.addEventListener('click', () => this.showAwrAnalysisDialog());
         }
+        if (this.inspectionBtn) {
+            this.inspectionBtn.addEventListener('click', () => {
+                void this.showInspectionDialog();
+            });
+        }
+        if (this.awrDatabaseType) {
+            this.awrDatabaseType.addEventListener('change', (event) => this.handleAwrDatabaseTypeChange(event));
+        }
 
         if (this.newSessionBtn) {
             this.newSessionBtn.addEventListener('click', () => this.startNewSession());
@@ -371,6 +475,14 @@ class BicQAPopup {
 
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => this.openSettings());
+        }
+        if (this.languageSwitcher) {
+            this.languageSwitcher.addEventListener('change', async (event) => {
+                await this.handleLanguageChange(event);
+            });
+        }
+        if (this.announcementBtn) {
+            this.announcementBtn.addEventListener('click', () => this.handleAnnouncementClick());
         }
 
         // 政策弹窗事件
@@ -519,6 +631,32 @@ class BicQAPopup {
             });
         }
 
+        // 巡检诊断对话框事件
+        if (this.closeInspectionDialog) {
+            this.closeInspectionDialog.addEventListener('click', () => this.hideInspectionDialog());
+        }
+        if (this.inspectionCancelBtn) {
+            this.inspectionCancelBtn.addEventListener('click', () => this.hideInspectionDialog());
+        }
+        if (this.inspectionForm) {
+            this.inspectionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleInspectionSubmit();
+            });
+        }
+        if (this.inspectionFileUploadBtn) {
+            this.inspectionFileUploadBtn.addEventListener('click', () => {
+                if (this.inspectionFileInput) {
+                    this.inspectionFileInput.click();
+                }
+            });
+        }
+        if (this.inspectionFileInput) {
+            this.inspectionFileInput.addEventListener('change', (e) => {
+                this.handleInspectionFileSelect(e);
+            });
+        }
+
         // AWR选项卡切换
         document.querySelectorAll('.awr-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -550,8 +688,8 @@ class BicQAPopup {
             prevBtn.addEventListener('click', () => {
                 if (this.awrHistoryCurrentPage > 1) {
                     // 保持当前筛选条件
-                    const startTime = document.getElementById('awrStartTime')?.value || '';
-                    const endTime = document.getElementById('awrEndTime')?.value || '';
+                    const startTime = this.getDateTimeInputValue('awrStartTime');
+                    const endTime = this.getDateTimeInputValue('awrEndTime');
                     const status = document.getElementById('awrStatusFilter')?.value || '';
                     this.loadAwrHistoryList(this.awrHistoryCurrentPage - 1, this.awrHistoryPageSize, '', startTime, endTime, status);
                 }
@@ -562,8 +700,8 @@ class BicQAPopup {
                 const totalPages = Math.ceil(this.awrHistoryTotal / this.awrHistoryPageSize);
                 if (this.awrHistoryCurrentPage < totalPages) {
                     // 保持当前筛选条件
-                    const startTime = document.getElementById('awrStartTime')?.value || '';
-                    const endTime = document.getElementById('awrEndTime')?.value || '';
+                    const startTime = this.getDateTimeInputValue('awrStartTime');
+                    const endTime = this.getDateTimeInputValue('awrEndTime');
                     const status = document.getElementById('awrStatusFilter')?.value || '';
                     this.loadAwrHistoryList(this.awrHistoryCurrentPage + 1, this.awrHistoryPageSize, '', startTime, endTime, status);
                 }
@@ -584,12 +722,20 @@ class BicQAPopup {
 
         // 监听存储变化，当设置发生变化时重新检查配置状态
         chrome.storage.onChanged.addListener((changes, namespace) => {
-            if (namespace === 'sync' && (changes.providers || changes.models)) {
-                console.log('检测到配置变化，重新加载设置...');
-                // 延迟重新加载，确保设置已保存
-                setTimeout(() => {
-                    this.loadSettings();
-                }, 500);
+            if (namespace === 'sync') {
+                if (changes.providers || changes.models) {
+                    console.log('检测到配置变化，重新加载设置...');
+                    // 延迟重新加载，确保设置已保存
+                    setTimeout(() => {
+                        this.loadSettings();
+                    }, 500);
+                }
+                if (changes.uiLanguage) {
+                    const newLanguage = changes.uiLanguage.newValue || this.i18n.defaultLanguage;
+                    this.applyLanguage(newLanguage, { persist: false }).catch(error => {
+                        console.error('应用存储语言变更失败:', error);
+                    });
+                }
             }
         });
 
@@ -657,6 +803,7 @@ class BicQAPopup {
 
         // 设置初始布局状态
         this.updateLayoutState();
+        await this.applyLanguage(this.currentLanguage, { persist: false, updateSwitcher: this.hasStoredLanguagePreference });
     }
 
     loadModelOptions() {
@@ -666,7 +813,7 @@ class BicQAPopup {
         if (this.models.length === 0) {
             const option = document.createElement('option');
             option.value = '';
-            option.textContent = '请先在设置页面配置模型';
+            option.textContent = this.t('popup.main.option.noModelConfigured');
             option.disabled = true;
             select.appendChild(option);
             return;
@@ -685,7 +832,15 @@ class BicQAPopup {
 
     loadKnowledgeBaseOptions() {
         const select = this.knowledgeBaseSelect;
-        select.innerHTML = '<option value="">不使用知识库(None)</option>';
+        if (!select) return;
+
+        this.previousKnowledgeBaseValue = select.value || '';
+        select.innerHTML = '';
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = this.t('popup.main.option.knowledgeNone');
+        select.appendChild(defaultOption);
 
         console.log('开始加载知识库选项...');
         console.log('window.knowledgeBaseManager:', window.knowledgeBaseManager);
@@ -710,7 +865,6 @@ class BicQAPopup {
         // 知识库选项加载完成后，更新字符计数显示
         this.updateCharacterCount();
     }
-
     // 从知识库管理器加载知识库
     async loadKnowledgeBasesFromManager() {
         try {
@@ -728,14 +882,7 @@ class BicQAPopup {
             const knowledgeBases = window.knowledgeBaseManager.getKnowledgeBases();
 
             if (knowledgeBases && knowledgeBases.length > 0) {
-                const select = this.knowledgeBaseSelect;
-                knowledgeBases.forEach(kb => {
-                    const option = document.createElement('option');
-                    option.value = JSON.stringify(kb); // 存储完整的知识库对象
-                    option.textContent = kb.name;
-                    select.appendChild(option);
-                });
-                console.log(`成功加载 ${knowledgeBases.length} 个知识库选项`);
+                this.renderKnowledgeBasesFromData(knowledgeBases);
             } else {
                 console.log('知识库列表为空');
                 this.loadDefaultKnowledgeBases();
@@ -789,7 +936,7 @@ class BicQAPopup {
             console.log('API响应状态:', response.status, response.statusText);
 
             if (!response.ok) {
-                throw new Error(`API请求失败: HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(this.t('popup.error.apiRequestFailedStatus', { status: response.status, statusText: response.statusText }));
             }
 
             const data = await response.json();
@@ -811,12 +958,12 @@ class BicQAPopup {
                 // 格式4: { knowledge_bases: [...] }
                 knowledgeBases = data.knowledge_bases;
             } else {
-                throw new Error('API返回的数据格式不符合预期');
+                throw new Error(this.t('popup.error.apiUnexpectedFormat'));
             }
 
             // 验证数据格式
             if (!knowledgeBases.every(kb => (kb.id || kb.code) && kb.name)) {
-                throw new Error('API返回的知识库数据格式不正确');
+                throw new Error(this.t('popup.error.kbDataInvalid'));
             }
 
             // 数据格式标准化，确保id字段存在
@@ -843,10 +990,32 @@ class BicQAPopup {
     async loadKnowledgeBasesFromConfig() {
         try {
             console.log('从配置文件加载知识库列表...');
-            const response = await fetch(chrome.runtime.getURL('config/knowledge_bases.json'));
-            const config = await response.json();
-            const knowledgeBases = config.knowledge_bases || [];
+            const language = this.currentLanguage || this.i18n?.defaultLanguage || 'zhcn';
+            const fallbackFile = 'config/knowledge_bases.json';
+            const languageSpecificFile = language === 'en' ? 'config/knowledge_bases_en.json' : fallbackFile;
 
+            const fetchConfig = async (file) => {
+                const url = chrome.runtime.getURL(file);
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`配置文件加载失败: ${file} (${response.status})`);
+                }
+                return response.json();
+            };
+
+            let config;
+            try {
+                config = await fetchConfig(languageSpecificFile);
+            } catch (langError) {
+                if (languageSpecificFile !== fallbackFile) {
+                    console.warn(`加载语言专属知识库配置失败，回退到默认配置: ${langError.message}`);
+                    config = await fetchConfig(fallbackFile);
+                } else {
+                    throw langError;
+                }
+            }
+
+            const knowledgeBases = Array.isArray(config.knowledge_bases) ? config.knowledge_bases : [];
             console.log('从配置文件加载的知识库列表:', knowledgeBases);
             this.renderKnowledgeBasesFromData(knowledgeBases);
 
@@ -857,36 +1026,233 @@ class BicQAPopup {
     }
 
     // 新增：渲染知识库数据到下拉框
+    getLanguageCandidateKeys(language) {
+        const lang = (language || '').toString().toLowerCase();
+        const normalized = typeof this.i18n?.normalizeLanguage === 'function'
+            ? this.i18n.normalizeLanguage(lang)
+            : lang;
+        const candidates = new Set();
+        const addCandidate = (value) => {
+            if (!value) return;
+            candidates.add(value.toLowerCase());
+        };
+
+        addCandidate(normalized);
+        addCandidate(normalized.replace('-', '_'));
+        addCandidate(normalized.replace('_', '-'));
+        addCandidate(normalized.replace(/[-_]/g, ''));
+
+        normalized.split(/[-_]/).forEach(addCandidate);
+
+        const aliasMap = {
+            'zhcn': ['zh', 'zh-cn', 'zh_cn', 'cn', 'zh-hans', 'zh_hans'],
+            'zh-tw': ['zh-tw', 'zh_tw', 'tw', 'zh-hant', 'zh_hant'],
+            'en': ['en', 'en-us', 'en_us', 'en-gb', 'en_gb'],
+            'jap': ['jap', 'ja', 'jp', 'ja-jp', 'ja_jp']
+        };
+        (aliasMap[normalized] || []).forEach(addCandidate);
+
+        return Array.from(candidates).filter(Boolean);
+    }
+
+    getLocalizedValue(value, defaultValue = '') {
+        if (value === null || value === undefined) {
+            return defaultValue;
+        }
+
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (typeof value !== 'object') {
+            return defaultValue;
+        }
+
+        const language = this.currentLanguage || this.i18n?.defaultLanguage || 'zhcn';
+        const fallbackLanguage = this.i18n?.fallbackLanguage || 'zhcn';
+
+        const searchKeys = [
+            ...this.getLanguageCandidateKeys(language),
+            ...this.getLanguageCandidateKeys(fallbackLanguage)
+        ];
+
+        for (const key of searchKeys) {
+            if (key && Object.prototype.hasOwnProperty.call(value, key)) {
+                const candidate = value[key];
+                if (typeof candidate === 'string' && candidate.trim() !== '') {
+                    return candidate;
+                }
+            }
+        }
+
+        const firstString = Object.values(value).find(item => typeof item === 'string' && item.trim() !== '');
+        return firstString !== undefined ? firstString : defaultValue;
+    }
+
     // 格式化知识库显示名称
     formatKnowledgeBaseName(name) {
-        const nameMap = {
-            'MySQL兼容': 'MySQL',
-            'PG兼容生态': 'PostgreSQL',
-            '盘古数据库': '盘古(PanGu)',
+        const normalizationMap = {
             'Mysql生态': 'MySQL',
             'Mysql,PG兼容生态': 'PostgreSQL'
         };
-
-        // 检查是否有映射
-        if (nameMap[name]) {
-            return nameMap[name];
+        const language = this.currentLanguage || this.i18n?.defaultLanguage || 'zhcn';
+        const sourceName = this.getLocalizedValue(name, typeof name === 'string' ? name : '');
+        if (!sourceName) {
+            return '';
         }
 
-        // 如果没有映射，返回原名称
-        return name;
+        const normalizedName = normalizationMap[sourceName] || sourceName;
+        const defaultMap = {
+            'MySQL兼容': 'MySQL',
+            'PG兼容生态': 'PostgreSQL',
+            '盘古数据库': '盘古(PanGu)'
+        };
+
+        if (language === 'en') {
+            if (!/[\u4e00-\u9fff]/.test(sourceName)) {
+                return normalizedName;
+            }
+            const englishMap = {
+                'MySQL兼容': 'MySQL Compatible',
+                'Mysql生态': 'MySQL Ecosystem',
+                'Mysql,PG兼容生态': 'PostgreSQL Compatible Ecosystem',
+                'PG兼容生态': 'PostgreSQL Compatible Ecosystem',
+                '盘古数据库': 'Pangu (PanGu)',
+                '磐维': 'Panwei',
+                '达梦': 'Dameng',
+                'Gbase': 'GBase',
+                'Gbase 分布式': 'GBase Distributed',
+                'GBase 分布式': 'GBase Distributed',
+                '神通-OSCAR': 'Shentong OSCAR',
+                '虚谷数据库': 'Xugu Database',
+                '操作系统': 'Operating Systems',
+                'KingBase': 'Kingbase',
+                'OpenGauss': 'openGauss'
+            };
+            return englishMap[sourceName] || englishMap[normalizedName] || normalizedName;
+        }
+
+        if (language === 'zh-tw') {
+            const traditionalMap = {
+                '知识库': '知識庫',
+                '盘古数据库': '盤古資料庫',
+                '磐维': '磐維',
+                '操作系统': '操作系統'
+            };
+            return traditionalMap[sourceName] || traditionalMap[normalizedName] || defaultMap[sourceName] || defaultMap[normalizedName] || normalizedName;
+        }
+
+        return defaultMap[sourceName] || defaultMap[normalizedName] || normalizedName;
+    }
+
+    normalizeDatasetName(localizedName, datasetName, language) {
+        const normalizedLanguage = typeof this.i18n?.normalizeLanguage === 'function'
+            ? this.i18n.normalizeLanguage(language)
+            : (language || '').toLowerCase();
+        const fallbackLang = typeof this.i18n?.normalizeLanguage === 'function'
+            ? this.i18n.normalizeLanguage(this.i18n?.fallbackLanguage || 'zhcn')
+            : (this.i18n?.fallbackLanguage || 'zhcn').toLowerCase();
+        const rawName = this.getLocalizedValue(datasetName, typeof datasetName === 'string' ? datasetName : '');
+        const trimmed = (rawName || '').trim();
+        const suffixMap = {
+            'zhcn': '知识库',
+            'zh-tw': '知識庫',
+            'en': 'Knowledge Base',
+            'jap': 'ナレッジベース'
+        };
+        const suffix = suffixMap[normalizedLanguage] || suffixMap[fallbackLang] || 'Knowledge Base';
+        const hasChinese = /[\u4e00-\u9fff]/.test(trimmed);
+        const hasEnglish = /[A-Za-z]/.test(trimmed);
+
+        if (!localizedName) {
+            return trimmed || '';
+        }
+
+        if (!trimmed) {
+            return `${localizedName} ${suffix}`.trim();
+        }
+
+        if (normalizedLanguage === 'en') {
+            if (hasChinese) {
+                return `${localizedName} ${suffix}`.trim();
+            }
+            return trimmed.replace(/知识库|知識庫/g, 'Knowledge Base');
+        }
+
+        if (normalizedLanguage === 'zh-tw') {
+            if (!hasChinese && hasEnglish) {
+                return trimmed.replace(/Knowledge Base/gi, suffix);
+            }
+            return trimmed.replace(/知识库/g, suffix);
+        }
+
+        if (!hasChinese && hasEnglish) {
+            return trimmed.replace(/Knowledge Base/gi, suffix);
+        }
+
+        return trimmed;
+    }
+
+    localizeKnowledgeBase(kb) {
+        if (!kb) return kb;
+        const language = this.currentLanguage || this.i18n?.defaultLanguage || 'zhcn';
+        let localizedName = this.formatKnowledgeBaseName(kb.name);
+        if (!localizedName) {
+            const fallbackName = this.getLocalizedValue(kb.name, typeof kb.name === 'string' ? kb.name : '');
+            localizedName = fallbackName || kb.id || '';
+        }
+        const datasetName = this.normalizeDatasetName(localizedName, kb.dataset_name, language);
+
+        return {
+            ...kb,
+            name: localizedName,
+            dataset_name: datasetName
+        };
     }
 
     renderKnowledgeBasesFromData(knowledgeBases) {
         const select = this.knowledgeBaseSelect;
+        if (!select || !Array.isArray(knowledgeBases)) return;
+
+        const optionById = new Map();
+        Array.from(select.options).forEach(option => {
+            try {
+                const value = JSON.parse(option.value);
+                if (value && value.id) {
+                    optionById.set(value.id, option);
+                }
+            } catch (e) {
+                // 忽略默认项或解析失败的选项
+            }
+        });
+
+        // 清理非默认项，避免语言切换时残留旧文案
+        Array.from(select.options).forEach(option => {
+            if (option.value) {
+                select.removeChild(option);
+            }
+        });
+
+        let appendedCount = 0;
 
         knowledgeBases.forEach(kb => {
-            const option = document.createElement('option');
-            option.value = JSON.stringify(kb); // 存储完整的知识库对象
-            option.textContent = this.formatKnowledgeBaseName(kb.name);
+            const localized = this.localizeKnowledgeBase(kb);
+            let option = optionById.get(localized.id);
+            if (!option) {
+                option = document.createElement('option');
+                optionById.set(localized.id, option);
+                appendedCount += 1;
+            }
+            option.value = JSON.stringify(localized);
+            option.textContent = localized.name;
             select.appendChild(option);
         });
 
-        console.log(`成功加载 ${knowledgeBases.length} 个知识库选项`);
+        console.log(`成功加载 ${knowledgeBases.length} 个知识库选项 (新增 ${appendedCount} 个)`);
+        if (this.previousKnowledgeBaseValue) {
+            select.value = this.previousKnowledgeBaseValue;
+            this.previousKnowledgeBaseValue = '';
+        }
         this.updateCharacterCount(); // 添加这行
     }
 
@@ -894,34 +1260,147 @@ class BicQAPopup {
     loadDefaultKnowledgeBases() {
         console.log('使用硬编码的默认知识库列表');
 
-        const defaultKnowledgeBases = [
-            { id: "2101", name: "Oracle", dataset_name: "Oracle 知识库" },
-            { id: "2102", name: "MySQL兼容", dataset_name: "MySQL兼容 知识库" },
-            { id: "2103", name: "达梦", dataset_name: "达梦 知识库" },
-            { id: "2104", name: "PG兼容生态", dataset_name: "PG兼容生态 知识库" },
-            { id: "2105", name: "SQL Server", dataset_name: "SQL Server 知识库" },
-            { id: "2106", name: "神通-OSCAR", dataset_name: "神通-OSCAR 知识库" },
-            { id: "2107", name: "YashanDB", dataset_name: "YashanDB 知识库" },
-            { id: "2108", name: "Redis", dataset_name: "Redis 知识库" },
-            { id: "2109", name: "MongoDB", dataset_name: "MongoDB 知识库" },
-            { id: "2110", name: "Redis Cluster", dataset_name: "Redis Cluster 知识库" },
-            { id: "2111", name: "DB2", dataset_name: "DB2 知识库" },
-            { id: "2114", name: "KingBase", dataset_name: "KingBase 知识库" },
-            { id: "2115", name: "Gbase", dataset_name: "Gbase 知识库" },
-            { id: "2116", name: "磐维", dataset_name: "磐维 知识库" },
-            { id: "2117", name: "OpenGauss", dataset_name: "OpenGauss 知识库" },
-            { id: "2201", name: "TDSQL", dataset_name: "TDSQL 知识库" },
-            { id: "2202", name: "GaussDB", dataset_name: "GaussDB 知识库" },
-            { id: "2203", name: "OceanBase", dataset_name: "OceanBase 知识库" },
-            { id: "2204", name: "TiDB", dataset_name: "TiDB 知识库" },
-            { id: "2205", name: "GoldenDB", dataset_name: "GoldenDB 知识库" },
-            { id: "2206", name: "Gbase 分布式", dataset_name: "Gbase 分布式 知识库" },
-            { id: "2208", name: "GBase 8a", dataset_name: "GBase 8a 知识库" },
-            { id: "2209", name: "HashData", dataset_name: "HashData 知识库" },
-            { id: "2118", name: "GreatSQL", dataset_name: "GreatSQL 知识库" },
-            { id: "2119", name: "虚谷数据库", dataset_name: "虚谷 知识库" },
-            { id: "1111", name: "操作系统", dataset_name: "操作系统 知识库" }
+        const language = this.currentLanguage || this.i18n?.defaultLanguage || "zhcn";
+        const isEnglish = language === "en";
+
+        const baseKnowledgeBases = [
+            {
+                id: "2101",
+                name: { zh: "Oracle", en: "Oracle" },
+                dataset_name: { zh: "Oracle 知识库", en: "Oracle Knowledge Base" }
+            },
+            {
+                id: "2102",
+                name: { zh: "MySQL兼容", en: "MySQL Compatible" },
+                dataset_name: { zh: "MySQL兼容 知识库", en: "MySQL Compatible Knowledge Base" }
+            },
+            {
+                id: "2103",
+                name: { zh: "达梦", en: "Dameng" },
+                dataset_name: { zh: "达梦 知识库", en: "Dameng Knowledge Base" }
+            },
+            {
+                id: "2104",
+                name: { zh: "PG兼容生态", en: "PostgreSQL Compatible Ecosystem" },
+                dataset_name: { zh: "PG兼容生态 知识库", en: "PostgreSQL Compatible Ecosystem Knowledge Base" }
+            },
+            {
+                id: "2105",
+                name: { zh: "SQL Server", en: "SQL Server" },
+                dataset_name: { zh: "SQL Server 知识库", en: "SQL Server Knowledge Base" }
+            },
+            {
+                id: "2106",
+                name: { zh: "神通-OSCAR", en: "Shentong OSCAR" },
+                dataset_name: { zh: "神通-OSCAR 知识库", en: "Shentong OSCAR Knowledge Base" }
+            },
+            {
+                id: "2107",
+                name: { zh: "YashanDB", en: "YashanDB" },
+                dataset_name: { zh: "YashanDB 知识库", en: "YashanDB Knowledge Base" }
+            },
+            {
+                id: "2108",
+                name: { zh: "Redis", en: "Redis" },
+                dataset_name: { zh: "Redis 知识库", en: "Redis Knowledge Base" }
+            },
+            {
+                id: "2109",
+                name: { zh: "MongoDB", en: "MongoDB" },
+                dataset_name: { zh: "MongoDB 知识库", en: "MongoDB Knowledge Base" }
+            },
+            {
+                id: "2110",
+                name: { zh: "Redis Cluster", en: "Redis Cluster" },
+                dataset_name: { zh: "Redis Cluster 知识库", en: "Redis Cluster Knowledge Base" }
+            },
+            {
+                id: "2111",
+                name: { zh: "DB2", en: "DB2" },
+                dataset_name: { zh: "DB2 知识库", en: "DB2 Knowledge Base" }
+            },
+            {
+                id: "2114",
+                name: { zh: "KingBase", en: "Kingbase" },
+                dataset_name: { zh: "KingBase 知识库", en: "Kingbase Knowledge Base" }
+            },
+            {
+                id: "2115",
+                name: { zh: "Gbase", en: "GBase" },
+                dataset_name: { zh: "Gbase 知识库", en: "GBase Knowledge Base" }
+            },
+            {
+                id: "2116",
+                name: { zh: "磐维", en: "Panwei" },
+                dataset_name: { zh: "磐维 知识库", en: "Panwei Knowledge Base" }
+            },
+            {
+                id: "2117",
+                name: { zh: "OpenGauss", en: "openGauss" },
+                dataset_name: { zh: "OpenGauss 知识库", en: "openGauss Knowledge Base" }
+            },
+            {
+                id: "2201",
+                name: { zh: "TDSQL", en: "TDSQL" },
+                dataset_name: { zh: "TDSQL 知识库", en: "TDSQL Knowledge Base" }
+            },
+            {
+                id: "2202",
+                name: { zh: "GaussDB", en: "GaussDB" },
+                dataset_name: { zh: "GaussDB 知识库", en: "GaussDB Knowledge Base" }
+            },
+            {
+                id: "2203",
+                name: { zh: "OceanBase", en: "OceanBase" },
+                dataset_name: { zh: "OceanBase 知识库", en: "OceanBase Knowledge Base" }
+            },
+            {
+                id: "2204",
+                name: { zh: "TiDB", en: "TiDB" },
+                dataset_name: { zh: "TiDB 知识库", en: "TiDB Knowledge Base" }
+            },
+            {
+                id: "2205",
+                name: { zh: "GoldenDB", en: "GoldenDB" },
+                dataset_name: { zh: "GoldenDB 知识库", en: "GoldenDB Knowledge Base" }
+            },
+            {
+                id: "2206",
+                name: { zh: "Gbase 分布式", en: "GBase Distributed" },
+                dataset_name: { zh: "Gbase 分布式 知识库", en: "GBase Distributed Knowledge Base" }
+            },
+            {
+                id: "2208",
+                name: { zh: "GBase 8a", en: "GBase 8a" },
+                dataset_name: { zh: "GBase 8a 知识库", en: "GBase 8a Knowledge Base" }
+            },
+            {
+                id: "2209",
+                name: { zh: "HashData", en: "HashData" },
+                dataset_name: { zh: "HashData 知识库", en: "HashData Knowledge Base" }
+            },
+            {
+                id: "2118",
+                name: { zh: "GreatSQL", en: "GreatSQL" },
+                dataset_name: { zh: "GreatSQL 知识库", en: "GreatSQL Knowledge Base" }
+            },
+            {
+                id: "2119",
+                name: { zh: "虚谷数据库", en: "Xugu Database" },
+                dataset_name: { zh: "虚谷 知识库", en: "Xugu Knowledge Base" }
+            },
+            {
+                id: "1111",
+                name: { zh: "操作系统", en: "Operating Systems" },
+                dataset_name: { zh: "操作系统 知识库", en: "Operating Systems Knowledge Base" }
+            }
         ];
+
+        const defaultKnowledgeBases = baseKnowledgeBases.map(item => ({
+            id: item.id,
+            name: isEnglish ? item.name.en : item.name.zh,
+            dataset_name: isEnglish ? item.dataset_name.en : item.dataset_name.zh
+        }));
 
         const select = this.knowledgeBaseSelect;
         defaultKnowledgeBases.forEach(kb => {
@@ -932,41 +1411,24 @@ class BicQAPopup {
         });
 
         console.log(`使用默认值，添加了 ${defaultKnowledgeBases.length} 个知识库选项`);
+        if (this.previousKnowledgeBaseValue) {
+            select.value = this.previousKnowledgeBaseValue;
+            this.previousKnowledgeBaseValue = "";
+        }
         this.updateCharacterCount(); // 添加这行
     }
-
     loadParameterRuleOptions() {
         try {
             const select = this.parameterRuleSelect;
 
             // 从Chrome存储中获取所有规则
-            chrome.storage.sync.get(['rules', 'defaultRulesModified'], (result) => {
+            chrome.storage.sync.get(['rules', 'defaultRulesModified', 'uiLanguage'], (result) => {
                 const savedRules = result.rules || [];
                 const defaultRulesModified = result.defaultRulesModified || false;
+                const uiLanguage = result.uiLanguage || 'zhcn';
 
-                // 获取默认规则
-                const defaultRules = [
-                    {
-                        "description": "适用于快速检索场景，返回更多相关结果",
-                        "id": "default-fast-search",
-                        "isDefault": true,
-                        "name": "精准检索(Precise search)",
-                        "similarity": 0.7,
-                        "topN": 6,
-                        "temperature": 0.7,
-                        "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供准确、实用的解答。\n\n## 回答要求\n1. 内容准确性：\n   - 严格基于提供的知识库内容回答\n   - 优先使用高相关性内容\n   - 确保信息的准确性和完整性\n   - 可以适度补充相关知识背景\n\n2. 实用性强：\n   - 提供可操作的建议和步骤\n   - 结合实际应用场景\n   - 包含必要的注意事项和最佳实践\n   - 适当添加示例和说明\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 如有必要，提供具体示例\n   - 适当补充相关背景知识\n\n5. 特殊情况处理：\n   - 如果信息不完整，明确指出信息的局限性\n   - 如果存在版本差异，清晰说明各版本的区别\n   - 可以适度提供相关建议\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、准确、实用，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
-                    },
-                    {
-                        "description": "适用于创新思维场景，提供多角度分析和创新解决方案",
-                        "id": "default-flexible-search",
-                        "isDefault": false,
-                        "name": "灵活检索(Flexible search)",
-                        "similarity": 0.6,
-                        "topN": 8,
-                        "temperature": 1.0,
-                        "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供创新、全面的解答。\n\n## 回答要求\n1. 创新思维：\n   - 基于知识库内容进行多角度分析\n   - 提供创新的解决方案和思路\n   - 结合行业趋势和最佳实践\n   - 鼓励探索性思维\n\n2. 全面性：\n   - 不仅回答直接问题，还要考虑相关因素\n   - 提供多种可能的解决方案\n   - 分析不同场景下的适用性\n   - 包含风险评估和优化建议\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 提供多种思路和方案\n   - 包含创新性建议和未来趋势\n\n5. 特殊情况处理：\n   - 如果信息不完整，提供多种可能的解决方案\n   - 如果存在版本差异，分析各版本的优劣势\n   - 可以适度提供创新性建议和未来发展方向\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、创新、全面，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
-                    }
-                ];
+                // 获取默认规则（根据当前语言）
+                const defaultRules = this.getDefaultRulesByLanguage(uiLanguage);
 
                 // 使用与settings.js相同的逻辑来合并规则
                 let allRules;
@@ -1011,7 +1473,7 @@ class BicQAPopup {
                     // 如果没有配置规则，显示引导提示
                     const option = document.createElement('option');
                     option.value = '';
-                    option.textContent = '请先在设置页面配置参数规则';
+                    option.textContent = this.t('popup.main.option.noParameterRuleConfigured');
                     option.disabled = true;
                     select.appendChild(option);
                 } else {
@@ -1019,9 +1481,8 @@ class BicQAPopup {
                     allRules.forEach((rule, index) => {
                         const option = document.createElement('option');
                         option.value = JSON.stringify(rule);
-                        option.textContent = `${rule.name} `;
+                        option.textContent = this.getParameterRuleDisplayName(rule);
                         if (rule.isDefault) {
-                            option.textContent += '';
                             option.selected = true; // 默认选中默认规则
                         }
                         select.appendChild(option);
@@ -1037,10 +1498,95 @@ class BicQAPopup {
             // 显示错误提示
             const option = document.createElement('option');
             option.value = '';
-            option.textContent = '加载规则失败，请检查配置';
+            option.textContent = this.t('popup.main.option.parameterRuleLoadFailed');
             option.disabled = true;
             select.appendChild(option);
         }
+    }
+
+    // 根据语言获取默认规则
+    getDefaultRulesByLanguage(language) {
+        const languageMap = {
+            'zhcn': 'zh-CN',
+            'zh-tw': 'zh-CN',
+            'en': 'en-US',
+            'jap': 'ja-JP'
+        };
+
+        const targetLanguage = languageMap[language] || 'zh-CN';
+
+        // 所有默认规则，按语言分组
+        const allDefaultRules = [
+            {
+                "description": "适用于快速检索场景，返回更多相关结果",
+                "id": "default-fast-search",
+                "isDefault": true,
+                "name": "精准检索",
+                "similarity": 0.7,
+                "topN": 6,
+                "language": "zh-CN",
+                "temperature": 0.7,
+                "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供准确、实用的解答。\n\n## 回答要求\n1. 内容准确性：\n   - 严格基于提供的知识库内容回答\n   - 优先使用高相关性内容\n   - 确保信息的准确性和完整性\n   - 可以适度补充相关知识背景\n\n2. 实用性强：\n   - 提供可操作的建议和步骤\n   - 结合实际应用场景\n   - 包含必要的注意事项和最佳实践\n   - 适当添加示例和说明\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 如有必要，提供具体示例\n   - 适当补充相关背景知识\n\n5. 特殊情况处理：\n   - 如果信息不完整，明确指出信息的局限性\n   - 如果存在版本差异，清晰说明各版本的区别\n   - 可以适度提供相关建议\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、准确、实用，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
+            },
+            {
+                "description": "适用于创新思维场景，提供多角度分析和创新解决方案",
+                "id": "default-flexible-search",
+                "isDefault": false,
+                "name": "灵活检索",
+                "similarity": 0.6,
+                "topN": 8,
+                "language": "zh-CN",
+                "temperature": 1.0,
+                "prompt": "你是一个专业的数据库专家，你的任务是基于提供的知识库内容为用户提供创新、全面的解答。\n\n## 回答要求\n1. 创新思维：\n   - 基于知识库内容进行多角度分析\n   - 提供创新的解决方案和思路\n   - 结合行业趋势和最佳实践\n   - 鼓励探索性思维\n\n2. 全面性：\n   - 不仅回答直接问题，还要考虑相关因素\n   - 提供多种可能的解决方案\n   - 分析不同场景下的适用性\n   - 包含风险评估和优化建议\n\n3. 版本信息处理：\n   - 开头注明：> 适用版本：{{version_info}}\n   - 如果不同版本有差异，需要明确指出\n   - 结尾再次确认：> 适用版本：{{version_info}}\n\n4. 回答结构：\n   - 先总结核心要点\n   - 分点详细展开\n   - 提供多种思路和方案\n   - 包含创新性建议和未来趋势\n\n5. 特殊情况处理：\n   - 如果信息不完整，提供多种可能的解决方案\n   - 如果存在版本差异，分析各版本的优劣势\n   - 可以适度提供创新性建议和未来发展方向\n\n## 重要：流式输出要求\n- 请直接开始回答，不要使用<think>标签进行思考\n- 立即开始输出内容，实现真正的实时流式体验\n- 边思考边输出，让用户能够实时看到回答过程\n\n请确保回答专业、创新、全面，并始终注意版本兼容性。如果分析Oracle的错误号ORA-XXXXX，则不能随意匹配其他类似错误号，必须严格匹配号码，只允许去除左侧的0或者在左侧填充0使之达到5位数字。"
+            },
+            {
+                "description": "Suitable for fast search scenarios, returns more relevant results",
+                "id": "default-fast-search-en",
+                "isDefault": true,
+                "name": "Precise Search",
+                "similarity": 0.7,
+                "topN": 6,
+                "language": "en-US",
+                "temperature": 0.7,
+                "prompt": "You are a professional database expert. Your task is to provide accurate and practical answers to users based on the provided knowledge base content.\n\n## Answer Requirements\n1. Content Accuracy:\n   - Strictly answer based on the provided knowledge base content\n   - Prioritize high-relevance content\n   - Ensure information accuracy and completeness\n   - Can appropriately supplement relevant knowledge background\n\n2. Practicality:\n   - Provide actionable advice and steps\n   - Combine with actual application scenarios\n   - Include necessary precautions and best practices\n   - Add examples and explanations appropriately\n\n3. Version Information Handling:\n   - Note at the beginning: > Applicable Version: {{version_info}}\n   - If there are differences between versions, clearly indicate them\n   - Confirm again at the end: > Applicable Version: {{version_info}}\n\n4. Answer Structure:\n   - First summarize the core points\n   - Expand in detail point by point\n   - Provide specific examples if necessary\n   - Supplement relevant background knowledge appropriately\n\n5. Special Case Handling:\n   - If information is incomplete, clearly indicate the limitations\n   - If version differences exist, clearly explain the differences between versions\n   - Can appropriately provide relevant suggestions\n\n## Important: Streaming Output Requirements\n- Please start answering directly, do not use <think> tags for thinking\n- Immediately start outputting content to achieve a true real-time streaming experience\n- Think while outputting, allowing users to see the answering process in real-time\n\nPlease ensure answers are professional, accurate, and practical, and always pay attention to version compatibility. When analyzing Oracle error numbers ORA-XXXXX, do not arbitrarily match other similar error numbers. You must strictly match the number, only allowing removal of leading zeros or padding zeros on the left to make it 5 digits."
+            },
+            {
+                "description": "Suitable for innovative thinking scenarios, provides multi-angle analysis and innovative solutions",
+                "id": "default-flexible-search-en",
+                "isDefault": false,
+                "name": "Flexible Search",
+                "similarity": 0.6,
+                "topN": 8,
+                "language": "en-US",
+                "temperature": 1.0,
+                "prompt": "You are a professional database expert. Your task is to provide innovative and comprehensive answers to users based on the provided knowledge base content.\n\n## Answer Requirements\n1. Innovative Thinking:\n   - Conduct multi-angle analysis based on knowledge base content\n   - Provide innovative solutions and ideas\n   - Combine industry trends and best practices\n   - Encourage exploratory thinking\n\n2. Comprehensiveness:\n   - Not only answer direct questions but also consider related factors\n   - Provide multiple possible solutions\n   - Analyze applicability in different scenarios\n   - Include risk assessment and optimization suggestions\n\n3. Version Information Handling:\n   - Note at the beginning: > Applicable Version: {{version_info}}\n   - If there are differences between versions, clearly indicate them\n   - Confirm again at the end: > Applicable Version: {{version_info}}\n\n4. Answer Structure:\n   - First summarize the core points\n   - Expand in detail point by point\n   - Provide multiple ideas and solutions\n   - Include innovative suggestions and future trends\n\n5. Special Case Handling:\n   - If information is incomplete, provide multiple possible solutions\n   - If version differences exist, analyze the advantages and disadvantages of each version\n   - Can appropriately provide innovative suggestions and future development directions\n\n## Important: Streaming Output Requirements\n- Please start answering directly, do not use <think> tags for thinking\n- Immediately start outputting content to achieve a true real-time streaming experience\n   - Think while outputting, allowing users to see the answering process in real-time\n\nPlease ensure answers are professional, innovative, and comprehensive, and always pay attention to version compatibility. When analyzing Oracle error numbers ORA-XXXXX, do not arbitrarily match other similar error numbers. You must strictly match the number, only allowing removal of leading zeros or padding zeros on the left to make it 5 digits."
+            },
+            {
+                "description": "高速検索シーンに適用され、より関連性の高い結果を返します",
+                "id": "default-fast-search-ja",
+                "isDefault": true,
+                "name": "精密検索",
+                "similarity": 0.7,
+                "topN": 6,
+                "language": "ja-JP",
+                "temperature": 0.7,
+                "prompt": "あなたは専門的なデータベースエキスパートです。あなたのタスクは、提供されたナレッジベースのコンテンツに基づいて、ユーザーに正確で実用的な回答を提供することです。\n\n## 回答要件\n1. コンテンツの正確性：\n   - 提供されたナレッジベースのコンテンツに厳密に基づいて回答する\n   - 高関連性のコンテンツを優先的に使用する\n   - 情報の正確性と完全性を確保する\n   - 関連する知識背景を適度に補足できる\n\n2. 実用性：\n   - 実行可能なアドバイスと手順を提供する\n   - 実際のアプリケーションシナリオと組み合わせる\n   - 必要な注意事項とベストプラクティスを含める\n   - 例と説明を適切に追加する\n\n3. バージョン情報の処理：\n   - 冒頭に注記：> 適用バージョン：{{version_info}}\n   - 異なるバージョンに差異がある場合は、明確に指摘する\n   - 最後に再度確認：> 適用バージョン：{{version_info}}\n\n4. 回答構造：\n   - まず核心ポイントを要約する\n   - ポイントごとに詳細に展開する\n   - 必要に応じて具体的な例を提供する\n   - 関連する背景知識を適切に補足する\n\n5. 特殊ケースの処理：\n   - 情報が不完全な場合、情報の限界を明確に指摘する\n   - バージョンの差異が存在する場合、各バージョンの違いを明確に説明する\n   - 関連する提案を適度に提供できる\n\n## 重要：ストリーミング出力要件\n- <think>タグを使用して思考せず、直接回答を開始してください\n- コンテンツの出力を即座に開始し、真のリアルタイムストリーミング体験を実現する\n- 出力しながら思考し、ユーザーが回答プロセスをリアルタイムで確認できるようにする\n\n回答が専門的で、正確で、実用的であることを確保し、常にバージョン互換性に注意してください。Oracleのエラー番号ORA-XXXXXを分析する場合、他の類似するエラー番号を任意に一致させてはいけません。番号を厳密に一致させる必要があり、左側の0を削除するか、左側に0を埋めて5桁にすることを許可するのみです。"
+            },
+            {
+                "description": "革新的な思考シーンに適用され、多角的な分析と革新的なソリューションを提供します",
+                "id": "default-flexible-search-ja",
+                "isDefault": false,
+                "name": "柔軟検索",
+                "similarity": 0.6,
+                "topN": 8,
+                "language": "ja-JP",
+                "temperature": 1.0,
+                "prompt": "あなたは専門的なデータベースエキスパートです。あなたのタスクは、提供されたナレッジベースのコンテンツに基づいて、ユーザーに革新的で包括的な回答を提供することです。\n\n## 回答要件\n1. 革新的な思考：\n   - ナレッジベースのコンテンツに基づいて多角的な分析を行う\n   - 革新的なソリューションとアイデアを提供する\n   - 業界のトレンドとベストプラクティスを組み合わせる\n   - 探索的思考を奨励する\n\n2. 包括性：\n   - 直接的な質問に答えるだけでなく、関連する要因も考慮する\n   - 複数の可能なソリューションを提供する\n   - 異なるシナリオでの適用性を分析する\n   - リスク評価と最適化提案を含める\n\n3. バージョン情報の処理：\n   - 冒頭に注記：> 適用バージョン：{{version_info}}\n   - 異なるバージョンに差異がある場合は、明確に指摘する\n   - 最後に再度確認：> 適用バージョン：{{version_info}}\n\n4. 回答構造：\n   - まず核心ポイントを要約する\n   - ポイントごとに詳細に展開する\n   - 複数のアイデアとソリューションを提供する\n   - 革新的な提案と将来のトレンドを含める\n\n5. 特殊ケースの处理：\n   - 信息が不完全な場合、複数の可能なソリューションを提供する\n   - バージョンの差異が存在する場合、各バージョンの優劣を分析する\n   - 革新的な提案と将来の発展方向を適度に提供できる\n\n## 重要：ストリーミング出力要件\n- <think>タグを使用して思考せず、直接回答を開始してください\n- コンテンツの出力を即座に開始し、真のリアルタイムストリーミング体験を実現する\n- 出力しながら思考し、ユーザーが回答プロセスをリアルタイムで確認できるようにする\n\n回答が専門的で、革新的で、包括的であることを確保し、常にバージョン互換性に注意してください。Oracleのエラー番号ORA-XXXXXを分析する場合、他の類似するエラー番号を任意に一致させてはいけません。番号を厳密に一致させる必要があり、左側の0を删除するか、左側に0を埋めて5桁にすることを許可するのみです。"
+            }
+        ];
+
+        // 根据目标语言过滤规则
+        return allDefaultRules.filter(rule => rule.language === targetLanguage);
     }
 
     // 合并规则并支持内置规则修改的方法
@@ -1180,8 +1726,61 @@ class BicQAPopup {
 
     // 判断是否为内置规则
     isBuiltInRule(ruleId) {
-        const builtInIds = ['default-fast-search', 'default-flexible-search'];
+        const builtInIds = ['default-fast-search', 'default-flexible-search', 'default-fast-search-en', 'default-flexible-search-en', 'default-fast-search-ja', 'default-flexible-search-ja'];
         return builtInIds.includes(ruleId);
+    }
+    getParameterRuleDisplayName(rule) {
+        if (!rule) {
+            return '';
+        }
+
+        if (this.isBuiltInRule(rule.id)) {
+            let translationKey = '';
+            if (rule.id === 'default-fast-search') {
+                translationKey = 'popup.main.option.parameterRulePrecise';
+            } else if (rule.id === 'default-flexible-search') {
+                translationKey = 'popup.main.option.parameterRuleFlexible';
+            }
+
+            if (translationKey && typeof this.t === 'function') {
+                const localized = this.t(translationKey);
+                if (localized && typeof localized === 'string' && localized !== translationKey) {
+                    return localized;
+                }
+            }
+
+            const language = this.currentLanguage || this.i18n?.defaultLanguage || 'zhcn';
+            const normalized = typeof this.i18n?.normalizeLanguage === 'function'
+                ? this.i18n.normalizeLanguage(language)
+                : language;
+
+            const fallbackMap = {
+                'default-fast-search': {
+                    'zhcn': '精准检索',
+                    'en': 'Precise search',
+                    'zh-tw': '精準檢索',
+                    'jap': '精密検索'
+                },
+                'default-flexible-search': {
+                    'zhcn': '灵活检索',
+                    'en': 'Flexible search',
+                    'zh-tw': '靈活檢索',
+                    'jap': '柔軟検索'
+                }
+            };
+
+            const perLanguage = fallbackMap[rule.id];
+            if (perLanguage) {
+                const fallbackLanguage = this.i18n?.fallbackLanguage || 'zhcn';
+                return perLanguage[normalized] || perLanguage[fallbackLanguage] || rule.name || translationKey;
+            }
+        }
+
+        if (rule.name) {
+            return rule.name;
+        }
+
+        return '';
     }
 
     async loadKnowledgeServiceConfig() {
@@ -1233,7 +1832,7 @@ class BicQAPopup {
             const timestamp = new Date().getTime();
             const response = await fetch(chrome.runtime.getURL(`config/knowledge_service.json?t=${timestamp}`));
             if (!response.ok) {
-                throw new Error('配置文件加载失败');
+                throw new Error(this.t('popup.error.configLoadFailed'));
             }
 
             const configFile = await response.json();
@@ -1301,7 +1900,7 @@ class BicQAPopup {
         // 获取问题内容
         const question = this.questionInput.value.trim();
         if (!question) {
-            this.showMessage('请输入问题', 'error');
+            this.showMessage(this.t('popup.message.enterQuestion'), 'error');
             this.isProcessing = false;
             return;
         }
@@ -1333,13 +1932,13 @@ class BicQAPopup {
 
         // 检查是否有配置的服务商和模型
         if (this.providers.length === 0) {
-            this.showErrorResult('请先在设置页面配置服务商和模型', 'model', conversationContainer);
+            this.showErrorResult(this.t('popup.error.providersNotConfigured'), 'model', conversationContainer);
             this.isProcessing = false;
             return;
         }
 
         if (this.models.length === 0) {
-            this.showErrorResult('请先在设置页面配置模型', 'model', conversationContainer);
+            this.showErrorResult(this.t('popup.error.modelNotConfigured'), 'model', conversationContainer);
             this.isProcessing = false;
             return;
         }
@@ -1368,7 +1967,7 @@ class BicQAPopup {
             // 获取用户选择的模型
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
-                this.showErrorResult('请先选择一个模型。', 'model', conversationContainer);
+                this.showErrorResult(this.t('popup.error.selectModel'), 'model', conversationContainer);
                 this.isProcessing = false;
                 return;
             }
@@ -1386,7 +1985,7 @@ class BicQAPopup {
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
 
             if (!selectedModel || !provider) {
-                this.showErrorResult('配置的模型或服务商不存在，请检查设置。', 'model', conversationContainer);
+                this.showErrorResult(this.t('popup.error.modelOrProviderMissing'), 'model', conversationContainer);
                 this.isProcessing = false;
                 return;
             }
@@ -1502,7 +2101,7 @@ class BicQAPopup {
         } catch (error) {
             console.error('处理问题失败:', error);
 
-            this.showErrorResult(`处理问题时发生错误: ${error.message}`, 'model', conversationContainer);
+            this.showErrorResult(this.t('popup.error.processingFailed', { error: error.message }), 'model', conversationContainer);
         } finally {
             this.setLoading(false);
             this.isProcessing = false; // 重置处理状态
@@ -1518,7 +2117,7 @@ class BicQAPopup {
             // 更新标题为生成建议状态
             const resultTitle = conversationContainer.querySelector('.result-title');
             if (resultTitle) {
-                resultTitle.textContent = '正在生成建议问题...';
+                resultTitle.textContent = this.t('popup.suggestion.generating');
             }
 
             // 根据知识库类型确定专家类型
@@ -1528,14 +2127,14 @@ class BicQAPopup {
             const prompt = `你是一个${expertType}专家，你的任务是补全上述意图生成三条意思相近的用户查询，要求每条生成字数不能少于10字，返回的结果以数组形式放在固定字段。用户输入：${shortQuestion}`;
 
             // 调用API生成建议
-            const suggestions = await this.callAPIForSuggestions(prompt);
+            const suggestions = await this.callAPIForSuggestions(prompt, shortQuestion);
 
             // 显示建议问题
             this.displaySuggestions(suggestions, conversationContainer);
 
         } catch (error) {
             console.error('生成建议问题失败:', error);
-            this.showErrorResult('生成建议问题失败，请重试', 'error', conversationContainer);
+            this.showErrorResult(this.t('popup.error.suggestionFailed'), 'error', conversationContainer);
         }
         // 更新会话历史，标记这不是第一次对话
         this.addToCurrentSessionHistory(shortQuestion, "已生成建议问题");
@@ -1564,11 +2163,12 @@ class BicQAPopup {
     }
 
     // 调用API生成建议
-    async callAPIForSuggestions(prompt) {
+    async callAPIForSuggestions(prompt, originalQuestion = '') {
+        console.log('callAPIForSuggestions=======');
         // 获取选中的模型
         const selectedModelValue = this.modelSelect.value;
         if (!selectedModelValue) {
-            throw new Error('请先选择一个模型');
+            throw new Error(this.t('popup.error.selectModel'));
         }
 
         let selectedKey;
@@ -1582,7 +2182,7 @@ class BicQAPopup {
         const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
 
         if (!selectedModel || !provider) {
-            throw new Error('配置的模型或服务商不存在');
+            throw new Error(this.t('popup.error.modelOrProviderMissing'));
         }
 
         // 构建请求头
@@ -1594,9 +2194,18 @@ class BicQAPopup {
         this.setAuthHeaders(headers, provider);
 
         // 构建请求体 - 使用与现有代码相同的结构
+        const suggestionSystemPrompt = this.applyLanguageInstructionToSystemContent(
+            "你是一名资深数据库专家，需要根据用户意图补全并生成相似问题。",
+            originalQuestion
+        );
+
         const requestBody = {
             model: selectedModel.name,
             messages: [
+                {
+                    role: "system",
+                    content: suggestionSystemPrompt
+                },
                 {
                     role: "user",
                     content: prompt
@@ -1710,7 +2319,6 @@ class BicQAPopup {
                 "请描述您希望实现的具体功能"
             );
         }
-
         return suggestions.slice(0, 3); // 最多返回3个建议
     }
 
@@ -1718,7 +2326,7 @@ class BicQAPopup {
         // 更新标题
         const resultTitle = conversationContainer.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '建议问题：';
+            resultTitle.textContent = this.t('popup.suggestion.title');
         }
         // 显示结果容器
         if (this.resultContainer) {
@@ -1749,7 +2357,7 @@ class BicQAPopup {
 
                 const suggestionHeader = document.createElement('div');
                 suggestionHeader.className = 'suggestion-header';
-                suggestionHeader.innerHTML = '<h4 class="suggestion-title">根据您的输入，为您推荐以下问题：</h4>';
+                suggestionHeader.innerHTML = this.t('popup.suggestion.headerHtml');
 
                 suggestionList = document.createElement('div');
                 suggestionList.id = 'suggestionList';
@@ -1780,7 +2388,7 @@ class BicQAPopup {
             // 创建建议头部
             const suggestionHeader = document.createElement('div');
             suggestionHeader.className = 'suggestion-header';
-            suggestionHeader.innerHTML = '<h4 class="suggestion-title">根据您的输入，为您推荐以下问题：</h4>';
+            suggestionHeader.innerHTML = this.t('popup.suggestion.headerHtml');
 
             // 创建建议列表
             suggestionList = document.createElement('div');
@@ -2000,7 +2608,7 @@ class BicQAPopup {
         // 重置标题
         const resultTitle = container.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '回答：';
+            resultTitle.textContent = this.t('popup.result.title');
         }
         debugger;
         // 清空结果文本
@@ -2044,7 +2652,7 @@ class BicQAPopup {
             // 更新标题为错误状态
             const resultTitle = targetContainer ? targetContainer.querySelector('.result-title') : document.querySelector('.result-title');
             if (resultTitle) {
-                resultTitle.textContent = '❌ 处理失败';
+                resultTitle.textContent = this.t('popup.progress.failed');
             }
 
             // 清空其他区域的内容
@@ -2065,22 +2673,20 @@ class BicQAPopup {
 
             // 根据错误类型确定解决方案
             let solutions = [];
-            if (errorType === 'knowledge') {
-                // 知识库服务错误
-                solutions = [
-                    '检查知识库服务测试连接是否正常',
-                    '检查知识库服务的API密钥是否存在问题',
-                    '尝试重新配置知识库服务信息'
+            const solutionKeys = errorType === 'knowledge'
+                ? [
+                    'popup.error.solution.kbTestConnection',
+                    'popup.error.solution.kbApiKey',
+                    'popup.error.solution.kbReconfigure'
+                ]
+                : [
+                    'popup.error.solution.modelConnection',
+                    'popup.error.solution.modelSettings',
+                    'popup.error.solution.modelApiKey',
+                    'popup.error.solution.modelReconfigure'
                 ];
-            } else {
-                // 大模型服务错误
-                solutions = [
-                    '检查模型连接是否正常',
-                    '验证服务商和模型设置',
-                    '确认API密钥配置是否正确',
-                    '尝试重新配置服务商信息'
-                ];
-            }
+
+            solutions = solutionKeys.map(key => this.t(key));
 
             // 创建解决方案HTML
             const solutionsHtml = solutions.map(solution => `<li>${solution}</li>`).join('');
@@ -2104,7 +2710,7 @@ class BicQAPopup {
                         font-size: 16px;
                     ">
                         <span style="font-size: 20px;">❌</span>
-                        错误信息
+                        ${this.t('popup.error.title')}
                     </div>
                     <div style="
                         color: #7f1d1d;
@@ -2120,7 +2726,7 @@ class BicQAPopup {
                         font-size: 12px;
                         color: #991b1b;
                     ">
-                        <strong>可能的解决方案：</strong>
+                        <strong>${this.t('popup.error.solutionsTitle')}</strong>
                         <ul style="margin: 8px 0 0 20px; padding: 0;">
                             ${solutionsHtml}
                         </ul>
@@ -2161,7 +2767,7 @@ class BicQAPopup {
             // 获取用户选择的模型
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
-                this.showErrorResult('请先选择一个模型。', 'model', conversationContainer);
+                this.showErrorResult(this.t('popup.error.selectModel'), 'model', conversationContainer);
                 return;
             }
 
@@ -2178,7 +2784,7 @@ class BicQAPopup {
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
 
             if (!selectedModel || !provider) {
-                this.showErrorResult('配置的模型或服务商不存在，请检查设置。', 'model', conversationContainer);
+                this.showErrorResult(this.t('popup.error.modelOrProviderMissing'), 'model', conversationContainer);
                 return;
             }
 
@@ -2217,7 +2823,7 @@ class BicQAPopup {
 
                 // 检查知识库服务配置
                 if (!this.knowledgeServiceConfig) {
-                    this.showErrorResult('请先配置知识库服务连接信息。', 'knowledge', conversationContainer);
+                    this.showErrorResult(this.t('popup.error.configureKnowledgeConnection'), 'knowledge', conversationContainer);
                     return;
                 }
 
@@ -2227,7 +2833,7 @@ class BicQAPopup {
                     console.log('- default_url:', this.knowledgeServiceConfig.default_url);
                     console.log('- api_key:', this.knowledgeServiceConfig.api_key ? '已配置' : '未配置');
 
-                    this.showErrorResult('知识库服务配置不完整，请检查URL和API密钥配置。', 'knowledge', conversationContainer);
+                    this.showErrorResult(this.t('popup.error.incompleteKnowledgeConfig'), 'knowledge', conversationContainer);
                     return;
                 }
 
@@ -2246,7 +2852,7 @@ class BicQAPopup {
                             tipsEl.className = 'result-text-tips';
                             resultText.appendChild(tipsEl);
                         }
-                        tipsEl.textContent = '正在处理您的问题，请稍候...';
+                        tipsEl.textContent = this.t('popup.progress.processing');
                         // 确保内容容器存在
                         let contentEl = resultText.querySelector('.result-text-content');
                         if (!contentEl) {
@@ -2260,20 +2866,26 @@ class BicQAPopup {
                     // 更新标题为生成中状态
                     const resultTitle = conversationContainer.querySelector('.result-title');
                     if (resultTitle) {
-                        resultTitle.textContent = '生成回答中...';
+                        resultTitle.textContent = this.t('popup.progress.generating');
                     }
 
                     this.updateLayoutState();
 
-                    const answer = await this.streamChat(
-                        question,
+                let knowledgeQuestion = question;
+                if (this.shouldAddInstructionForQuestion(question)) {
+                    knowledgeQuestion = await this.ensureChineseQuestion(question, provider, selectedModel);
+                }
+
+                const answer = await this.streamChat(
+                    knowledgeQuestion,
                         this.knowledgeServiceConfig.default_url,
                         this.knowledgeServiceConfig.api_key,
                         selectedKnowledgeBase,
                         parameterRule, // 传递参数规则
                         selectedModel,
                         provider,
-                        conversationContainer // 传递对话容器
+                    conversationContainer, // 传递对话容器
+                    question // 保留用户原始问题用于展示
                     );
 
                     // 保存对话历史
@@ -2299,21 +2911,21 @@ class BicQAPopup {
                         // 知识库服务错误
                         errorType = 'knowledge';
                         if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                            errorMessage = '知识库服务网络连接失败' + streamError.message;
+                            errorMessage = this.t('popup.error.kbNetworkFailed', { details: streamError.message ? `: ${streamError.message}` : '' });
                         } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
-                            errorMessage = '知识库服务认证失败，请检查API密钥配置';
+                            errorMessage = this.t('popup.error.kbAuthFailed');
                         } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
-                            errorMessage = '知识库服务权限不足';
+                            errorMessage = this.t('popup.error.kbPermissionDenied');
                         } else if (streamError.message.includes('未配置')) {
-                            errorMessage = '知识库服务配置不完整';
+                            errorMessage = this.t('popup.error.kbConfigIncomplete');
                         } else if (streamError.message.includes('404')) {
-                            errorMessage = '知识库服务地址不存在';
+                            errorMessage = this.t('popup.error.kbNotFound');
                         } else if (streamError.message.includes('500')) {
-                            errorMessage = '知识库服务内部错误';
+                            errorMessage = this.t('popup.error.kbInternal');
                         } else {
                             // 提取原始错误信息，避免重复
                             const originalError = streamError.message.replace(/知识库服务调用失败:|知识库查询失败:|知识库服务网络请求失败:/g, '').trim();
-                            errorMessage = `知识库服务调用失败: ${originalError || '未知错误'}`;
+                            errorMessage = this.t('popup.error.kbCallFailed', { error: originalError || this.t('popup.common.unknownError') });
                         }
                     } else if (streamError.message.includes('大模型服务调用失败:') ||
                         streamError.message.includes('模型服务调用失败:') ||
@@ -2322,71 +2934,71 @@ class BicQAPopup {
                         // 大模型服务错误
                         errorType = 'model';
                         if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                            errorMessage = '大模型服务连接失败' + streamError.message;
+                            errorMessage = this.t('popup.error.modelNetworkFailed', { details: streamError.message ? `: ${streamError.message}` : '' });
                         } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
-                            errorMessage = '大模型服务认证失败';
+                            errorMessage = this.t('popup.error.modelAuthFailed');
                         } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
-                            errorMessage = '大模型服务权限不足';
+                            errorMessage = this.t('popup.error.modelPermissionDenied');
                         } else if (streamError.message.includes('未配置')) {
-                            errorMessage = '大模型服务配置不完整';
+                            errorMessage = this.t('popup.error.modelConfigIncomplete');
                         } else if (streamError.message.includes('404')) {
-                            errorMessage = '大模型服务不存在' + streamError.message;
+                            errorMessage = this.t('popup.error.modelNotFound', { details: streamError.message ? `: ${streamError.message}` : '' });
                         } else if (streamError.message.includes('400')) {
-                            errorMessage = '大模型服务请求格式错误';
+                            errorMessage = this.t('popup.error.modelBadRequest', { details: '' });
                         } else if (streamError.message.includes('429')) {
-                            errorMessage = '大模型服务请求频率过高';
+                            errorMessage = this.t('popup.error.modelRateLimited');
                         } else if (streamError.message.includes('500')) {
-                            errorMessage = '大模型服务内部错误';
+                            errorMessage = this.t('popup.error.modelInternal');
                         } else {
                             // 提取原始错误信息，避免重复
                             const originalError = streamError.message.replace(/模型服务调用失败:|API调用失败:|大模型服务调用失败:/g, '').trim();
-                            errorMessage = `大模型服务调用失败: ${originalError || '未知错误'}`;
+                            errorMessage = this.t('popup.error.modelCallFailed', { error: originalError || this.t('popup.common.unknownError') });
                         }
                     } else {
                         // 其他错误，默认为大模型服务错误
                         if (streamError.message.includes("知识库")) {
                             errorType = 'knowledge';
                             if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                                errorMessage = '知识库服务网络连接失败' + streamError.message;
+                                errorMessage = this.t('popup.error.kbNetworkFailed', { details: streamError.message ? `: ${streamError.message}` : '' });
                             } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
-                                errorMessage = '知识库服务认证失败，请检查API密钥配置';
+                                errorMessage = this.t('popup.error.kbAuthFailed');
                             } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
-                                errorMessage = '知识库服务权限不足';
+                                errorMessage = this.t('popup.error.kbPermissionDenied');
                             } else if (streamError.message.includes('未配置')) {
-                                errorMessage = '知识库服务配置不完整';
+                                errorMessage = this.t('popup.error.kbConfigIncomplete');
                             } else if (streamError.message.includes('404')) {
-                                errorMessage = '知识库服务地址不存在';
+                                errorMessage = this.t('popup.error.kbNotFound');
                             } else if (streamError.message.includes('500')) {
-                                errorMessage = '知识库服务内部错误';
+                                errorMessage = this.t('popup.error.kbInternal');
                             } else {
                                 // 提取原始错误信息，避免重复
                                 const originalError = streamError.message.replace(/知识库服务调用失败:|知识库查询失败:|知识库服务网络请求失败:/g, '').trim();
-                                errorMessage = `知识库服务调用失败: ${originalError || '未知错误'}`;
+                                errorMessage = this.t('popup.error.kbCallFailed', { error: originalError || this.t('popup.common.unknownError') });
                             }
                         } else {
 
                             debugger;
                             errorType = 'model';
                             if (streamError.message.includes('网络') || streamError.message.includes('连接') || streamError.message.includes('Failed to fetch')) {
-                                errorMessage = '大模型服务连接失败' + streamError.message;
+                                errorMessage = this.t('popup.error.modelNetworkFailed', { details: streamError.message ? `: ${streamError.message}` : '' });
                             } else if (streamError.message.includes('认证') || streamError.message.includes('401')) {
-                                errorMessage = '大模型服务认证失败';
+                                errorMessage = this.t('popup.error.modelAuthFailed');
                             } else if (streamError.message.includes('权限') || streamError.message.includes('403')) {
-                                errorMessage = '大模型服务权限不足';
+                                errorMessage = this.t('popup.error.modelPermissionDenied');
                             } else if (streamError.message.includes('未配置')) {
-                                errorMessage = '大模型服务配置不完整';
+                                errorMessage = this.t('popup.error.modelConfigIncomplete');
                             } else if (streamError.message.includes('404')) {
-                                errorMessage = '大模型服务不存在' + streamError.message;
+                                errorMessage = this.t('popup.error.modelNotFound', { details: streamError.message ? `: ${streamError.message}` : '' });
                             } else if (streamError.message.includes('400')) {
-                                errorMessage = '大模型服务请求格式错误' + streamError.message;
+                                errorMessage = this.t('popup.error.modelBadRequest', { details: streamError.message ? `: ${streamError.message}` : '' });
                             } else if (streamError.message.includes('429')) {
-                                errorMessage = '大模型服务请求频率过高';
+                                errorMessage = this.t('popup.error.modelRateLimited');
                             } else if (streamError.message.includes('500')) {
-                                errorMessage = '大模型服务内部错误';
+                                errorMessage = this.t('popup.error.modelInternal');
                             } else {
                                 // 提取原始错误信息，避免重复
                                 const originalError = streamError.message.replace(/模型服务调用失败:|API调用失败:|大模型服务调用失败:/g, '').trim();
-                                errorMessage = `大模型服务调用失败: ${originalError || '未知错误'}`;
+                                errorMessage = this.t('popup.error.modelCallFailed', { error: originalError || this.t('popup.common.unknownError') });
                             }
                         }
 
@@ -2417,30 +3029,30 @@ class BicQAPopup {
                     console.error('错误详情:', apiError.stack);
 
                     // 统一大模型服务错误信息
-                    let errorMessage = '大模型服务调用失败';
+                    let errorMessage = this.t('popup.error.modelCallFailed', { error: this.t('popup.common.unknownError') });
 
                     debugger;
                     // 根据具体错误类型提供更精准的信息
                     if (apiError.message.includes('网络') || apiError.message.includes('连接') || apiError.message.includes('Failed to fetch')) {
-                        errorMessage = '大模型服务连接失败' + apiError.message;
+                        errorMessage = this.t('popup.error.modelNetworkFailed', { details: apiError.message ? `: ${apiError.message}` : '' });
                     } else if (apiError.message.includes('认证') || apiError.message.includes('401')) {
-                        errorMessage = '大模型服务认证失败';
+                        errorMessage = this.t('popup.error.modelAuthFailed');
                     } else if (apiError.message.includes('权限') || apiError.message.includes('403')) {
-                        errorMessage = '大模型服务权限不足';
+                        errorMessage = this.t('popup.error.modelPermissionDenied');
                     } else if (apiError.message.includes('未配置')) {
-                        errorMessage = '大模型服务配置不完整';
+                        errorMessage = this.t('popup.error.modelConfigIncomplete');
                     } else if (apiError.message.includes('404')) {
-                        errorMessage = '大模型服务不存在' + apiError.message;
+                        errorMessage = this.t('popup.error.modelNotFound', { details: apiError.message ? `: ${apiError.message}` : '' });
                     } else if (apiError.message.includes('400')) {
-                        errorMessage = '大模型服务请求格式错误' + apiError.message;
+                        errorMessage = this.t('popup.error.modelBadRequest', { details: apiError.message ? `: ${apiError.message}` : '' });
                     } else if (apiError.message.includes('429')) {
-                        errorMessage = '大模型服务请求频率过高';
+                        errorMessage = this.t('popup.error.modelRateLimited');
                     } else if (apiError.message.includes('500')) {
-                        errorMessage = '大模型服务内部错误';
+                        errorMessage = this.t('popup.error.modelInternal');
                     } else {
                         // 提取原始错误信息，避免重复
                         const originalError = apiError.message.replace(/模型服务调用失败:|API调用失败:|大模型服务调用失败:/g, '').trim();
-                        errorMessage = `大模型服务调用失败: ${originalError || '未知错误'}`;
+                        errorMessage = this.t('popup.error.modelCallFailed', { error: originalError || this.t('popup.common.unknownError') });
                     }
 
                     this.showErrorResult(errorMessage, 'model', conversationContainer);
@@ -2449,12 +3061,14 @@ class BicQAPopup {
             }
         } catch (error) {
             console.error('处理问题过程中发生错误:', error);
-            this.showErrorResult(`处理问题过程中发生错误: ${error.message}`, 'model', conversationContainer);
+            this.showErrorResult(this.t('popup.error.processingDuring', { error: error.message }), 'model', conversationContainer);
             return;
         }
     }
 
     async callAIAPI(question, pageContent, pageUrl, provider, model, knowledgeBaseId = null, parameterRule = null, container = null) {
+       console.log('callAIAPI=======');
+       
         // 重置提示相关状态（非知识库流程）
         this._useKnowledgeBaseThisTime = false;
         this._kbMatchCount = 0;
@@ -2499,7 +3113,7 @@ class BicQAPopup {
                 tipsEl.className = 'result-text-tips';
                 resultText.appendChild(tipsEl);
             }
-            tipsEl.textContent = '正在处理您的问题，请稍候...';
+            tipsEl.textContent = this.t('popup.progress.processing');
             // 确保内容容器存在
             let contentEl = resultText.querySelector('.result-text-content');
             if (!contentEl) {
@@ -2513,7 +3127,7 @@ class BicQAPopup {
         // 更新标题为生成中状态
         const resultTitle = conversationContainer.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '生成回答中...';
+            resultTitle.textContent = this.t('popup.progress.generating');
         }
 
         this.updateLayoutState();
@@ -2535,8 +3149,10 @@ class BicQAPopup {
         console.log('========================');
         // 如果选择了参数规则，使用规则中的提示词
         if (parameterRule && parameterRule.prompt) {
-            systemContent = parameterRule.prompt;
-            // console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
+            let rulePrompt = parameterRule.prompt;
+            rulePrompt = this.applyLanguageInstructionToSystemContent(rulePrompt, question);
+            // 合并提示词：规则提示 + 基础提示（保持原有结构，规则优先）
+            systemContent = `${rulePrompt}\n\n${systemContent}`;
         }
 
         // 如果选择了知识库，添加知识库信息
@@ -2556,11 +3172,11 @@ class BicQAPopup {
             }
             context = `基于以下内容回答问题：\n\n${context}\n\n问题：${question}`
         } else {
-            systemContent = "你是一个智能问答助手，基于用户提供的页面内容来回答问题。请提供准确、有用的回答。";
-            context = `${question}`
+            context = `${question}`;
         }
 
         console.log('知识库处理后的systemContent:', systemContent);
+        systemContent = this.applyLanguageInstructionToSystemContent(systemContent, question);
 
         // 构建对话历史消息
         const messages = [
@@ -2693,7 +3309,7 @@ class BicQAPopup {
                     const duration = Math.round((endTime - this.startTime) / 1000);
                     const resultTitle = conversationContainer.querySelector('.result-title');
                     if (resultTitle) {
-                        resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
+                        resultTitle.textContent = this.t('popup.progress.answerCompleted', { seconds: duration });
                     }
                 }
 
@@ -2708,6 +3324,7 @@ class BicQAPopup {
         }
     }
     async callOllamaAPI(question, pageContent, pageUrl, provider, model, knowledgeBaseId = null, parameterRule, container = null) {
+        console.log('callOllamaAPI=======');
         // 重新设置开始时间，确保每次对话都有正确的计时
         this.startTime = Date.now();
 
@@ -2759,7 +3376,7 @@ class BicQAPopup {
             }
             // 如果之前streamChat已设置过知识库提示，这里不覆盖；否则设置通用提示
             if (!tipsEl.textContent || tipsEl.textContent.trim() === '') {
-                tipsEl.textContent = '正在处理您的问题，请稍候...';
+                tipsEl.textContent = this.t('popup.progress.processing');
             }
             // 确保内容容器存在
             let contentEl = resultText.querySelector('.result-text-content');
@@ -2773,7 +3390,7 @@ class BicQAPopup {
         // 更新标题为生成中状态
         const resultTitle = conversationContainer.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '生成回答中...';
+            resultTitle.textContent = this.t('popup.progress.generating');
         }
 
         this.updateLayoutState();
@@ -2806,11 +3423,14 @@ class BicQAPopup {
         }
         console.log('========================');
         console.log('知识库处理后的systemContent:', systemContent);
+        systemContent = this.applyLanguageInstructionToSystemContent(systemContent, question);
 
         // 如果选择了参数规则，使用规则中的提示词
         if (parameterRule && parameterRule.prompt) {
-            systemContent = parameterRule.prompt;
-            // console.log('使用参数规则提示词，更新后的systemContent:', systemContent);
+            let rulePrompt = parameterRule.prompt;
+            rulePrompt = this.applyLanguageInstructionToSystemContent(rulePrompt, question);
+            // 规则提示词优先，保留基础提示作为补充
+            systemContent = `${rulePrompt}\n\n${systemContent}`;
         }
         // 如果选择了知识库，添加知识库信息
         if (knowledgeBaseId) {
@@ -2999,7 +3619,7 @@ class BicQAPopup {
                     const duration = Math.round((endTime - this.startTime) / 1000);
                     const resultTitle = conversationContainer.querySelector('.result-title');
                     if (resultTitle) {
-                        resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
+                        resultTitle.textContent = this.t('popup.progress.answerCompleted', { seconds: duration });
                     }
                 }
 
@@ -3185,13 +3805,12 @@ class BicQAPopup {
                             if (this._useKnowledgeBaseThisTime) {
                                 const count = typeof this._kbMatchCount === 'number' ? this._kbMatchCount : 0;
                                 if (count === 0) {
-                                    tipsEl.innerHTML = `搜索知识库完成<br>匹配到0条知识库<br>暂无相关知识库，我们也会很快补充完善！<br><strong>温馨提示：</strong>
-                                    1.您可以尝试降低相似度，切换成灵活检索；<br>2.您可以尝试将问题描述更加具体精细化`;
+                                    tipsEl.innerHTML = this.t('popup.progress.kbNoMatch', { count });
                                 } else {
-                                    tipsEl.innerHTML = `搜索知识库完成<br>匹配到${count}条知识库<br>已完成思考，结果如下：`;
+                                    tipsEl.innerHTML = this.t('popup.progress.kbMatch', { count });
                                 }
                             } else {
-                                tipsEl.textContent = '处理完成，结果如下：';
+                                tipsEl.textContent = this.t('popup.progress.completedWithResult');
                             }
                         }
 
@@ -3237,7 +3856,7 @@ class BicQAPopup {
                             const duration = Math.round((endTime - this.startTime) / 1000);
                             const resultTitle = targetContainer ? targetContainer.querySelector('.result-title') : document.querySelector('.result-title');
                             if (resultTitle) {
-                                resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
+                                resultTitle.textContent = this.t('popup.progress.answerCompleted', { seconds: duration });
                             }
                         }
 
@@ -3360,9 +3979,9 @@ class BicQAPopup {
 
             // 4. 如果都没有配置，提示用户配置
             if (!streamUrl) {
-                this.showMessage('请先在设置页面配置流式聊天URL', 'error');
+                this.showMessage(this.t('popup.message.configureStreamUrl'), 'error');
                 // this.openSettings();
-                throw new Error('未配置流式聊天URL，请先在设置页面配置');
+                throw new Error(this.t('popup.message.configureStreamUrl'));
             }
 
             // if (!apiKey) {
@@ -3388,12 +4007,11 @@ class BicQAPopup {
 
         } catch (error) {
             console.error('流式聊天配置失败:', error);
-            throw new Error(`流式聊天配置失败: ${error.message}`);
+            throw new Error(this.t('popup.error.streamConfigFailed', { error: error.message }));
         }
     }
-
     // 流式聊天方法
-    async streamChat(message, streamUrl = null, apiKey = null, knowledgeBaseId = null, parameterRule = null, model = null, provider = null, container = null) {
+    async streamChat(message, streamUrl = null, apiKey = null, knowledgeBaseId = null, parameterRule = null, model = null, provider = null, container = null, originalQuestion = null) {
         // 重新设置开始时间，确保每次对话都有正确的计时
         this.startTime = Date.now();
 
@@ -3405,9 +4023,9 @@ class BicQAPopup {
 
         // 检查必要参数
         if (!streamUrl) {
-            this.showMessage('请先在设置页面配置流式聊天URL', 'error');
+            this.showMessage(this.t('popup.message.configureStreamUrl'), 'error');
             // 移除自动跳转，让用户自己决定是否去设置
-            throw new Error('未配置流式聊天URL，请先在设置页面配置');
+            throw new Error(this.t('popup.message.configureStreamUrl'));
         }
         // if (!apiKey) {
         //     this.showMessage('请先在设置页面配置API密钥', 'error');
@@ -3418,12 +4036,15 @@ class BicQAPopup {
         // 界面显示逻辑已移至processQuestion方法中处理，这里不再重复
 
         try {
+            const displayQuestion = originalQuestion || message;
+
             console.log('开始知识库查询请求:', message);
             console.log('使用配置 - streamUrl:', streamUrl);
             console.log('knowledgeBaseId:', knowledgeBaseId);
             console.log('parameterRule:', parameterRule);
             console.log('model:', model);
             console.log('provider:', provider);
+            console.log('displayQuestion:', displayQuestion);
 
             // 动态获取注册信息
             let userEmail = null;
@@ -3442,7 +4063,7 @@ class BicQAPopup {
                 console.error('获取注册信息失败:', error);
             }
 
-            // 构建新的请求体格式
+
             const requestBody = {
                 question: message,
                 similarity: 0.8,
@@ -3455,7 +4076,7 @@ class BicQAPopup {
                 // email: userEmail,
                 // name: userName,
                 temperature: 0.7,
-                language: "简体中文",
+                language: this.getLanguageDisplayName(this.currentLanguage),
                 // prompt: null
             };
 
@@ -3542,17 +4163,31 @@ class BicQAPopup {
 
             // 检查响应格式
             if (responseData.status !== "200") {
-                throw new Error(`知识库查询失败: ${responseData.message || '未知错误'}`);
+                throw new Error(this.t('popup.error.kbQueryFailed', { error: responseData.message || '未知错误' }));
             }
 
             // 提取data数组中的内容，并更新提示
             let contextContent = '';
             let matchCount = 0;
+            let knowledgeItems = [];
             if (responseData.data && Array.isArray(responseData.data)) {
-                contextContent = responseData.data.join('\n\n');
-                matchCount = responseData.data.length;
+                knowledgeItems = responseData.data.map(item => (typeof item === 'string' ? item : String(item)));
+
+                const targetLanguageName = this.getLanguageDisplayName(this.currentLanguage);
+                const needContextTranslation = this.currentLanguage && this.currentLanguage !== 'zhcn' && !targetLanguageName.includes('中文');
+
+                if (needContextTranslation) {
+                    try {
+                        knowledgeItems = await this.translateKnowledgeItems(knowledgeItems, targetLanguageName, provider, model);
+                    } catch (error) {
+                        console.error('翻译知识库内容失败:', error);
+                    }
+                }
+
+                contextContent = knowledgeItems.join('\n\n');
+                matchCount = knowledgeItems.length;
                 // 存储完整知识库条目，供结束后展示
-                this._kbItems = responseData.data.map(item => (typeof item === 'string' ? item : String(item)));
+                this._kbItems = knowledgeItems;
                 console.log('提取的知识库内容:', contextContent);
             } else {
                 console.warn('响应中没有找到data数组或data不是数组格式');
@@ -3577,7 +4212,7 @@ class BicQAPopup {
                 const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
                 const tipsEl = resultText?.querySelector('.result-text-tips');
                 if (tipsEl) {
-                    tipsEl.innerHTML = `正在搜索知识库...<br>匹配到${matchCount}条知识库<br>正在思考，请稍等...`;
+                    tipsEl.innerHTML = this.t('popup.progress.kbSearching', { count: matchCount });
                 }
             }
 
@@ -3588,8 +4223,7 @@ class BicQAPopup {
                 const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
                 const tipsEl = resultText?.querySelector('.result-text-tips');
                 if (tipsEl) {
-                    tipsEl.innerHTML = `搜索知识库完成<br>匹配到${matchCount}条知识库<br>暂无相关知识库，我们也会很快补充完善！<br><strong>温馨提示：</strong>
-                                    1.您可以尝试降低相似度，切换成灵活检索；<br>2.您可以尝试将问题描述更加具体精细化；`;
+                    tipsEl.innerHTML = this.t('popup.progress.kbNoMatch', { count: matchCount });
                 }
                 // 清空知识库列表
                 const knowlistEl = resultText?.querySelector('.result-text-knowlist');
@@ -3602,7 +4236,7 @@ class BicQAPopup {
                     const duration = Math.round((endTime - this.startTime) / 1000);
                     const resultTitle = targetContainer ? targetContainer.querySelector('.result-title') : document.querySelector('.result-title');
                     if (resultTitle) {
-                        resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
+                        resultTitle.textContent = this.t('popup.progress.answerCompleted', { seconds: duration });
                     }
                 }
                 // 内容区保持为空，不报错
@@ -3620,8 +4254,8 @@ class BicQAPopup {
             // 调用 callOllamaAPI 处理最终的回答生成
             console.log('开始调用 callOllamaAPI 生成最终回答');
             try {
-                const finalAnswer = await this.callOllamaAPI(
-                    message,
+                let finalAnswer = await this.callOllamaAPI(
+                    displayQuestion,
                     contextContent, // 使用知识库查询结果作为context
                     window.location.href, // 页面URL
                     provider,
@@ -3631,11 +4265,30 @@ class BicQAPopup {
                     container // 传递当前对话容器
                 );
 
+                const targetLanguageName = this.getLanguageDisplayName(this.currentLanguage);
+                const needsTranslation = this.currentLanguage && this.currentLanguage !== 'zhcn' && !targetLanguageName.includes('中文');
+
+                if (needsTranslation) {
+                    try {
+                        const translatedAnswer = await this.requestChatCompletionTranslation(
+                            finalAnswer,
+                            provider,
+                            model,
+                            targetLanguageName
+                        );
+                        if (translatedAnswer && translatedAnswer.trim()) {
+                            finalAnswer = translatedAnswer.trim();
+                        }
+                    } catch (translationError) {
+                        console.error('回答翻译成目标语言失败:', translationError);
+                    }
+                }
+
                 return finalAnswer;
             } catch (modelError) {
                 console.error('大模型服务调用失败:', modelError);
                 // 直接抛出大模型服务错误，不包装成知识库服务错误
-                throw new Error(`大模型服务调用失败: ${modelError.message}`);
+                throw new Error(this.t('popup.error.modelServiceFailed', { error: modelError.message }));
             }
 
         } catch (error) {
@@ -4020,17 +4673,17 @@ class BicQAPopup {
 
             // 检查DOM元素是否正确初始化
             if (!this.resultText) {
-                throw new Error('resultText元素未找到，请检查DOM初始化');
+                throw new Error(this.t('popup.error.resultTextMissing'));
             }
 
             if (!this.resultContainer) {
-                throw new Error('resultContainer元素未找到，请检查DOM初始化');
+                throw new Error(this.t('popup.error.resultContainerMissing'));
             }
 
             // 获取当前选择的模型和服务商
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
-                throw new Error('请先选择一个模型');
+                throw new Error(this.t('popup.error.selectModel'));
             }
 
             let selectedKey;
@@ -4044,7 +4697,7 @@ class BicQAPopup {
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
 
             if (!selectedModel || !provider) {
-                throw new Error('配置的模型或服务商不存在，请检查设置');
+                throw new Error(this.t('popup.error.modelOrProviderMissing'));
             }
 
             // 清空并准备显示区域
@@ -4062,7 +4715,7 @@ class BicQAPopup {
                 margin-bottom: 10px;
                 color: #007bff;
             `;
-            testDiv.textContent = `正在连接流式API (${provider.name})...`;
+            testDiv.textContent = this.t('popup.stream.testing', { provider: provider.name });
             this.resultText.appendChild(testDiv);
 
             console.log('测试消息已添加到DOM');
@@ -4090,7 +4743,7 @@ class BicQAPopup {
                     margin-bottom: 10px;
                     color: #856404;
                 `;
-                noResultDiv.textContent = '流式聊天完成，但没有返回内容';
+                noResultDiv.textContent = this.t('popup.stream.noContent');
                 this.resultText.appendChild(noResultDiv);
             }
 
@@ -4111,11 +4764,11 @@ class BicQAPopup {
                     margin-bottom: 10px;
                     color: #721c24;
                 `;
-                errorDiv.innerHTML = `<strong>流式聊天测试失败:</strong><br>${error.message}`;
+                errorDiv.innerHTML = this.t('popup.stream.testFailedHtml', { error: error.message });
                 this.resultText.appendChild(errorDiv);
             }
 
-            this.showMessage('流式聊天测试失败: ' + error.message, 'error');
+            this.showMessage(this.t('popup.message.streamChatTestFailed', { 'error': error.message }), 'error');
         } finally {
             this.setLoading(false);
         }
@@ -4156,7 +4809,7 @@ class BicQAPopup {
         const resultContent = this.resultText.textContent.trim();
 
         if (!resultContent) {
-            this.showMessage('请先生成一些内容，然后点击页面摘要按钮', 'info');
+            this.showMessage(this.t('popup.message.generateSummaryHint'), 'info');
             return;
         }
 
@@ -4168,12 +4821,11 @@ class BicQAPopup {
             this.showSummaryDialog(summary);
         } catch (error) {
             console.error('生成摘要失败:', error);
-            this.showMessage('生成摘要时发生错误', 'error');
+            this.showMessage(this.t('popup.message.generateSummaryError'), 'error');
         } finally {
             this.setLoading(false);
         }
     }
-
     // 显示摘要弹窗
     showSummaryDialog(summary) {
         // 创建摘要弹窗
@@ -4323,10 +4975,10 @@ class BicQAPopup {
         copySummaryBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(summary);
-                this.showMessage('摘要已复制到剪贴板', 'success');
+                this.showMessage(this.t('popup.message.summaryCopied'), 'success');
             } catch (error) {
                 console.error('复制失败:', error);
-                this.showMessage('复制失败', 'error');
+                this.showMessage(this.t('popup.message.copyFailed'), 'error');
             }
         });
 
@@ -4399,7 +5051,7 @@ class BicQAPopup {
 
         if (!resultContent) {
             console.log('没有内容，显示提示消息');
-            this.showMessage('请先生成一些内容，然后点击翻译按钮', 'info');
+            this.showMessage(this.t('popup.message.translateHint'), 'info');
             return;
         }
 
@@ -4827,7 +5479,7 @@ class BicQAPopup {
 
                     // 显示复制成功提示
                     const originalText = copyTranslationBtn.innerHTML;
-                    copyTranslationBtn.innerHTML = '<span>✅</span> 已复制';
+                    copyTranslationBtn.innerHTML = this.t('popup.translation.copiedHtml');
                     copyTranslationBtn.style.background = '#28a745';
 
                     setTimeout(() => {
@@ -4837,7 +5489,7 @@ class BicQAPopup {
 
                 } catch (error) {
                     console.error('复制失败:', error);
-                    this.showMessage('复制失败，请手动复制', 'error');
+                    this.showMessage(this.t('popup.message.copyManual'), 'error');
                 }
             });
         }
@@ -4918,7 +5570,7 @@ class BicQAPopup {
 
                     // 显示复制成功提示
                     const originalText = copyTranslationBtn.innerHTML;
-                    copyTranslationBtn.innerHTML = '<span>✅</span> 已复制';
+                    copyTranslationBtn.innerHTML = this.t('popup.translation.copiedHtml');
                     copyTranslationBtn.style.background = '#28a745';
 
                     setTimeout(() => {
@@ -4928,14 +5580,13 @@ class BicQAPopup {
 
                 } catch (error) {
                     console.error('复制失败:', error);
-                    this.showMessage('复制失败，请手动复制', 'error');
+                    this.showMessage(this.t('popup.message.copyManual'), 'error');
                 }
             };
         }
 
         console.log('翻译弹窗内容已更新');
     }
-
     async translateText(text) {
         try {
             // 检测语言
@@ -4965,7 +5616,7 @@ class BicQAPopup {
             // 获取用户选择的模型和服务商
             const selectedModelValue = this.modelSelect.value;
             if (!selectedModelValue) {
-                throw new Error('请先选择一个模型');
+                throw new Error(this.t('popup.error.selectModel'));
             }
 
             let selectedKey;
@@ -4979,7 +5630,7 @@ class BicQAPopup {
             const provider = selectedModel ? this.providers.find(p => p.name === selectedModel.provider) : null;
 
             if (!selectedModel || !provider) {
-                throw new Error('配置的模型或服务商不存在，请检查设置');
+                throw new Error(this.t('popup.error.modelOrProviderMissing'));
             }
 
             // 构建翻译提示词
@@ -5096,13 +5747,13 @@ ${text}
 
             // 检查知识库服务配置
             if (!this.knowledgeServiceConfig) {
-                this.showMessage('请先在设置页面配置知识库服务连接信息', 'error');
+                this.showMessage(this.t('popup.message.configureKbConnection'), 'error');
                 return;
             }
 
             // 检查知识库服务URL是否配置
             if (!this.knowledgeServiceConfig.default_url || this.knowledgeServiceConfig.default_url.trim() === '') {
-                this.showMessage('请先在设置页面配置知识库服务URL', 'error');
+                this.showMessage(this.t('popup.message.configureKbUrl'), 'error');
                 // 提供跳转选项
                 setTimeout(() => {
                     if (confirm('是否跳转到设置页面配置知识库服务URL？')) {
@@ -5114,7 +5765,7 @@ ${text}
 
             // 检查知识库服务API密钥是否配置
             if (!this.knowledgeServiceConfig.api_key || this.knowledgeServiceConfig.api_key.trim() === '') {
-                this.showMessage('请先在设置页面配置知识库服务API密钥', 'error');
+                this.showMessage(this.t('popup.message.configureKbApiKey'), 'error');
                 // 提供跳转选项
                 // setTimeout(() => {
                 //     if (confirm('是否跳转到设置页面配置知识库服务API密钥？')) {
@@ -5284,10 +5935,9 @@ ${text}
         if (this._useKnowledgeBaseThisTime) {
             const count = typeof this._kbMatchCount === 'number' ? this._kbMatchCount : 0;
             if (count === 0) {
-                tipsEl.innerHTML = `搜索知识库完成<br>匹配到${count}条知识库<br>暂无相关知识库，我们也会很快补充完善！<br><strong>温馨提示：</strong>
-                                1.您可以尝试降低相似度，切换成灵活检索；<br>2.您可以尝试将问题描述更加具体精细化；`;
+                tipsEl.innerHTML = this.t('popup.progress.kbNoMatch', { count });
             } else {
-                tipsEl.innerHTML = `搜索知识库完成<br>匹配到${count}条知识库<br>已完成思考，结果如下：`;
+                tipsEl.innerHTML = this.t('popup.progress.kbMatch', { count });
             }
             // 非流式路径完成时，如有知识库结果也展示参考列表
             if (Array.isArray(this._kbItems) && this._kbItems.length > 0) {
@@ -5300,7 +5950,7 @@ ${text}
                 });
             }
         } else {
-            tipsEl.textContent = '处理完成，结果如下：';
+            tipsEl.textContent = this.t('popup.progress.completedWithResult');
             // 非知识库，强制清空参考列表
             console.log('非知识库模式，清空知识库列表');
             knowlistEl.innerHTML = '';
@@ -5316,7 +5966,7 @@ ${text}
             const duration = Math.round((endTime - this.startTime) / 1000);
             const resultTitle = targetContainer ? targetContainer.querySelector('.result-title') : document.querySelector('.result-title');
             if (resultTitle) {
-                resultTitle.textContent = `完成回答，用时 ${duration} 秒`;
+                resultTitle.textContent = this.t('popup.progress.answerCompleted', { seconds: duration });
             }
         }
     }
@@ -5369,12 +6019,13 @@ ${text}
     }
 
     // 显示全局加载遮罩
-    showLoadingOverlay(message = '处理中，请稍候...') {
+    showLoadingOverlay(message) {
+        const finalMessage = message || this.t('popup.progress.processing');
         // 避免重复创建
         let overlay = document.getElementById('globalLoadingOverlay');
         if (overlay) {
             const textEl = overlay.querySelector('.loading-text');
-            if (textEl) textEl.textContent = message;
+            if (textEl) textEl.textContent = finalMessage;
             overlay.style.display = 'flex';
             return;
         }
@@ -5423,7 +6074,7 @@ ${text}
 
         const text = document.createElement('div');
         text.className = 'loading-text';
-        text.textContent = message;
+        text.textContent = finalMessage;
         text.style.cssText = `
             font-size: 14px;
             color: #333;
@@ -5449,17 +6100,17 @@ ${text}
         const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
 
         if (!resultText) {
-            this.showMessage('没有找到要复制的内容', 'error');
+            this.showMessage(this.t('popup.message.noContentToCopy'), 'error');
             return;
         }
 
         const text = resultText.textContent;
         try {
             await navigator.clipboard.writeText(text);
-            this.showMessage('已复制到剪贴板', 'success');
+            this.showMessage(this.t('popup.message.copied'), 'success');
         } catch (error) {
             console.error('复制失败:', error);
-            this.showMessage('复制失败', 'error');
+            this.showMessage(this.t('popup.message.copyFailed'), 'error');
         }
     }
 
@@ -5470,7 +6121,7 @@ ${text}
             const resultText = targetContainer ? targetContainer.querySelector('.result-text') : this.resultText;
 
             if (!resultText) {
-                this.showMessage('没有找到要导出的内容', 'error');
+                this.showMessage(this.t('popup.message.noContentToExport'), 'error');
                 return;
             }
 
@@ -5490,9 +6141,11 @@ ${text}
             // 获取结果内容的HTML
             const resultHtml = resultText.innerHTML;
 
+            const locale = this.i18n?.getIntlLocale(this.currentLanguage);
+
             // 创建完整的HTML文档
             const fullHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${locale}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5761,7 +6414,7 @@ ${text}
     <div class="container">
         <div class="header">
             <div class="title">BIC-QA 智能问答结果</div>
-            <div class="subtitle">导出时间：${now.toLocaleString('zh-CN')}</div>
+            <div class="subtitle">导出时间：${now.toLocaleString(locale)}</div>
         </div>
         
         <div class="question-section">
@@ -5778,7 +6431,7 @@ ${text}
         </div>
         
         <div class="meta-info">
-            <p>由 BIC-QA 扩展生成 | 导出时间：${now.toLocaleString('zh-CN')}</p>
+            <p>由 BIC-QA 扩展生成 | 导出时间：${now.toLocaleString(locale)}</p>
         </div>
     </div>
     
@@ -5794,7 +6447,7 @@ ${text}
                 
                 if (toggleLink && fullContent) {
                     // 初始化状态
-                    toggleLink.textContent = '展开详情';
+                    toggleLink.textContent = this.t('popup.common.expandDetails');
                     toggleLink.classList.add('kb-toggle');
                     fullContent.classList.add('kb-full');
                     
@@ -5809,7 +6462,7 @@ ${text}
                             fullContent.classList.remove('expanded');
                             toggleLink.classList.remove('expanded');
                             item.classList.remove('expanded');
-                            toggleLink.textContent = '展开详情';
+                            toggleLink.textContent = this.t('popup.common.expandDetails');
                             
                             // 延迟隐藏元素
                             setTimeout(() => {
@@ -5825,7 +6478,7 @@ ${text}
                             fullContent.classList.add('expanded');
                             toggleLink.classList.add('expanded');
                             item.classList.add('expanded');
-                            toggleLink.textContent = '收起详情';
+                            toggleLink.textContent = this.t('popup.common.collapseDetails');
                         }
                     });
                     
@@ -5858,7 +6511,7 @@ ${text}
                     fullContent.classList.add('kb-full');
                     
                     // 初始化状态
-                    toggleLink.textContent = '展开详情';
+                    toggleLink.textContent = this.t('popup.common.expandDetails');
                     fullContent.style.display = 'none';
                 }
             });
@@ -5867,8 +6520,6 @@ ${text}
 </body>
 </html>`;
 
-            // 创建Blob对象
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
             // 创建下载链接
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -5883,11 +6534,11 @@ ${text}
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            this.showMessage('HTML文件已导出', 'success');
+            this.showMessage(this.t('popup.message.exportHtmlSuccess'), 'success');
 
         } catch (error) {
             console.error('导出失败:', error);
-            this.showMessage('导出失败', 'error');
+            this.showMessage(this.t('popup.message.exportFailed'), 'error');
         }
     }
 
@@ -5911,10 +6562,10 @@ ${text}
 
             const resultTitle = container.querySelector('.result-title');
             if (resultTitle) {
-                resultTitle.textContent = '回答：';
+                resultTitle.textContent = this.t('popup.result.title');
             }
 
-            this.showMessage('已清空当前对话', 'success');
+            this.showMessage(this.t('popup.message.clearConversationSuccess'), 'success');
             return;
         }
 
@@ -5954,7 +6605,7 @@ ${text}
         // 重置标题
         const resultTitle = document.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '回答：';
+            resultTitle.textContent = this.t('popup.result.title');
         }
 
         // 清空输入框并聚焦
@@ -5991,25 +6642,25 @@ ${text}
                         if (isCurrentlyLiked) {
                             // 如果当前已点赞，则取消点赞
                             likeBtn.classList.remove('active');
-                            this.showMessage('已取消点赞', 'info');
+                            this.showMessage(this.t('popup.message.likeCancelled'), 'info');
                         } else {
                             // 如果当前未点赞，则点赞
                             likeBtn.classList.add('active');
                             dislikeBtn.classList.remove('active'); // 清空否定状态
                             this.saveFeedback('like');
-                            this.showMessage('感谢您的反馈！👍', 'success');
+                            this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
                         }
                     } else if (type === 'dislike') {
                         if (isCurrentlyDisliked) {
                             // 如果当前已否定，则取消否定
                             dislikeBtn.classList.remove('active');
-                            this.showMessage('已取消否定', 'info');
+                            this.showMessage(this.t('popup.message.dislikeCancelled'), 'info');
                         } else {
                             // 如果当前未否定，则否定
                             dislikeBtn.classList.add('active');
                             likeBtn.classList.remove('active'); // 清空点赞状态
                             this.saveFeedback('dislike');
-                            this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+                            this.showMessage(this.t('popup.message.feedbackThanksNegative'), 'info');
                         }
                     }
                 }
@@ -6049,28 +6700,28 @@ ${text}
                     if (isCurrentlyLiked) {
                         // 如果当前已点赞，则取消点赞
                         likeBtn.classList.remove('active');
-                        this.showMessage('已取消点赞', 'info');
+                        this.showMessage(this.t('popup.message.likeCancelled'), 'info');
                         this.doAdviceForAnswer(question, answer, adviceType, container);
                     } else {
                         // 如果当前未点赞，则点赞
                         likeBtn.classList.add('active');
                         dislikeBtn.classList.remove('active'); // 清空否定状态
                         this.saveFeedback('like');
-                        this.showMessage('感谢您的反馈！👍', 'success');
+                        this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
                         this.doAdviceForAnswer(question, answer, adviceType, container);
                     }
                 } else if (type === 'dislike') {
                     if (isCurrentlyDisliked) {
                         // 如果当前已否定，则取消否定
                         dislikeBtn.classList.remove('active');
-                        this.showMessage('已取消否定', 'info');
+                        this.showMessage(this.t('popup.message.dislikeCancelled'), 'info');
                         this.doAdviceForAnswer(question, answer, adviceType, container);
                     } else {
                         // 如果当前未否定，则否定
                         dislikeBtn.classList.add('active');
                         likeBtn.classList.remove('active'); // 清空点赞状态
                         this.saveFeedback('dislike');
-                        this.showMessage('感谢您的反馈！我们会继续改进。👎', 'info');
+                        this.showMessage(this.t('popup.message.feedbackThanksNegative'), 'info');
                         this.doAdviceForAnswer(question, answer, adviceType, container);
                     }
                 }
@@ -6100,26 +6751,26 @@ ${text}
             if (isCurrentlyLiked) {
                 // 如果当前已点赞，则取消点赞
                 likeBtn.classList.remove('active');
-                this.showMessage('已取消点赞', 'info');
+                this.showMessage(this.t('popup.message.likeCancelled'), 'info');
             } else {
                 // 如果当前未点赞，则点赞
                 likeBtn.classList.add('active');
                 dislikeBtn.classList.remove('active'); // 清空否定状态
                 this.saveFeedback('like');
-                this.showMessage('感谢您的反馈！👍', 'success');
+                this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
             }
             this.doAdviceForAnswer(question, answer, adviceType, container);
         } else if (type === 'dislike') {
             if (isCurrentlyDisliked) {
                 // 如果当前已否定，则取消否定
                 dislikeBtn.classList.remove('active');
-                this.showMessage('已取消否定', 'info');
+                this.showMessage(this.t('popup.message.dislikeCancelled'), 'info');
             } else {
                 // 如果当前未否定，则否定
                 dislikeBtn.classList.add('active');
                 likeBtn.classList.remove('active'); // 清空点赞状态
                 this.saveFeedback('dislike');
-                this.showMessage('感谢您的反馈！我们会继续改进。��', 'info');
+                this.showMessage(this.t('popup.message.feedbackThanksNegative'), 'info');
             }
             this.doAdviceForAnswer(question, answer, adviceType, container);
         }
@@ -6317,11 +6968,11 @@ ${text}
                         window.close();
                     } else {
                         // 如果无法打开新窗口，使用CSS全屏
-                        this.showMessage('无法打开新窗口，使用CSS全屏模式', 'info');
+                        this.showMessage(this.t('popup.message.openFullscreenFallback'), 'info');
                     }
                 } catch (error) {
                     console.error('打开全屏窗口失败:', error);
-                    this.showMessage('打开全屏窗口失败', 'error');
+                    this.showMessage(this.t('popup.message.openFullscreenFailed'), 'error');
                 }
             } else {
                 // 非popup模式，使用浏览器全屏API
@@ -6339,7 +6990,7 @@ ${text}
             }
         } catch (error) {
             console.error('切换全屏模式失败:', error);
-            this.showMessage('切换全屏模式失败', 'error');
+            this.showMessage(this.t('popup.message.toggleFullscreenFailed'), 'error');
         }
     }
 
@@ -6361,7 +7012,7 @@ ${text}
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
-                this.showMessage('当前页面不支持content script', 'error');
+                this.showMessage(this.t('popup.message.contentScriptUnsupported'), 'error');
                 return;
             }
 
@@ -6371,13 +7022,13 @@ ${text}
             });
 
             if (response && response.success) {
-                this.showMessage('Content script连接正常', 'success');
+                this.showMessage(this.t('popup.message.contentScriptOk'), 'success');
             } else {
-                this.showMessage('Content script响应异常', 'error');
+                this.showMessage(this.t('popup.message.contentScriptResponseError'), 'error');
             }
         } catch (error) {
             console.error('Content script测试失败:', error);
-            this.showMessage('Content script连接失败: ' + error.message, 'error');
+            this.showMessage(this.t('popup.message.contentScriptConnectFailed', { error: error.message }), 'error');
         }
     }
 
@@ -6386,8 +7037,10 @@ ${text}
         try {
             // 限制问题和回答的长度，避免存储过大
             const maxLength = 1000; // 限制每个字段的最大长度
-            const truncatedQuestion = question.length > maxLength ? question.substring(0, maxLength) + '...' : question;
-            const truncatedAnswer = answer.length > maxLength ? answer.substring(0, maxLength) + '...' : answer;
+            const safeQuestion = typeof question === 'string' ? question : (question ?? '');
+            const safeAnswer = typeof answer === 'string' ? answer : (answer ?? '');
+            const truncatedQuestion = safeQuestion.length > maxLength ? safeQuestion.substring(0, maxLength) + '...' : safeQuestion;
+            const truncatedAnswer = safeAnswer.length > maxLength ? safeAnswer.substring(0, maxLength) + '...' : safeAnswer;
 
             // 解析知识库信息
             let knowledgeBaseName = null;
@@ -6511,6 +7164,967 @@ ${text}
         });
     }
 
+    async initLanguagePreference() {
+        try {
+            const preference = await this.getStoredLanguagePreference();
+            this.hasStoredLanguagePreference = preference.stored === true;
+            const language = preference.uiLanguage || this.i18n.defaultLanguage;
+            const normalized = await this.i18n.setLanguage(language);
+            this.currentLanguage = normalized;
+            await this.applyLanguage(normalized, { persist: false, updateSwitcher: this.hasStoredLanguagePreference });
+        } catch (error) {
+            console.error('加载语言设置失败:', error);
+            const fallback = await this.i18n.setLanguage(this.i18n.fallbackLanguage);
+            this.currentLanguage = fallback;
+            this.hasStoredLanguagePreference = false;
+            await this.applyLanguage(fallback, { persist: false, updateSwitcher: false });
+        }
+    }
+
+    getStoredLanguagePreference() {
+        const defaultLanguage = this.i18n?.defaultLanguage || 'zhcn';
+        return new Promise((resolve) => {
+            if (typeof chrome === 'undefined' || !chrome.storage?.sync?.get) {
+                resolve({ uiLanguage: defaultLanguage, stored: false });
+                return;
+            }
+            try {
+                chrome.storage.sync.get(['uiLanguage', 'uiLanguageSet'], (items) => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('读取语言偏好失败:', chrome.runtime.lastError);
+                        resolve({ uiLanguage: defaultLanguage, stored: false });
+                        return;
+                    }
+                    const hasExplicitLanguage = Object.prototype.hasOwnProperty.call(items, 'uiLanguage') && typeof items.uiLanguage === 'string' && items.uiLanguage;
+                    const stored = items.uiLanguageSet === true || hasExplicitLanguage;
+                    resolve({
+                        uiLanguage: stored ? (items.uiLanguage || defaultLanguage) : defaultLanguage,
+                        stored
+                    });
+                });
+            } catch (error) {
+                console.error('读取语言偏好异常:', error);
+                resolve({ uiLanguage: defaultLanguage, stored: false });
+            }
+        });
+    }
+
+    async handleLanguageChange(event) {
+        const selectedLanguage = event?.target?.value || this.i18n.defaultLanguage;
+        this.hasStoredLanguagePreference = true;
+        await this.applyLanguage(selectedLanguage);
+
+        // 语言改变时重新加载参数规则选项
+        this.loadParameterRuleOptions();
+    }
+
+    resetLanguageSwitcherSelection() {
+        this.updateLanguageSwitcherDisplay(this.currentLanguage || '');
+    }
+
+    updateLanguageSwitcherDisplay(language) {
+        if (!this.languageSwitcher) return;
+
+        if (language) {
+            this.languageSwitcher.dataset.selectedLanguage = language;
+        } else {
+            delete this.languageSwitcher.dataset.selectedLanguage;
+        }
+
+        this.languageSwitcher.value = '';
+        this.languageSwitcher.selectedIndex = 0;
+
+        const placeholderOption = this.languageSwitcher.querySelector('option[value=""]');
+        if (placeholderOption) {
+            placeholderOption.selected = true;
+        }
+    }
+
+    getLanguageDisplayName(languageCode) {
+        const displayNameMap = {
+            'zhcn': '中文',
+            'zh-CN': '中文',
+            'en': 'English',
+            'en-US': 'English',
+            'zh-tw': '中文(繁體)',
+            'zh-TW': '中文(繁體)',
+            'jap': '日本語',
+            'ja-JP': '日本語'
+        };
+        return displayNameMap[languageCode] || languageCode;
+    }
+
+    applyLanguageInstructionToSystemContent(content, originalQuestion = '') {
+        if (!content) return content;
+
+        const needsByLocale = this.currentLanguage && this.currentLanguage !== 'zhcn';
+        const needsByQuestion = this.shouldAddInstructionForQuestion(originalQuestion);
+
+        if (needsByLocale || needsByQuestion) {
+            const targetLanguageName = this.getLanguageDisplayName(this.currentLanguage);
+            const instruction = `如果用户的问题不是中文，请先将其翻译成中文仅用于检索和理解，但务必继续使用用户原始语言进行思考与推理，最终将思考和回答等一切文字请翻译成${targetLanguageName}输出。`;
+
+            if (content.includes(instruction)) {
+                return content;
+            }
+
+            return `${instruction}\n\n${content}`;
+        }
+
+        return content;
+    }
+
+    shouldAddInstructionForQuestion(question) {
+        if (!question || typeof question !== 'string') return false;
+        const normalized = question.replace(/\s+/g, '');
+        if (!normalized) return false;
+        return !this.isLikelyChinese(normalized);
+    }
+
+    isLikelyChinese(text) {
+        if (!text) return false;
+        const chineseCharRegex = /[\u4e00-\u9fff]/;
+        const alphabeticRegex = /[A-Za-z]/;
+
+        const hasChinese = chineseCharRegex.test(text);
+        if (hasChinese) {
+            return true;
+        }
+
+        // If contains letters and punctuation but no Chinese, treat as non-Chinese
+        // For scripts like Japanese kana, extend detection
+        const japaneseRegex = /[\u3040-\u30ff]/;
+        if (japaneseRegex.test(text)) {
+            return false;
+        }
+
+        // Default: if no Chinese characters, assume not Chinese
+        return false;
+    }
+
+    async ensureChineseQuestion(question, provider, model) {
+        if (!this.shouldAddInstructionForQuestion(question)) {
+            return question;
+        }
+
+        if (!provider || !model) {
+            return question;
+        }
+
+        try {
+            const translated = await this.translateQuestionToChinese(question, provider, model);
+            if (translated && this.isLikelyChinese(translated)) {
+                console.log('翻译后的提问:', translated);
+                return translated.trim();
+            }
+        } catch (error) {
+            console.error('翻译问题为中文失败:', error);
+        }
+
+        return question;
+    }
+
+    async translateQuestionToChinese(question, provider, model) {
+        return await this.requestChatCompletionTranslation(question, provider, model, '简体中文');
+    }
+
+    async translateKnowledgeItems(items = [], targetLanguageName, provider, model) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return items;
+        }
+
+        if (!targetLanguageName || targetLanguageName.includes('中文')) {
+            return items;
+        }
+
+        const translatedItems = [];
+        for (const item of items) {
+            if (!item || typeof item !== 'string') {
+                translatedItems.push(item);
+                continue;
+            }
+
+            try {
+                const translated = await this.requestChatCompletionTranslation(item, provider, model, targetLanguageName);
+                translatedItems.push(translated && translated.trim() ? translated.trim() : item);
+            } catch (error) {
+                console.error('翻译知识库条目失败:', error);
+                translatedItems.push(item);
+            }
+        }
+
+        return translatedItems;
+    }
+
+    getChatCompletionsEndpoint(provider) {
+        if (!provider || !provider.apiEndpoint) return '';
+        let endpoint = provider.apiEndpoint.trim();
+        if (!endpoint) return endpoint;
+        if (endpoint.toLowerCase().includes('/chat/completions')) {
+            return endpoint;
+        }
+        if (endpoint.endsWith('/')) {
+            endpoint = endpoint.slice(0, -1);
+        }
+        return `${endpoint}/chat/completions`;
+    }
+
+    async requestChatCompletionTranslation(text, provider, model, targetLanguageName = '简体中文') {
+        const endpoint = this.getChatCompletionsEndpoint(provider);
+        if (!endpoint) {
+            throw new Error('未找到可用的翻译端点');
+        }
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        this.setAuthHeaders(headers, provider);
+
+        const requestBody = {
+            model: model?.name || model,
+            messages: [
+                {
+                    role: "system",
+                    content: `你是一名专业的翻译助手。请将用户提供的文本翻译成${targetLanguageName}，仅输出翻译后的内容，不要添加任何额外说明。`
+                },
+                {
+                    role: "user",
+                    content: String(text ?? '')
+                }
+            ],
+            temperature: 0,
+            stream: false,
+            max_tokens: 800
+        };
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`翻译请求失败: ${response.status} ${response.statusText} ${errorText}`);
+        }
+
+        const data = await response.json();
+        let translated = '';
+        if (data.choices && data.choices[0]?.message?.content) {
+            translated = data.choices[0].message.content;
+        } else if (data.response) {
+            translated = data.response;
+        }
+
+        translated = typeof translated === 'string' ? translated.trim() : '';
+        if (!translated) {
+            throw new Error('翻译结果为空');
+        }
+        translated = translated.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        return translated;
+    }
+
+    setupDateTimeFilters(force = false) {
+        if (typeof document === 'undefined') return;
+        const inputs = Array.from(document.querySelectorAll('[data-role="datetime-filter"]'));
+        if (inputs.length === 0) return;
+
+        this.dateTimeFilterInputs = inputs;
+
+        if (!this.dateTimePickerElements) {
+            this.createDateTimePickerElements();
+        }
+
+        inputs.forEach(input => {
+            if (!force && input.dataset.datetimePickerSetup === 'true') {
+                return;
+            }
+            input.dataset.datetimePickerSetup = 'true';
+            input.readOnly = true;
+            input.addEventListener('click', () => this.openDateTimePicker(input));
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    this.openDateTimePicker(input);
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    this.closeDateTimePicker();
+                }
+            });
+            input.setAttribute('role', 'combobox');
+            input.setAttribute('aria-haspopup', 'dialog');
+            input.setAttribute('aria-expanded', 'false');
+        });
+
+        this.dateTimePickerInitialized = true;
+        this.updateDateTimePickerLocale(this.currentLanguage);
+    }
+
+    createDateTimePickerElements() {
+        if (typeof document === 'undefined') return;
+
+        const container = document.createElement('div');
+        container.className = 'datetime-picker-overlay';
+        container.style.display = 'none';
+
+        container.innerHTML = `
+            <div class="datetime-picker-panel" role="dialog" aria-modal="true">
+                <div class="datetime-picker-header">
+                    <button type="button" class="datetime-picker-nav prev" aria-label="Previous month">‹</button>
+                    <div class="datetime-picker-month"></div>
+                    <button type="button" class="datetime-picker-nav next" aria-label="Next month">›</button>
+                </div>
+                <div class="datetime-picker-weekdays"></div>
+                <div class="datetime-picker-days"></div>
+                <div class="datetime-picker-time">
+                    <label class="datetime-picker-time-label"></label>
+                    <div class="datetime-picker-time-selects">
+                        <select class="datetime-picker-hour"></select>
+                        <span class="datetime-picker-time-separator">:</span>
+                        <select class="datetime-picker-minute"></select>
+                    </div>
+                </div>
+                <div class="datetime-picker-actions">
+                    <button type="button" class="datetime-picker-btn clear"></button>
+                    <div class="datetime-picker-actions-spacer"></div>
+                    <button type="button" class="datetime-picker-btn cancel"></button>
+                    <button type="button" class="datetime-picker-btn confirm primary"></button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(container);
+
+        const hourSelect = container.querySelector('.datetime-picker-hour');
+        const minuteSelect = container.querySelector('.datetime-picker-minute');
+
+        for (let h = 0; h < 24; h++) {
+            const option = document.createElement('option');
+            option.value = this.padNumber(h);
+            option.textContent = this.padNumber(h);
+            hourSelect.appendChild(option);
+        }
+
+        for (let m = 0; m < 60; m++) {
+            const option = document.createElement('option');
+            option.value = this.padNumber(m);
+            option.textContent = this.padNumber(m);
+            minuteSelect.appendChild(option);
+        }
+
+        this.dateTimePickerElements = {
+            container,
+            panel: container.querySelector('.datetime-picker-panel'),
+            month: container.querySelector('.datetime-picker-month'),
+            weekdaysContainer: container.querySelector('.datetime-picker-weekdays'),
+            daysContainer: container.querySelector('.datetime-picker-days'),
+            prevBtn: container.querySelector('.datetime-picker-nav.prev'),
+            nextBtn: container.querySelector('.datetime-picker-nav.next'),
+            hourSelect,
+            minuteSelect,
+            timeLabel: container.querySelector('.datetime-picker-time-label'),
+            clearBtn: container.querySelector('.datetime-picker-btn.clear'),
+            cancelBtn: container.querySelector('.datetime-picker-btn.cancel'),
+            confirmBtn: container.querySelector('.datetime-picker-btn.confirm')
+        };
+
+        this.dateTimePickerElements.prevBtn.addEventListener('click', () => this.changeDateTimePickerMonth(-1));
+        this.dateTimePickerElements.nextBtn.addEventListener('click', () => this.changeDateTimePickerMonth(1));
+        this.dateTimePickerElements.clearBtn.addEventListener('click', () => this.clearDateTimeSelection());
+        this.dateTimePickerElements.cancelBtn.addEventListener('click', () => this.closeDateTimePicker());
+        this.dateTimePickerElements.confirmBtn.addEventListener('click', () => this.commitDateTimeSelection());
+        this.dateTimePickerElements.hourSelect.addEventListener('change', () => this.handleTimeSelectionChange());
+        this.dateTimePickerElements.minuteSelect.addEventListener('change', () => this.handleTimeSelectionChange());
+    }
+
+    openDateTimePicker(input) {
+        if (!this.dateTimePickerElements || !input) return;
+
+        this.activeDateTimeInput = input;
+        input.setAttribute('aria-expanded', 'true');
+
+        const isoValue = input.dataset.isoValue || '';
+        const baseDate = this.parseISODateTime(isoValue) || new Date();
+
+        this.dateTimePickerState.selectedDate = new Date(baseDate);
+        this.dateTimePickerState.viewDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+
+        this.dateTimePickerElements.hourSelect.value = this.padNumber(baseDate.getHours());
+        this.dateTimePickerElements.minuteSelect.value = this.padNumber(baseDate.getMinutes());
+
+        this.renderDateTimePicker();
+
+        const rect = input.getBoundingClientRect();
+        const container = this.dateTimePickerElements.container;
+        container.style.display = 'block';
+        container.style.top = `${window.scrollY + rect.bottom + 4}px`;
+        container.style.left = `${window.scrollX + rect.left}px`;
+        container.style.minWidth = `${rect.width}px`;
+
+        requestAnimationFrame(() => {
+            container.classList.add('visible');
+        });
+
+        document.addEventListener('mousedown', this.handleDateTimePickerOutsideClick, true);
+        document.addEventListener('keydown', this.handleDateTimePickerKeydown, true);
+    }
+
+    closeDateTimePicker() {
+        if (!this.dateTimePickerElements) return;
+        const { container } = this.dateTimePickerElements;
+        container.classList.remove('visible');
+        container.style.display = 'none';
+        if (this.activeDateTimeInput) {
+            this.activeDateTimeInput.setAttribute('aria-expanded', 'false');
+            this.activeDateTimeInput = null;
+        }
+        document.removeEventListener('mousedown', this.handleDateTimePickerOutsideClick, true);
+        document.removeEventListener('keydown', this.handleDateTimePickerKeydown, true);
+    }
+
+    renderDateTimePicker() {
+        if (!this.dateTimePickerElements) return;
+        this.renderDateTimePickerHeader();
+        this.renderDateTimePickerWeekdays();
+        this.renderDateTimePickerDays();
+        this.updateDateTimePickerButtonsText();
+    }
+
+    renderDateTimePickerHeader() {
+        if (!this.dateTimePickerElements) return;
+        const { month } = this.dateTimePickerElements;
+        const locale = this.i18n?.getIntlLocale(this.currentLanguage) || 'en-US';
+        const formatter = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' });
+        month.textContent = formatter.format(this.dateTimePickerState.viewDate);
+    }
+
+    renderDateTimePickerWeekdays() {
+        if (!this.dateTimePickerElements) return;
+        const { weekdaysContainer } = this.dateTimePickerElements;
+        const locale = this.i18n?.getIntlLocale(this.currentLanguage) || 'en-US';
+        weekdaysContainer.innerHTML = '';
+
+        const baseDate = new Date(2020, 5, 7); // Sunday
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(baseDate);
+            date.setDate(baseDate.getDate() + i);
+            const label = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+            const cell = document.createElement('div');
+            cell.className = 'datetime-picker-weekday';
+            cell.textContent = label;
+            weekdaysContainer.appendChild(cell);
+        }
+    }
+
+    renderDateTimePickerDays() {
+        if (!this.dateTimePickerElements) return;
+        const { daysContainer } = this.dateTimePickerElements;
+        daysContainer.innerHTML = '';
+
+        const viewDate = this.dateTimePickerState.viewDate;
+        const selectedDate = this.dateTimePickerState.selectedDate;
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const startWeekday = firstDayOfMonth.getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        const totalCells = 42;
+        const today = new Date();
+
+        for (let i = 0; i < totalCells; i++) {
+            const dayCell = document.createElement('button');
+            dayCell.type = 'button';
+            dayCell.className = 'datetime-picker-day';
+
+            let cellYear = year;
+            let cellMonth = month;
+            let cellDay;
+            let isCurrentMonth = true;
+
+            if (i < startWeekday) {
+                cellDay = daysInPrevMonth - startWeekday + i + 1;
+                cellMonth = month - 1;
+                if (cellMonth < 0) {
+                    cellMonth = 11;
+                    cellYear = year - 1;
+                }
+                isCurrentMonth = false;
+            } else if (i >= startWeekday + daysInMonth) {
+                cellDay = i - (startWeekday + daysInMonth) + 1;
+                cellMonth = month + 1;
+                if (cellMonth > 11) {
+                    cellMonth = 0;
+                    cellYear = year + 1;
+                }
+                isCurrentMonth = false;
+            } else {
+                cellDay = i - startWeekday + 1;
+            }
+
+            const displayDay = this.padNumber(cellDay);
+            dayCell.textContent = displayDay;
+
+            if (!isCurrentMonth) {
+                dayCell.classList.add('other-month');
+            }
+
+            const cellDate = new Date(cellYear, cellMonth, cellDay);
+            if (selectedDate &&
+                selectedDate.getFullYear() === cellYear &&
+                selectedDate.getMonth() === cellMonth &&
+                selectedDate.getDate() === cellDay) {
+                dayCell.classList.add('selected');
+            }
+
+            if (cellDate.toDateString() === today.toDateString()) {
+                dayCell.classList.add('today');
+            }
+
+            dayCell.addEventListener('click', () => {
+                const time = this.getSelectedTime();
+                const newSelected = new Date(cellYear, cellMonth, cellDay, time.hour, time.minute, 0, 0);
+                this.dateTimePickerState.selectedDate = newSelected;
+                this.renderDateTimePickerDays();
+            });
+
+            daysContainer.appendChild(dayCell);
+        }
+    }
+
+    updateDateTimePickerButtonsText() {
+        if (!this.dateTimePickerElements) return;
+        const { clearBtn, cancelBtn, confirmBtn, timeLabel } = this.dateTimePickerElements;
+        clearBtn.textContent = this.t('popup.awr.datetime.clear');
+        cancelBtn.textContent = this.t('popup.awr.datetime.cancel');
+        confirmBtn.textContent = this.t('popup.awr.datetime.confirm');
+        timeLabel.textContent = this.t('popup.awr.datetime.timeLabel');
+    }
+
+    changeDateTimePickerMonth(offset) {
+        if (!this.dateTimePickerState || !this.dateTimePickerElements) return;
+        const viewDate = this.dateTimePickerState.viewDate;
+        this.dateTimePickerState.viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
+        this.renderDateTimePicker();
+    }
+
+    commitDateTimeSelection() {
+        if (!this.activeDateTimeInput || !this.dateTimePickerElements) {
+            this.closeDateTimePicker();
+            return;
+        }
+
+        const targetInput = this.activeDateTimeInput;
+        let selected = this.dateTimePickerState.selectedDate;
+        if (!selected) {
+            const viewDate = this.dateTimePickerState.viewDate;
+            selected = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+        }
+
+        const time = this.getSelectedTime();
+        selected.setHours(time.hour, time.minute, 0, 0);
+
+        const isoValue = this.toISOWithoutTimezone(selected);
+        this.setDateTimeInputElementValue(targetInput, isoValue);
+
+        this.closeDateTimePicker();
+        targetInput?.focus();
+    }
+
+    clearDateTimeSelection() {
+        if (!this.activeDateTimeInput) {
+            this.closeDateTimePicker();
+            return;
+        }
+        this.setDateTimeInputElementValue(this.activeDateTimeInput, '');
+        this.dateTimePickerState.selectedDate = null;
+        this.renderDateTimePickerDays();
+        this.closeDateTimePicker();
+    }
+
+    handleDateTimePickerOutsideClick(event) {
+        if (!this.dateTimePickerElements) return;
+        const { container } = this.dateTimePickerElements;
+        if (container.contains(event.target)) return;
+        if (this.activeDateTimeInput && this.activeDateTimeInput.contains(event.target)) return;
+        this.closeDateTimePicker();
+    }
+
+    handleDateTimePickerKeydown(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.closeDateTimePicker();
+        }
+    }
+
+    handleTimeSelectionChange() {
+        if (!this.dateTimePickerState.selectedDate) return;
+        const time = this.getSelectedTime();
+        this.dateTimePickerState.selectedDate.setHours(time.hour, time.minute, 0, 0);
+    }
+
+    getSelectedTime() {
+        if (!this.dateTimePickerElements) {
+            return { hour: 0, minute: 0 };
+        }
+        const hour = parseInt(this.dateTimePickerElements.hourSelect.value, 10) || 0;
+        const minute = parseInt(this.dateTimePickerElements.minuteSelect.value, 10) || 0;
+        return { hour, minute };
+    }
+
+    setDateTimeInputElementValue(input, isoValue) {
+        if (!input) return;
+        if (!isoValue) {
+            input.dataset.isoValue = '';
+            input.value = '';
+            input.title = '';
+            return;
+        }
+        const normalized = this.normalizeISODateTime(isoValue);
+        input.dataset.isoValue = normalized;
+        const display = this.formatDateTimeForDisplay(normalized, this.currentLanguage);
+        input.value = display;
+        input.title = display;
+    }
+
+    setDateTimeInputValue(id, isoValue) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        this.setDateTimeInputElementValue(input, isoValue);
+    }
+
+    clearDateTimeInputValue(id) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.dataset.isoValue = '';
+        input.value = '';
+        input.title = '';
+    }
+
+    getDateTimeInputValue(id) {
+        const input = document.getElementById(id);
+        if (!input) return '';
+        return input.dataset.isoValue || '';
+    }
+
+    updateDateTimePickerLocale(language) {
+        if (!this.dateTimeFilterInputs) return;
+        const locale = this.i18n?.getIntlLocale(language) || 'en-US';
+
+        this.dateTimeFilterInputs.forEach(input => {
+            const placeholderKey = input.dataset.i18nPlaceholder;
+            if (placeholderKey) {
+                input.placeholder = this.t(placeholderKey);
+            }
+            this.updateDateTimeInputDisplay(input, language);
+        });
+
+        if (this.dateTimePickerElements) {
+            this.renderDateTimePicker();
+        }
+    }
+
+    updateDateTimeInputDisplay(input, language) {
+        if (!input) return;
+        const isoValue = input.dataset.isoValue || '';
+        if (!isoValue) {
+            input.value = '';
+            input.title = '';
+            return;
+        }
+        const display = this.formatDateTimeForDisplay(isoValue, language);
+        input.value = display;
+        input.title = display;
+    }
+
+    formatDateTimeForDisplay(isoValue, language) {
+        if (!isoValue) return '';
+        const date = this.parseISODateTime(isoValue);
+        if (!date) return isoValue;
+        const locale = this.i18n?.getIntlLocale(language) || 'en-US';
+        const formatter = new Intl.DateTimeFormat(locale, {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        return formatter.format(date);
+    }
+
+    normalizeISODateTime(value) {
+        if (!value) return '';
+        let result = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(result)) {
+            result = `${result}T00:00:00`;
+        } else if (/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(result)) {
+            result = `${result}:00:00`;
+        } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(result)) {
+            result = `${result}:00`;
+        } else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(result)) {
+            result = `${result.replace(' ', 'T')}:00`;
+        }
+        return result;
+    }
+
+    parseISODateTime(value) {
+        if (!value) return null;
+        const normalized = this.normalizeISODateTime(value);
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) {
+            return null;
+        }
+        return date;
+    }
+
+    toISOWithoutTimezone(date) {
+        if (!(date instanceof Date)) return '';
+        const year = date.getFullYear();
+        const month = this.padNumber(date.getMonth() + 1);
+        const day = this.padNumber(date.getDate());
+        const hour = this.padNumber(date.getHours());
+        const minute = this.padNumber(date.getMinutes());
+        const second = this.padNumber(date.getSeconds());
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    }
+
+    padNumber(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    translateStaticElements(language) {
+        if (!this.i18n) return;
+
+        const translate = (key) => {
+            if (!key) return undefined;
+            const value = this.i18n.t(key, language);
+            return typeof value === 'string' ? value : undefined;
+        };
+
+        const setAttribute = (el, attr, key) => {
+            const translation = translate(key);
+            if (translation !== undefined) {
+                el.setAttribute(attr, translation);
+            }
+        };
+
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            const translation = translate(el.dataset.i18n);
+            if (translation !== undefined) {
+                el.textContent = translation;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+            const translation = translate(el.dataset.i18nHtml);
+            if (translation !== undefined) {
+                el.innerHTML = translation;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+            setAttribute(el, 'placeholder', el.dataset.i18nPlaceholder);
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+            setAttribute(el, 'title', el.dataset.i18nTitle);
+        });
+
+        document.querySelectorAll('[data-i18n-alt]').forEach((el) => {
+            setAttribute(el, 'alt', el.dataset.i18nAlt);
+        });
+
+        document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+            setAttribute(el, 'aria-label', el.dataset.i18nAriaLabel);
+        });
+
+        document.querySelectorAll('[data-i18n-value]').forEach((el) => {
+            const translation = translate(el.dataset.i18nValue);
+            if (translation !== undefined) {
+                el.value = translation;
+            }
+        });
+    }
+    async applyLanguage(language, options = {}) {
+        const { persist = true, updateSwitcher = true } = options;
+        let normalizedLanguage;
+
+        try {
+            normalizedLanguage = await this.i18n.setLanguage(language);
+        } catch (error) {
+            console.error('设置语言失败，使用回退语言:', error);
+            normalizedLanguage = await this.i18n.setLanguage(this.i18n.fallbackLanguage);
+        }
+
+        this.currentLanguage = normalizedLanguage;
+        this.translateStaticElements(normalizedLanguage);
+        this.updateDateTimePickerLocale(normalizedLanguage);
+
+        const htmlLocale = this.i18n.getIntlLocale(normalizedLanguage);
+        if (typeof document !== 'undefined') {
+            document.title = this.t('popup.meta.title');
+            if (document.documentElement) {
+                document.documentElement.lang = htmlLocale;
+            }
+        }
+
+        const resources = this.languageResources[normalizedLanguage] || this.languageResources[this.i18n.fallbackLanguage];
+
+        if (this.languageSwitcher) {
+            if (updateSwitcher) {
+                this.languageSwitcher.dataset.selectedLanguage = normalizedLanguage;
+            }
+            this.updateLanguageSwitcherDisplay(normalizedLanguage);
+        }
+
+        if (persist && typeof chrome !== 'undefined' && chrome.storage?.sync?.set) {
+            try {
+                chrome.storage.sync.set({ uiLanguage: normalizedLanguage, uiLanguageSet: true }, () => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('保存语言设置失败:', chrome.runtime.lastError);
+                    }
+                });
+                this.hasStoredLanguagePreference = true;
+            } catch (error) {
+                console.error('保存语言设置失败:', error);
+            }
+        }
+
+        const newSessionText = this.newSessionBtn?.querySelector('.action-text');
+        if (newSessionText) newSessionText.textContent = this.t('popup.top.button.newSession');
+
+        const historyText = this.historyBtn?.querySelector('.action-text');
+        if (historyText) historyText.textContent = this.t('popup.top.button.history');
+
+        const awrText = this.awrAnalysisBtn?.querySelector('.action-text');
+        if (awrText) awrText.textContent = this.t('popup.top.button.awrAnalysis');
+        const inspectionText = this.inspectionBtn?.querySelector('.action-text');
+        if (inspectionText) inspectionText.textContent = this.t('popup.top.button.inspection');
+
+        if (this.settingsBtn) {
+            const settingsText = this.settingsBtn.querySelector('span:nth-of-type(2)');
+            if (settingsText) settingsText.textContent = this.t('popup.top.button.settings');
+            this.settingsBtn.title = this.t('popup.top.tooltip.settings');
+        }
+
+        if (this.helpBtn) {
+            const helpText = this.helpBtn.querySelector('.action-text');
+            if (helpText) helpText.textContent = this.t('popup.top.button.help');
+            this.helpBtn.title = this.t('popup.top.tooltip.help');
+            const userGuideBase = resources?.userGuide || 'user-guide.html';
+            this.helpBtn.dataset.userGuidePath = userGuideBase;
+        }
+
+        if (this.announcementBtn) {
+            const noticeText = this.announcementBtn.querySelector('.action-text');
+            if (noticeText) noticeText.textContent = this.t('popup.top.button.notice');
+            this.announcementBtn.title = this.t('popup.top.tooltip.notice');
+            const noticeBase = resources?.notice || 'notice.html';
+            this.announcementBtn.dataset.noticePath = noticeBase;
+        }
+
+        const modelLabel = document.querySelector('label[for=\"modelSelect\"]');
+        if (modelLabel) modelLabel.textContent = this.t('popup.main.label.model');
+
+        const knowledgeLabel = document.querySelector('label[for=\"knowledgeBaseSelect\"]');
+        if (knowledgeLabel) knowledgeLabel.textContent = this.t('popup.main.label.knowledge');
+
+        const parameterLabel = document.querySelector('label[for=\"parameterRuleSelect\"]');
+        if (parameterLabel) parameterLabel.textContent = this.t('popup.main.label.parameter');
+
+        const uploadLabel = document.querySelector('label[for=\"awrFileDisplay\"]');
+        if (uploadLabel) uploadLabel.textContent = this.t('popup.main.text.uploadLabel');
+
+        if (this.languageSwitcher) {
+            this.languageSwitcher.title = this.t('popup.top.tooltip.languageSwitcher');
+        }
+
+        if (this.modelSelect) {
+            Array.from(this.modelSelect.options).forEach(option => {
+                if (!option.value) {
+                    if (option.disabled) {
+                        option.textContent = this.t('popup.main.option.noModelConfigured');
+                    } else {
+                        option.textContent = this.t('popup.main.option.modelsLoading');
+                    }
+                }
+            });
+        }
+
+        if (this.knowledgeBaseSelect && this.knowledgeBaseSelect.options.length > 0) {
+            const firstOption = this.knowledgeBaseSelect.options[0];
+            if (firstOption.value === '') {
+                firstOption.textContent = this.t('popup.main.option.knowledgeNone');
+            }
+        }
+
+        if (this.parameterRuleSelect) {
+            Array.from(this.parameterRuleSelect.options).forEach(option => {
+                if (!option.value && option.disabled) {
+                    option.textContent = this.t('popup.main.option.noParameterRuleConfigured');
+                }
+            });
+        }
+
+        if (this.awrSaveBtn) {
+            this.awrSaveBtn.textContent = this.t('popup.main.action.runAnalysis');
+        }
+        if (this.awrCancelBtn) {
+            this.awrCancelBtn.textContent = this.t('popup.main.action.close');
+        }
+        if (this.awrFileUploadBtn) {
+            this.awrFileUploadBtn.textContent = this.t('popup.main.action.uploadFile');
+        }
+
+        if (this.knowledgeBaseSelect) {
+            this.loadKnowledgeBaseOptions();
+        }
+
+        if (this.parameterRuleSelect) {
+            this.loadParameterRuleOptions();
+        }
+    }
+
+    t(key, params = undefined) {
+        if (!this.i18n) return key;
+        return this.i18n.t(key, this.currentLanguage, params);
+    }
+
+    getRunAnalysisCountdownText(seconds) {
+        const suffix = this.t('popup.main.text.secondSuffix');
+        return `${this.t('popup.main.action.runAnalysis')} (${seconds}${suffix})`;
+    }
+
+    handleAnnouncementClick() {
+        const storedPath = this.announcementBtn?.dataset.noticePath;
+        if (!storedPath) {
+            console.warn('未找到公告页路径，使用默认 notice.html');
+        }
+        const noticeFile = storedPath || 'notice.html';
+        try {
+            const noticeUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
+                ? chrome.runtime.getURL(noticeFile)
+                : noticeFile;
+
+            if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+                chrome.tabs.create({ url: noticeUrl, active: true }, () => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('打开公告页面失败:', chrome.runtime.lastError);
+                        window.open(noticeUrl, '_blank');
+                    }
+                });
+            } else {
+                window.open(noticeUrl, '_blank');
+            }
+        } catch (error) {
+            console.error('打开公告页面失败:', error);
+            window.open(`notice.html?lang=${normalizedLanguage}`, '_blank');
+        }
+    }
+
     // 显示AWR分析对话框
     async showAwrAnalysisDialog() {
         if (this.awrAnalysisDialog) {
@@ -6540,34 +8154,295 @@ ${text}
             // 重置按钮状态
             if (this.awrSaveBtn) {
                 this.awrSaveBtn.disabled = false;
-                this.awrSaveBtn.textContent = '执行分析(Run)';
+                this.awrSaveBtn.textContent = this.t('popup.main.action.runAnalysis');
             }
             // 重置表单（不清空邮箱，下次打开时会重新加载注册邮箱）
             this.resetAwrForm();
         }
     }
 
+    // 显示巡检诊断对话框
+    async showInspectionDialog() {
+        if (!this.inspectionDialog) return;
+        this.inspectionDialog.style.display = 'flex';
+        this.resetInspectionForm();
+        await this.loadRegistrationEmail(this.inspectionEmail);
+        try {
+            await this.populateUserProfileFromApi({
+                userNameInput: this.inspectionUserName,
+                emailInput: this.inspectionEmail
+            });
+        } catch (error) {
+            console.error('加载巡检诊断用户信息失败:', error);
+        }
+    }
+
+    // 隐藏巡检诊断对话框
+    hideInspectionDialog() {
+        if (!this.inspectionDialog) return;
+        this.inspectionDialog.style.display = 'none';
+        if (this.inspectionSaveBtn) {
+            this.inspectionSaveBtn.disabled = false;
+            this.inspectionSaveBtn.textContent = this.t('popup.inspection.form.submit');
+        }
+        this.resetInspectionForm();
+    }
+
+    resetInspectionForm() {
+        if (this.inspectionProblemDescription) {
+            this.inspectionProblemDescription.value = '';
+        }
+        if (this.inspectionEmail) {
+            // 保留已有邮箱信息
+            this.inspectionEmail.value = this.inspectionEmail.value || '';
+        }
+        if (this.inspectionFileDisplay) {
+            this.inspectionFileDisplay.value = '';
+            this.inspectionFileDisplay.placeholder = this.t('popup.inspection.form.uploadPlaceholder');
+        }
+        if (this.inspectionFileInput) {
+            this.inspectionFileInput.value = '';
+        }
+        if (this.inspectionLanguage) {
+            this.inspectionLanguage.value = 'zh';
+        }
+        if (this.inspectionDatabaseType) {
+            this.inspectionDatabaseType.value = '';
+        }
+        if (this.inspectionAgreeTerms) {
+            this.inspectionAgreeTerms.checked = false;
+        }
+        this.inspectionSelectedFile = null;
+    }
+
+    handleInspectionFileSelect(e) {
+        const file = e?.target?.files?.[0];
+        if (file) {
+            this.inspectionSelectedFile = file;
+            if (this.inspectionFileDisplay) {
+                this.inspectionFileDisplay.value = file.name;
+                this.inspectionFileDisplay.placeholder = file.name;
+            }
+        } else {
+            this.inspectionSelectedFile = null;
+            if (this.inspectionFileDisplay) {
+                this.inspectionFileDisplay.value = '';
+                this.inspectionFileDisplay.placeholder = this.t('popup.inspection.form.uploadPlaceholder');
+            }
+        }
+    }
+
+    async handleInspectionSubmit() {
+        if (!this.inspectionSaveBtn || this.inspectionSaveBtn.disabled) {
+            return;
+        }
+
+        const email = this.inspectionEmail?.value.trim() || '';
+        if (!email) {
+            this.showMessage(this.t('popup.message.enterEmail'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.inspectionEmail?.focus();
+            return;
+        }
+
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+            this.showMessage(this.t('popup.message.invalidEmail'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.inspectionEmail?.focus();
+            return;
+        }
+
+        if (!this.inspectionSelectedFile) {
+            this.showMessage(this.t('popup.message.selectFile'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.inspectionFileUploadBtn?.focus();
+            return;
+        }
+
+        const databaseCode = this.inspectionDatabaseType?.value || '';
+        if (!databaseCode) {
+            this.showMessage(this.t('popup.message.selectDatabaseType'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.inspectionDatabaseType?.focus();
+            return;
+        }
+
+        if (!this.inspectionAgreeTerms || !this.inspectionAgreeTerms.checked) {
+            this.showMessage(this.t('popup.message.agreeTerms'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.inspectionAgreeTerms?.focus();
+            return;
+        }
+
+        const originalButtonText = this.inspectionSaveBtn.textContent || '';
+        this.inspectionSaveBtn.disabled = true;
+
+        const formData = {
+            username: this.inspectionUserName?.value.trim() || '',
+            email,
+            problemDescription: this.inspectionProblemDescription?.value.trim() || '',
+            file: this.inspectionSelectedFile,
+            language: this.inspectionLanguage?.value || 'zh',
+            databaseCode
+        };
+
+        this.showLoadingOverlay(this.t('popup.inspection.loading'));
+        try {
+            const response = await this.submitInspectionAnalysis(formData);
+            this.hideLoadingOverlay();
+
+            if (response && response.status === 'success') {
+                this.showMessage(this.t('popup.message.inspectionSubmitSuccess'), 'success', { centered: true, durationMs: 6000, maxWidth: '380px', background: '#1e7e34' });
+                this.hideInspectionDialog();
+            } else {
+                const errorMsg = response?.message || this.t('popup.message.inspectionSubmitFailed', { error: this.t('popup.common.unknownError') });
+                this.showMessage(errorMsg, 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            }
+        } catch (error) {
+            console.error('提交巡检诊断失败:', error);
+            this.hideLoadingOverlay();
+            this.showMessage(this.t('popup.message.inspectionSubmitFailed', { error: error.message || this.t('popup.common.unknownError') }), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+        } finally {
+            this.inspectionSaveBtn.disabled = false;
+            this.inspectionSaveBtn.textContent = originalButtonText || this.t('popup.inspection.form.submit');
+        }
+    }
+
+    async submitInspectionAnalysis(formData) {
+        const apiKey = this.resolveApiKey();
+        if (!apiKey) {
+            throw new Error(this.t('popup.message.apiKeyNotConfigured'));
+        }
+
+        const formDataToSend = new FormData();
+        formDataToSend.append('file', formData.file);
+
+        const queryParams = new URLSearchParams();
+        queryParams.append('username', formData.username);
+        queryParams.append('email', formData.email);
+        queryParams.append('language', formData.language || 'zh');
+        if (formData.databaseCode) {
+            queryParams.append('code', formData.databaseCode);
+        }
+        if (formData.problemDescription) {
+            queryParams.append('backgroundHint', formData.problemDescription);
+        }
+
+        const baseUrl = 'http://www.dbaiops.cn/api/inspection/upload';
+        const url = `${baseUrl}?${queryParams.toString()}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: formDataToSend
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('巡检诊断接口调用失败:', error);
+            throw error;
+        }
+    }
+
     // 加载注册邮箱
-    async loadRegistrationEmail() {
+    async loadRegistrationEmail(targetInput = this.awrEmail) {
         try {
             const result = await chrome.storage.sync.get(['registration']);
             const registration = result.registration;
             if (registration && registration.status === 'registered' && registration.email) {
-                if (this.awrEmail) {
-                    this.awrEmail.value = registration.email;
+                if (targetInput) {
+                    targetInput.value = registration.email;
                 }
                 console.log('已加载注册邮箱:', registration.email);
             } else {
                 console.log('未找到有效的注册邮箱');
-                if (this.awrEmail) {
-                    this.awrEmail.value = '';
+                if (targetInput) {
+                    targetInput.value = '';
                 }
             }
         } catch (error) {
             console.error('加载注册邮箱失败:', error);
-            if (this.awrEmail) {
-                this.awrEmail.value = '';
+            if (targetInput) {
+                targetInput.value = '';
             }
+        }
+    }
+    async loadStoredAwrDatabaseType() {
+        const defaultValue = this.defaultAwrDatabaseType;
+        let storedValue = defaultValue;
+
+        if (typeof chrome === 'undefined' || !chrome.storage?.sync?.get) {
+            this.storedAwrDatabaseType = storedValue;
+            if (this.awrDatabaseType) {
+                this.awrDatabaseType.value = storedValue;
+            }
+            return storedValue;
+        }
+
+        try {
+            storedValue = await new Promise((resolve) => {
+                try {
+                    chrome.storage.sync.get({ awrDatabaseType: defaultValue }, (items) => {
+                        if (chrome.runtime?.lastError) {
+                            console.error('读取AWR数据库类型失败:', chrome.runtime.lastError);
+                            resolve(defaultValue);
+                        } else {
+                            resolve(items.awrDatabaseType || defaultValue);
+                        }
+                    });
+                } catch (error) {
+                    console.error('读取AWR数据库类型异常:', error);
+                    resolve(defaultValue);
+                }
+            });
+        } catch (error) {
+            console.error('读取AWR数据库类型异常:', error);
+            storedValue = defaultValue;
+        }
+
+        this.storedAwrDatabaseType = storedValue;
+
+        if (this.awrDatabaseType) {
+            this.awrDatabaseType.value = storedValue;
+        }
+
+        return storedValue;
+    }
+
+    handleAwrDatabaseTypeChange(event) {
+        const rawValue = event?.target?.value || '';
+        const valueToStore = rawValue || this.defaultAwrDatabaseType;
+        this.storedAwrDatabaseType = valueToStore;
+
+        if (!rawValue && this.awrDatabaseType) {
+            // 恢复为默认值，避免出现空选项
+            this.awrDatabaseType.value = valueToStore;
+        }
+
+        if (typeof chrome === 'undefined' || !chrome.storage?.sync) {
+            return;
+        }
+
+        try {
+            if (rawValue) {
+                chrome.storage.sync.set({ awrDatabaseType: valueToStore }, () => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('保存AWR数据库类型失败:', chrome.runtime.lastError);
+                    }
+                });
+            } else if (chrome.storage.sync.remove) {
+                chrome.storage.sync.remove('awrDatabaseType', () => {
+                    if (chrome.runtime?.lastError) {
+                        console.error('移除AWR数据库类型失败:', chrome.runtime.lastError);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('保存AWR数据库类型异常:', error);
         }
     }
 
@@ -6579,7 +8454,7 @@ ${text}
         // 注意：邮箱字段不清空，在showAwrAnalysisDialog中会单独加载注册邮箱
         if (this.awrFileDisplay) {
             this.awrFileDisplay.value = '';
-            this.awrFileDisplay.placeholder = '未选择文件';
+            this.awrFileDisplay.placeholder = this.t('popup.awr.form.uploadPlaceholder');
         }
         if (this.awrFileInput) {
             this.awrFileInput.value = '';
@@ -6587,6 +8462,10 @@ ${text}
         // 重置语言选择为中文（默认值）
         if (this.awrLanguage) {
             this.awrLanguage.value = 'zh';
+        }
+        if (this.awrDatabaseType) {
+            const defaultValue = this.storedAwrDatabaseType || this.defaultAwrDatabaseType;
+            this.awrDatabaseType.value = defaultValue;
         }
         if (this.awrAgreeTerms) {
             this.awrAgreeTerms.checked = false;
@@ -6608,7 +8487,7 @@ ${text}
             this.selectedFile = null;
             if (this.awrFileDisplay) {
                 this.awrFileDisplay.value = '';
-                this.awrFileDisplay.placeholder = '未选择文件';
+                this.awrFileDisplay.placeholder = this.t('popup.awr.form.uploadPlaceholder');
             }
         }
     }
@@ -6622,7 +8501,7 @@ ${text}
 
         // 验证必填项
         if (!this.awrEmail || !this.awrEmail.value.trim()) {
-            this.showMessage('请填写接收邮箱(Please enter the recipient email)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.showMessage(this.t('popup.message.enterEmail'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
             this.awrEmail?.focus();
             return;
         }
@@ -6630,21 +8509,29 @@ ${text}
         // 验证邮箱格式
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailPattern.test(this.awrEmail.value.trim())) {
-            this.showMessage('请输入有效的邮箱地址(Please enter a valid email address)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.showMessage(this.t('popup.message.invalidEmail'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
             this.awrEmail?.focus();
             return;
         }
 
         // 验证文件是否已选择
         if (!this.selectedFile) {
-            this.showMessage('请选择要上传的文件(Please select the file to upload)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.showMessage(this.t('popup.message.selectFile'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
             this.awrFileUploadBtn?.focus();
+            return;
+        }
+
+        // 验证数据库类型
+        const databaseCode = this.awrDatabaseType?.value || '';
+        if (!databaseCode) {
+            this.showMessage(this.t('popup.message.selectDatabaseType'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.awrDatabaseType?.focus();
             return;
         }
 
         // 验证声明勾选
         if (!this.awrAgreeTerms || !this.awrAgreeTerms.checked) {
-            this.showMessage('请先阅读并勾选免责声明和安全声明(Please review and agree to the Disclaimer and Security Statement)', 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.showMessage(this.t('popup.message.agreeTerms'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
             this.awrAgreeTerms?.focus();
             return;
         }
@@ -6660,7 +8547,7 @@ ${text}
         const originalButtonText = this.awrSaveBtn?.textContent || '';
         if (this.awrSaveBtn) {
             this.awrSaveBtn.disabled = true;
-            this.awrSaveBtn.textContent = '执行分析 (5秒)';
+            this.awrSaveBtn.textContent = this.getRunAnalysisCountdownText(5);
         }
 
         // 开始5秒倒计时
@@ -6673,7 +8560,7 @@ ${text}
             countdown--;
             if (this.awrSaveBtn) {
                 if (countdown > 0) {
-                    this.awrSaveBtn.textContent = `执行分析 (${countdown}秒)`;
+                    this.awrSaveBtn.textContent = this.getRunAnalysisCountdownText(countdown);
                 } else {
                     this.awrSaveBtn.textContent = originalButtonText;
                     this.awrSaveBtn.disabled = false;
@@ -6693,7 +8580,8 @@ ${text}
             email: this.awrEmail.value.trim(),
             problemDescription: this.awrProblemDescription?.value.trim() || '',
             file: this.selectedFile,
-            language: language
+            language: language,
+            databaseCode
         };
 
         console.log('AWR分析表单数据:', {
@@ -6701,18 +8589,19 @@ ${text}
             email: formData.email,
             problemDescription: formData.problemDescription,
             fileName: formData.file ? formData.file.name : '无文件',
-            language: formData.language
+            language: formData.language,
+            databaseCode: formData.databaseCode
         });
 
         // 调用后端接口
-        this.showLoadingOverlay('正在执行分析，请稍候...(Analyzing, please wait...)');
+        this.showLoadingOverlay(this.t('popup.awr.history.overlayAnalyzing'));
         try {
             const response = await this.submitAwrAnalysis(formData);
 
             // 处理响应
             if (response && response.status === 'success') {
                 this.hideLoadingOverlay();
-                this.showMessage('AWR报告提交成功!后台分析结束后会发送邮件到您填写的邮箱，请耐心等候.(AWR report submitted successfully! The analysis report will be sent to your registered email address upon completion of the background analysis. Thank you for your patience.)', 'success', { centered: true, durationMs: 6000, maxWidth: '380px', background: '#1e7e34' });
+                this.showMessage(this.t('popup.message.awrSubmitSuccess'), 'success', { centered: true, durationMs: 6000, maxWidth: '380px', background: '#1e7e34' });
 
                 // 如果当前在历史记录页面，刷新列表
                 const historyView = document.getElementById('awrHistoryView');
@@ -6737,7 +8626,7 @@ ${text}
         } catch (error) {
             console.error('提交AWR分析失败(Submission failed):', error);
             this.hideLoadingOverlay();
-            this.showMessage('提交失败，请稍后重试(Submission failed, please try again later): ' + (error.message || '未知错误(Unknown error)'), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
+            this.showMessage(this.t('popup.message.awrSubmitFailed', { error: error.message || '未知错误(Unknown error)' }), 'error', { centered: true, durationMs: 5000, maxWidth: '360px' });
         }
         // 注意：按钮的重新启用由倒计时控制，不需要在这里手动启用
     }
@@ -6760,17 +8649,17 @@ ${text}
     }
 
     // 调用用户信息接口并回显用户名、邮箱
-    async populateUserProfileFromApi() {
+    async populateUserProfileFromApi({ userNameInput = this.awrUserName, emailInput = this.awrEmail } = {}) {
         const apiKey = this.resolveApiKey();
         if (!apiKey) {
             // 重置输入框为空
-            if (this.awrUserName) {
-                this.awrUserName.value = '';
+            if (userNameInput) {
+                userNameInput.value = '';
             }
-            if (this.awrEmail) {
-                this.awrEmail.value = '';
+            if (emailInput) {
+                emailInput.value = '';
             }
-            this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+            this.showMessage(this.t('popup.message.apiKeyValidationFailed'), 'error');
             return;
         }
 
@@ -6784,13 +8673,13 @@ ${text}
             });
             if (!resp.ok) {
                 // 如果是401未授权或其他错误，重置输入框并显示提示
-                if (this.awrUserName) {
-                    this.awrUserName.value = '';
+                if (userNameInput) {
+                    userNameInput.value = '';
                 }
-                if (this.awrEmail) {
-                    this.awrEmail.value = '';
+                if (emailInput) {
+                    emailInput.value = '';
                 }
-                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+                this.showMessage(this.t('popup.message.apiKeyValidationFailed'), 'error');
                 throw new Error(`HTTP error! status: ${resp.status}`);
             }
             const data = await resp.json();
@@ -6798,13 +8687,13 @@ ${text}
             // 解析固定返回结构 { code, success, user: { userName, email, ... } }
             if (!data || data.code !== 200 || data.success !== true || !data.user) {
                 // 用户信息返回格式异常或无用户数据，重置输入框并显示提示
-                if (this.awrUserName) {
-                    this.awrUserName.value = '';
+                if (userNameInput) {
+                    userNameInput.value = '';
                 }
-                if (this.awrEmail) {
-                    this.awrEmail.value = '';
+                if (emailInput) {
+                    emailInput.value = '';
                 }
-                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+                this.showMessage(this.t('popup.message.apiKeyValidationFailed'), 'error');
                 return;
             }
 
@@ -6812,25 +8701,25 @@ ${text}
             const username = user.userName || '';
             const email = user.email || '';
 
-            if (this.awrUserName && username) {
-                this.awrUserName.value = username;
+            if (userNameInput && username) {
+                userNameInput.value = username;
             }
             // 仅当邮箱为空时才用接口返回覆盖，避免覆盖注册邮箱
-            if (this.awrEmail && !this.awrEmail.value && email) {
-                this.awrEmail.value = email;
+            if (emailInput && !emailInput.value && email) {
+                emailInput.value = email;
             }
         } catch (error) {
             console.error('查询用户信息失败(Failed to query user information):', error);
             // 出错时重置输入框为空
-            if (this.awrUserName) {
-                this.awrUserName.value = '';
+            if (userNameInput) {
+                userNameInput.value = '';
             }
-            if (this.awrEmail) {
-                this.awrEmail.value = '';
+            if (emailInput) {
+                emailInput.value = '';
             }
             // 如果还没有显示错误提示，则显示
             if (!error.message || !error.message.includes('HTTP error')) {
-                this.showMessage('API密钥校验失败，请去设置界面完成知识库服务-API密钥校验(API key validation failed, please go to the settings page to complete the knowledge base service-API key validation)', 'error');
+                this.showMessage(this.t('popup.message.apiKeyValidationFailed'), 'error');
             }
         }
     }
@@ -6840,7 +8729,7 @@ ${text}
         // 获取apiKey
         const apiKey = this.resolveApiKey();
         if (!apiKey) {
-            throw new Error('未配置API密钥，请先在设置页面配置');
+            throw new Error(this.t('popup.message.apiKeyNotConfigured'));
         }
 
         // 构建FormData用于文件上传
@@ -6853,6 +8742,9 @@ ${text}
         queryParams.append('email', formData.email);
         // language 参数，默认为 'zh'
         queryParams.append('language', formData.language || 'zh');
+        if (formData.databaseCode) {
+            queryParams.append('code', formData.databaseCode);
+        }
         // backgroundHint 是可选的，只有填写了才添加
         if (formData.problemDescription) {
             queryParams.append('backgroundHint', formData.problemDescription);
@@ -6912,8 +8804,8 @@ ${text}
             if (newView) newView.classList.remove('active');
             if (historyView) historyView.classList.add('active');
             // 切换到历史记录时自动加载（使用当前筛选条件）
-            const startTime = document.getElementById('awrStartTime')?.value || '';
-            const endTime = document.getElementById('awrEndTime')?.value || '';
+            const startTime = this.getDateTimeInputValue('awrStartTime');
+            const endTime = this.getDateTimeInputValue('awrEndTime');
             const status = document.getElementById('awrStatusFilter')?.value || '';
             this.loadAwrHistoryList(1, this.awrHistoryPageSize, '', startTime, endTime, status);
         }
@@ -6922,8 +8814,8 @@ ${text}
     // 处理搜索按钮点击
     handleAwrSearch() {
         // 获取所有筛选条件
-        const startTime = document.getElementById('awrStartTime')?.value || '';
-        const endTime = document.getElementById('awrEndTime')?.value || '';
+        const startTime = this.getDateTimeInputValue('awrStartTime');
+        const endTime = this.getDateTimeInputValue('awrEndTime');
         const status = document.getElementById('awrStatusFilter')?.value || '';
 
         // 重置到第一页
@@ -6933,12 +8825,10 @@ ${text}
     // 处理重置按钮点击
     handleAwrReset() {
         // 清空所有筛选条件
-        const startTimeInput = document.getElementById('awrStartTime');
-        const endTimeInput = document.getElementById('awrEndTime');
         const statusSelect = document.getElementById('awrStatusFilter');
 
-        if (startTimeInput) startTimeInput.value = '';
-        if (endTimeInput) endTimeInput.value = '';
+        this.clearDateTimeInputValue('awrStartTime');
+        this.clearDateTimeInputValue('awrEndTime');
         if (statusSelect) statusSelect.value = '';
 
         // 重新加载列表（使用空条件）
@@ -6950,7 +8840,7 @@ ${text}
         try {
             const apiKey = this.resolveApiKey();
             if (!apiKey) {
-                this.showMessage('未配置API密钥，请先在设置页面配置(API key not configured, please configure it in the settings page)', 'error');
+                this.showMessage(this.t('popup.message.apiKeyNotConfigured'), 'error');
                 return;
             }
 
@@ -6985,7 +8875,7 @@ ${text}
             }
 
             if (!username || username === '-') {
-                this.showMessage('无法获取用户信息，请确保API密钥正确(Unable to get user information, please ensure the API key is correct)', 'error');
+                this.showMessage(this.t('popup.message.fetchUserInfoFailed'), 'error');
                 return;
             }
 
@@ -7005,33 +8895,35 @@ ${text}
 
             // 添加时间范围筛选
             if (startTime) {
-                // 将datetime-local格式转换为：YYYY-MM-DD HH:mm:ss（使用本地时间，不转换时区）
-                const startDateTime = new Date(startTime);
-                const year = startDateTime.getFullYear();
-                const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
-                const day = String(startDateTime.getDate()).padStart(2, '0');
-                const hours = String(startDateTime.getHours()).padStart(2, '0');
-                const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
-                const seconds = String(startDateTime.getSeconds()).padStart(2, '0');
-                requestBody.startTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // 格式: "2024-01-01 00:00:00"
+                const startDateTime = this.parseISODateTime(startTime);
+                if (startDateTime) {
+                    const year = startDateTime.getFullYear();
+                    const month = String(startDateTime.getMonth() + 1).padStart(2, '0');
+                    const day = String(startDateTime.getDate()).padStart(2, '0');
+                    const hours = String(startDateTime.getHours()).padStart(2, '0');
+                    const minutes = String(startDateTime.getMinutes()).padStart(2, '0');
+                    const seconds = String(startDateTime.getSeconds()).padStart(2, '0');
+                    requestBody.startTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                }
             }
 
             if (endTime) {
-                // 将datetime-local格式转换为：YYYY-MM-DD HH:mm:ss（使用本地时间，不转换时区），并设置为当天的23:59:59
-                const endDateTime = new Date(endTime);
-                endDateTime.setHours(23, 59, 59, 999);
-                const year = endDateTime.getFullYear();
-                const month = String(endDateTime.getMonth() + 1).padStart(2, '0');
-                const day = String(endDateTime.getDate()).padStart(2, '0');
-                const hours = String(endDateTime.getHours()).padStart(2, '0');
-                const minutes = String(endDateTime.getMinutes()).padStart(2, '0');
-                const seconds = String(endDateTime.getSeconds()).padStart(2, '0');
-                requestBody.endTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // 格式: "2024-12-31 23:59:59"
+                const endDateTime = this.parseISODateTime(endTime);
+                if (endDateTime) {
+                    endDateTime.setHours(23, 59, 59, 999);
+                    const year = endDateTime.getFullYear();
+                    const month = String(endDateTime.getMonth() + 1).padStart(2, '0');
+                    const day = String(endDateTime.getDate()).padStart(2, '0');
+                    const hours = String(endDateTime.getHours()).padStart(2, '0');
+                    const minutes = String(endDateTime.getMinutes()).padStart(2, '0');
+                    const seconds = String(endDateTime.getSeconds()).padStart(2, '0');
+                    requestBody.endTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                }
             }
 
             const url = 'http://www.dbaiops.cn/api/awr/list';
 
-            this.showLoadingOverlay('正在加载历史记录...(Loading history records...)');
+            this.showLoadingOverlay(this.t('popup.awr.history.loadingHistory'));
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -7084,7 +8976,7 @@ ${text}
         } catch (error) {
             console.error('加载AWR历史记录失败:', error);
             this.hideLoadingOverlay();
-            this.showMessage('加载历史记录失败(Failed to load history records): ' + (error.message || '未知错误(Unknown error)'), 'error');
+            this.showMessage(this.t('popup.message.loadHistoryFailed', { error: error.message || '未知错误(Unknown error)' }), 'error');
             // 显示空状态
             this.renderAwrHistoryList();
             // 如果查询出错，将输入框设置为空
@@ -7137,7 +9029,6 @@ ${text}
 
         return null;
     }
-
     // 渲染历史记录列表
     renderAwrHistoryList() {
         const tbody = document.getElementById('awrHistoryList');
@@ -7154,13 +9045,15 @@ ${text}
                 if (!emptyDiv) {
                     emptyDiv = document.createElement('div');
                     emptyDiv.className = 'empty-history';
-                    emptyDiv.innerHTML = `
-                        <div class="empty-history-icon">📝</div>
-                        <div class="empty-history-text">暂无分析记录(No Analysis Records)</div>
-                        <div class="empty-history-subtext">尚未进行AWR分析，请先创建新的分析任务(Haven't performed AWR analysis yet, please create a new analysis task first)</div>
-                    `;
                     tableContainer.appendChild(emptyDiv);
                 }
+                const emptyTitle = this.t('popup.awr.history.emptyTitle');
+                const emptySubtitle = this.t('popup.awr.history.emptySubtitle');
+                emptyDiv.innerHTML = `
+                    <div class="empty-history-icon">📝</div>
+                    <div class="empty-history-text">${this.escapeHtml(emptyTitle)}</div>
+                    <div class="empty-history-subtext">${this.escapeHtml(emptySubtitle)}</div>
+                `;
                 emptyDiv.style.display = 'block';
             }
             return;
@@ -7189,14 +9082,15 @@ ${text}
     createAwrHistoryTableRow(item) {
         const tr = document.createElement('tr');
         tr.className = 'awr-history-row';
+        const locale = this.i18n?.getIntlLocale(this.currentLanguage);
 
         // 格式化时间
-        let createTime = '未知(Unknown)';
+        let createTime = this.t('popup.awr.history.unknown');
         if (item.createTime) {
             try {
                 const date = new Date(item.createTime);
                 if (!isNaN(date.getTime())) {
-                    createTime = date.toLocaleString('zh-CN');
+                    createTime = date.toLocaleString(locale);
                 }
             } catch (e) {
                 console.error('日期解析失败:', e);
@@ -7212,8 +9106,8 @@ ${text}
         const resendDisabledAttr = isResendDisabled ? 'disabled' : '';
         const resendDisabledClass = isResendDisabled ? 'disabled' : '';
         const resendTitle = isResendDisabled
-            ? '只有执行成功的记录可以重发邮件(Only successfully completed records can resend email)'
-            : '重发邮件(Resend email)';
+            ? this.t('popup.awr.history.resendDisabledTooltip')
+            : this.t('popup.awr.history.resendTooltip');
 
         // 问题描述（截断显示）
         const problemDesc = item.problemDescription || '';
@@ -7224,19 +9118,29 @@ ${text}
         const fileNamePreview = fileName.length > 20 ? fileName.substring(0, 20) + '...' : fileName;
 
         // 构建表格行内容
+        const noFileText = this.t('popup.awr.history.notSpecified');
+        const unknownText = this.t('popup.awr.history.unknown');
+        const languageKeyMap = {
+            'zh': 'popup.awr.history.language.zh',
+            'en': 'popup.awr.history.language.en'
+        };
+        const languageKey = languageKeyMap[item.language] || 'popup.awr.history.language.unknown';
+        const languageText = this.t(languageKey);
+        const resendButtonLabel = this.t('popup.awr.history.resendButton');
+
         tr.innerHTML = `
             <td class="awr-table-cell-time">${this.escapeHtml(createTime)}</td>
             <td class="awr-table-cell-status">
                 <span class="awr-history-status ${statusClass}">${statusText}</span>
             </td>
-            <td class="awr-table-cell-filename" title="${this.escapeHtml(fileName)}">${this.escapeHtml(fileNamePreview || '未指定(Not Specified)')}</td>
+            <td class="awr-table-cell-filename" title="${this.escapeHtml(fileName)}">${this.escapeHtml(fileNamePreview || noFileText)}</td>
             <td class="awr-table-cell-problem" title="${this.escapeHtml(problemDesc)}">${this.escapeHtml(problemPreview || '-')}</td>
-            <td class="awr-table-cell-email">${this.escapeHtml(item.email || '未知(Unknown)')}</td>
-            <td class="awr-table-cell-language">${item.language === 'zh' ? '中文(Chinese)' : 'English'}</td>
+            <td class="awr-table-cell-email">${this.escapeHtml(item.email || unknownText)}</td>
+            <td class="awr-table-cell-language">${this.escapeHtml(languageText)}</td>
             <td class="awr-table-cell-actions">
                 <div class="awr-history-actions">
                     <button class="awr-action-btn reanalyze-btn ${resendDisabledClass}" data-id="${item.id}" title="${resendTitle}" ${resendDisabledAttr}>
-                        重发邮件(Resend email)
+                        ${this.escapeHtml(resendButtonLabel)}
                     </button>
                    
                 </div>
@@ -7256,14 +9160,14 @@ ${text}
 
     // 获取状态文本
     getAwrStatusText(status) {
-        const statusMap = {
-            'pending': '未分析(Pending)',
-            'success': '成功(Success)',
-            'failed': '失败(Failed)',
-            'running': '执行中(Running)',
-            'unknown': '未知(Unknown)'
-        };
-        return statusMap[status] || '未知(Unknown)';
+        const key = {
+            'pending': 'popup.awr.history.status.pending',
+            'success': 'popup.awr.history.status.success',
+            'failed': 'popup.awr.history.status.failed',
+            'running': 'popup.awr.history.status.running',
+            'unknown': 'popup.awr.history.status.unknown'
+        }[status] || 'popup.awr.history.status.unknown';
+        return this.t(key);
     }
 
     // 获取状态样式类
@@ -7287,7 +9191,12 @@ ${text}
         const nextBtn = document.getElementById('awrNextPageBtn');
 
         if (pageInfo) {
-            pageInfo.textContent = `第 ${this.awrHistoryCurrentPage} 页，共 ${totalPages} 页 (Page ${this.awrHistoryCurrentPage} of ${totalPages}, Total ${this.awrHistoryTotal} records)`;
+            const safeTotalPages = totalPages > 0 ? totalPages : 1;
+            pageInfo.textContent = this.t('popup.awr.pagination.info', {
+                current: this.awrHistoryCurrentPage,
+                total: safeTotalPages,
+                records: this.awrHistoryTotal
+            });
         }
 
         if (prevBtn) {
@@ -7303,7 +9212,7 @@ ${text}
     async handleReanalyze(item) {
         // 检查状态：只有成功状态可以重发邮件
         if (item.status !== 'success') {
-            this.showMessage('只有执行成功的记录可以重发邮件(Only successfully completed records can resend email)', 'error', { centered: true });
+            this.showMessage(this.t('popup.message.resendEmailOnlySuccess'), 'error', { centered: true });
             return;
         }
 
@@ -7315,14 +9224,14 @@ ${text}
         try {
             const apiKey = this.resolveApiKey();
             if (!apiKey) {
-                this.showMessage('未配置API密钥(API key not configured)', 'error', { centered: true });
+                this.showMessage(this.t('popup.message.apiKeyNotConfiguredShort'), 'error', { centered: true });
                 return;
             }
 
             // 构建URL，使用查询参数传递id
             const url = `http://www.dbaiops.cn/api/awr/resendEmail?id=${encodeURIComponent(item.id)}`;
 
-            this.showLoadingOverlay('重新发送邮件中(Resending the email)...');
+            this.showLoadingOverlay(this.t('popup.awr.history.resendingEmail'));
 
             // 使用Fetch方式，POST请求，不需要body
             const requestOptions = {
@@ -7353,10 +9262,10 @@ ${text}
             if (isSuccess || (isEmptyStatus && response.ok)) {
                 this.hideLoadingOverlay();
 
-                this.showMessage('重发邮件操作成功，请稍候查看结果(The resending operation of the email was successful. Please check the result shortly)', 'success', { centered: true });
+                this.showMessage(this.t('popup.message.resendEmailSuccess'), 'success', { centered: true });
                 // 刷新列表，保持当前筛选条件
-                const startTime = document.getElementById('awrStartTime')?.value || '';
-                const endTime = document.getElementById('awrEndTime')?.value || '';
+                const startTime = this.getDateTimeInputValue('awrStartTime');
+                const endTime = this.getDateTimeInputValue('awrEndTime');
                 const status = document.getElementById('awrStatusFilter')?.value || '';
                 // this.loadAwrHistoryList(this.awrHistoryCurrentPage, this.awrHistoryPageSize, '', startTime, endTime, status);
             } else {
@@ -7367,7 +9276,7 @@ ${text}
         } catch (error) {
             console.error('重新分析失败:', error);
             this.hideLoadingOverlay();
-            this.showMessage('重新分析失败(Re-analysis failed): ' + (error.message || '未知错误(Unknown error)'), 'error', { centered: true });
+            this.showMessage(this.t('popup.message.reanalyzeFailed', { error: error.message || '未知错误(Unknown error)' }), 'error', { centered: true });
         }
     }
 
@@ -7379,11 +9288,13 @@ ${text}
         historyList.innerHTML = '';
 
         if (this.conversationHistory.length === 0) {
+            const emptyTitle = this.t('popup.history.emptyTitle');
+            const emptySubtitle = this.t('popup.history.emptySubtitle');
             historyList.innerHTML = `
                 <div class="empty-history">
                     <div class="empty-history-icon">📝</div>
-                    <div class="empty-history-text">暂无对话历史记录</div>
-                    <div class="empty-history-subtext">开始提问后，您的对话记录将显示在这里</div>
+                    <div class="empty-history-text">${emptyTitle}</div>
+                    <div class="empty-history-subtext">${emptySubtitle}</div>
                 </div>
             `;
             return;
@@ -7392,18 +9303,21 @@ ${text}
         // 添加批量操作区域
         const batchActionsDiv = document.createElement('div');
         batchActionsDiv.className = 'batch-actions';
+        const selectAllText = this.t('popup.history.selectAll');
+        const initialExportText = this.t('popup.history.batchExport', { count: 0 });
+        const initialDeleteText = this.t('popup.history.batchDelete', { count: 0 });
         batchActionsDiv.innerHTML = `
             <div class="batch-controls">
                 <label class="select-all-label">
                     <input type="checkbox" id="selectAllCheckbox">
-                    全选
+                    ${selectAllText}
                 </label>
                 <div class="batch-buttons">
                     <button id="batchExportBtn" class="batch-export-btn" disabled>
-                        导出选中 (0)
+                        ${initialExportText}
                     </button>
                     <button id="batchDeleteBtn" class="batch-delete-btn" disabled>
-                        删除选中 (0)
+                        ${initialDeleteText}
                     </button>
                 </div>
             </div>
@@ -7420,41 +9334,52 @@ ${text}
     createHistoryItemElement(item, index) {
         const div = document.createElement('div');
         div.className = 'history-item';
+        const locale = this.i18n?.getIntlLocale(this.currentLanguage);
 
         const questionPreview = item.question.length > 50 ? item.question.substring(0, 50) + '...' : item.question;
         const answerPreview = item.answer.length > 100 ? item.answer.substring(0, 100) + '...' : item.answer;
-        const time = new Date(item.timestamp).toLocaleString('zh-CN');
+        const time = new Date(item.timestamp).toLocaleString(locale);
+
+        const deleteTitle = this.t('popup.history.deleteSingleTitle');
+        const modelLabel = this.t('popup.history.modelLabel');
+        const knowledgeLabel = this.t('popup.history.knowledgeLabel');
+        const pageLabel = this.t('popup.history.pageLabel');
+        const questionLabel = this.t('popup.history.questionLabel');
+        const answerLabel = this.t('popup.history.answerLabel');
+        const fullQuestionLabel = this.t('popup.history.fullQuestionLabel');
+        const fullAnswerLabel = this.t('popup.history.fullAnswerLabel');
+        const checkboxAriaLabel = this.t('popup.history.selectRecordAria', { time });
 
         div.innerHTML = `
             <div class="history-header">
-                <div class="history-time"><input type="checkbox" class="history-checkbox" data-id="${item.id}">${time}</div>
+                <div class="history-time">
+                    <input type="checkbox" class="history-checkbox" data-id="${item.id}" aria-label="${checkboxAriaLabel}">
+                    ${time}
+                </div>
                 <div class="history-actions">
-                    
-                    
-                    <button class="history-action-btn delete-single-btn" data-id="${item.id}" title="删除此条记录">
+                    <button class="history-action-btn delete-single-btn" data-id="${item.id}" title="${deleteTitle}">
                         🗑️
                     </button>
-                    
                 </div>
             </div>
             <div class="history-meta">
-                <span class="history-model">模型: ${item.modelName}</span>
-                ${item.knowledgeBaseName ? `<span class="history-knowledge-base">知识库: ${item.knowledgeBaseName}</span>` : ''}
-                ${item.pageUrl ? `<span class="history-url">页面: ${new URL(item.pageUrl).hostname}</span>` : ''}
+                <span class="history-model">${modelLabel} ${item.modelName}</span>
+                ${item.knowledgeBaseName ? `<span class="history-knowledge-base">${knowledgeLabel} ${item.knowledgeBaseName}</span>` : ''}
+                ${item.pageUrl ? `<span class="history-url">${pageLabel} ${new URL(item.pageUrl).hostname}</span>` : ''}
             </div>
             <div class="history-question">
-                <strong>问题:</strong> ${this.escapeHtml(questionPreview)}
+                <strong>${questionLabel}</strong> ${this.escapeHtml(questionPreview)}
             </div>
             <div class="history-answer">
-                <strong>回答:</strong> ${this.escapeHtml(answerPreview)}
+                <strong>${answerLabel}</strong> ${this.escapeHtml(answerPreview)}
             </div>
             <div class="history-full-content" id="history-full-${item.id}" style="display: none;">
                 <div class="history-full-question">
-                    <strong>完整问题:</strong><br>
+                    <strong>${fullQuestionLabel}</strong><br>
                     ${this.escapeHtml(item.question)}
                 </div>
                 <div class="history-full-answer">
-                    <strong>完整回答:</strong><br>
+                    <strong>${fullAnswerLabel}</strong><br>
                     ${this.escapeHtml(item.answer)}
                 </div>
             </div>
@@ -7468,20 +9393,23 @@ ${text}
         try {
             const item = this.conversationHistory.find(h => h.id === id);
             if (item) {
-                const textToCopy = `问题: ${item.question}\n\n回答: ${item.answer}`;
+                const questionLabel = this.t('popup.history.questionLabel');
+                const answerLabel = this.t('popup.history.answerLabel');
+                const textToCopy = `${questionLabel} ${item.question}\n\n${answerLabel} ${item.answer}`;
                 await navigator.clipboard.writeText(textToCopy);
-                this.showMessage('已复制到剪贴板', 'success');
+                this.showMessage(this.t('popup.message.copied'), 'success');
             }
         } catch (error) {
             console.error('复制历史记录失败:', error);
-            this.showMessage('复制失败', 'error');
+            this.showMessage(this.t('popup.message.copyFailed'), 'error');
         }
     }
 
     // 删除历史记录项
     deleteHistoryItem(id) {
         try {
-            if (!confirm('确定要删除这条历史记录吗？此操作不可恢复。')) {
+            const confirmMessage = this.t('popup.history.confirmDeleteSingle');
+            if (!confirm(confirmMessage)) {
                 return;
             }
 
@@ -7490,10 +9418,10 @@ ${text}
                 conversationHistory: this.conversationHistory
             });
             this.loadHistoryList();
-            this.showMessage('历史记录已删除', 'success');
+            this.showMessage(this.t('popup.message.historyDeleted'), 'success');
         } catch (error) {
             console.error('删除历史记录失败:', error);
-            this.showMessage('删除失败', 'error');
+            this.showMessage(this.t('popup.message.deleteFailed'), 'error');
         }
     }
     // 在合适的位置添加这个方法（比如在 deleteHistoryItem 方法后面）
@@ -7506,12 +9434,12 @@ ${text}
 
         if (batchExportBtn) {
             batchExportBtn.disabled = selectedCount === 0;
-            batchExportBtn.textContent = `导出选中 (${selectedCount})`;
+            batchExportBtn.textContent = this.t('popup.history.batchExport', { count: selectedCount });
         }
 
         if (batchDeleteBtn) {
             batchDeleteBtn.disabled = selectedCount === 0;
-            batchDeleteBtn.textContent = `删除选中 (${selectedCount})`;
+            batchDeleteBtn.textContent = this.t('popup.history.batchDelete', { count: selectedCount });
         }
     }
     // 在合适的位置添加这个方法
@@ -7520,11 +9448,12 @@ ${text}
         const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.id);
 
         if (selectedIds.length === 0) {
-            this.showMessage('请先选择要删除的记录', 'warning');
+            this.showMessage(this.t('popup.message.selectRecordsToDelete'), 'warning');
             return;
         }
 
-        if (!confirm(`确定要删除选中的 ${selectedIds.length} 条历史记录吗？此操作不可恢复。`)) {
+        const confirmMessage = this.t('popup.history.confirmDeleteSelected', { count: selectedIds.length });
+        if (!confirm(confirmMessage)) {
             return;
         }
 
@@ -7534,10 +9463,10 @@ ${text}
                 conversationHistory: this.conversationHistory
             });
             this.loadHistoryList();
-            this.showMessage(`已删除 ${selectedIds.length} 条历史记录`, 'success');
+            this.showMessage(this.t('popup.message.deleteHistorySelectionSuccess', { count: selectedIds.length }), 'success');
         } catch (error) {
             console.error('批量删除历史记录失败:', error);
-            this.showMessage('批量删除失败', 'error');
+            this.showMessage(this.t('popup.message.batchDeleteFailed'), 'error');
         }
     }
     // 在合适的位置添加这个方法
@@ -7562,13 +9491,14 @@ ${text}
     // 清空历史记录
     async clearHistory() {
         try {
-            if (confirm('确定要清空所有对话历史记录吗？此操作不可恢复。')) {
+            const confirmMessage = this.t('popup.history.confirmClearAll');
+            if (confirm(confirmMessage)) {
                 this.conversationHistory = [];
                 await chrome.storage.sync.set({
                     conversationHistory: []
                 });
                 this.loadHistoryList();
-                this.showMessage('历史记录已清空', 'success');
+                this.showMessage(this.t('popup.message.historyCleared'), 'success');
             }
         } catch (error) {
             console.error('清空历史记录失败:', error);
@@ -7577,9 +9507,9 @@ ${text}
                 console.log('检测到存储配额问题，尝试清理旧记录...');
                 await this.cleanupHistoryRecords();
                 this.loadHistoryList();
-                this.showMessage('已清理旧记录以释放存储空间', 'info');
+                this.showMessage(this.t('popup.message.historyCleaned'), 'info');
             } else {
-                this.showMessage('清空失败', 'error');
+                this.showMessage(this.t('popup.message.clearFailed'), 'error');
             }
         }
     }
@@ -7607,10 +9537,10 @@ ${text}
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            this.showMessage(`已导出全部 ${this.conversationHistory.length} 条历史记录`, 'success');
+            this.showMessage(this.t('popup.message.exportAllHistorySuccess', { count: this.conversationHistory.length }), 'success');
         } catch (error) {
             console.error('导出历史记录失败:', error);
-            this.showMessage('导出失败', 'error');
+            this.showMessage(this.t('popup.message.exportFailed'), 'error');
         }
     }
 
@@ -7623,6 +9553,7 @@ ${text}
 
     async generateSummaryFromText(text) {
         try {
+            const locale = this.i18n?.getIntlLocale(this.currentLanguage);
             // 分析文本内容
             const lines = text.split('\n').filter(line => line.trim());
             const words = text.split(/\s+/).filter(word => word.length > 0);
@@ -7652,62 +9583,75 @@ ${text}
             }
 
             // 检测内容类型
-            let contentType = '文本内容';
+            let contentTypeKey = 'text';
             if (text.includes('http') || text.includes('www')) {
-                contentType = '包含链接的文本';
+                contentTypeKey = 'withLinks';
             }
             if (text.includes('代码') || text.includes('function') || text.includes('class')) {
-                contentType = '代码或技术文档';
+                contentTypeKey = 'code';
             }
             if (text.includes('错误') || text.includes('Error') || text.includes('失败')) {
-                contentType = '错误信息或日志';
+                contentTypeKey = 'error';
             }
+            const contentType = this.t(`popup.summary.contentType.${contentTypeKey}`);
 
             // 构建摘要
-            let summary = `📄 内容摘要\n\n`;
-            summary += `📝 内容类型：${contentType}\n\n`;
+            const summaryParts = [];
+            summaryParts.push(this.t('popup.summary.header'));
+            summaryParts.push('');
+            summaryParts.push(this.t('popup.summary.contentTypeLabel', { type: contentType }));
+            summaryParts.push('');
 
             if (title) {
-                summary += `📋 标题：${title}\n\n`;
+                summaryParts.push(this.t('popup.summary.titleLabel', { title }));
+                summaryParts.push('');
             }
 
-            summary += `📊 内容统计：\n`;
-            summary += `• 字符数：${charCount}\n`;
-            summary += `• 单词数：${wordCount}\n`;
-            summary += `• 行数：${lineCount}\n`;
-            summary += `• 句子数：${sentenceCount}\n\n`;
+            summaryParts.push(this.t('popup.summary.statsHeader'));
+            summaryParts.push(this.t('popup.summary.statChars', { count: charCount }));
+            summaryParts.push(this.t('popup.summary.statWords', { count: wordCount }));
+            summaryParts.push(this.t('popup.summary.statLines', { count: lineCount }));
+            summaryParts.push(this.t('popup.summary.statSentences', { count: sentenceCount }));
+            summaryParts.push('');
 
-            summary += `📝 内容预览：\n${contentPreview}\n\n`;
+            summaryParts.push(this.t('popup.summary.previewHeader', { preview: contentPreview }));
+            summaryParts.push('');
 
             // 如果内容很长，提供分段分析
             if (lines.length > 10) {
-                summary += `📋 内容结构：\n`;
                 const sections = this.analyzeContentStructure(lines);
+                summaryParts.push(this.t('popup.summary.structureHeader'));
                 sections.forEach((section, index) => {
-                    summary += `${index + 1}. ${section.title} (${section.lines}行)\n`;
+                    summaryParts.push(this.t('popup.summary.structureItem', {
+                        index: index + 1,
+                        title: section.title,
+                        lines: section.lines
+                    }));
                 });
-                summary += '\n';
+                summaryParts.push('');
             }
 
             // 添加关键词分析
             const keywords = this.extractKeywords(text);
             if (keywords.length > 0) {
-                summary += `🔑 关键词：${keywords.slice(0, 10).join(', ')}\n\n`;
+                summaryParts.push(`${this.t('popup.summary.keywordsLabel')}${keywords.slice(0, 10).join(', ')}`);
+                summaryParts.push('');
             }
 
-            summary += `⏰ 生成时间：${new Date().toLocaleString('zh-CN')}`;
+            summaryParts.push(`${this.t('popup.summary.generatedAt')}${new Date().toLocaleString(locale || undefined)}`);
 
-            return summary;
+            return summaryParts.join('\n');
 
         } catch (error) {
             console.error('生成文本摘要失败:', error);
-            return `内容摘要生成失败：${error.message}`;
+            return this.t('popup.summary.generateFailed', { error: error.message || 'Unknown error' });
         }
     }
 
     analyzeContentStructure(lines) {
         const sections = [];
-        let currentSection = { title: '开头部分', lines: 0 };
+        let sectionIndex = 1;
+        let currentSection = { title: this.t('popup.summary.section.start'), lines: 0 };
 
         lines.forEach((line, index) => {
             currentSection.lines++;
@@ -7724,8 +9668,9 @@ ${text}
                     sections.push({ ...currentSection });
                 }
 
+                sectionIndex += 1;
                 currentSection = {
-                    title: line.trim() || `段落${sections.length + 2}`,
+                    title: line.trim() || this.t('popup.summary.section.default', { index: sectionIndex }),
                     lines: 0
                 };
             }
@@ -7785,7 +9730,7 @@ ${text}
         // 根据配置状态显示不同的提示
         if (!hasProviders || !hasModels) {
             console.log('配置检查：缺少服务商或模型配置');
-            this.showConfigurationNotice('请先在设置页面配置服务商和模型', 'warning');
+            this.showConfigurationNotice(this.t('popup.notice.configureProvidersAndModels'), 'warning');
         }
 
         // else if (!hasValidApiKey) {
@@ -7831,7 +9776,7 @@ ${text}
 
             // 添加设置按钮
             const settingsBtn = document.createElement('button');
-            settingsBtn.textContent = '去设置';
+            settingsBtn.textContent = this.t('popup.common.goToSettings');
             settingsBtn.style.cssText = `
                 background: ${type === 'warning' ? '#ffc107' : '#17a2b8'};
                 color: white;
@@ -7882,7 +9827,7 @@ ${text}
             noticeContainer.style.borderColor = type === 'warning' ? '#ffeaa7' : '#bee5eb';
 
             const settingsBtn = document.createElement('button');
-            settingsBtn.textContent = '去设置';
+            settingsBtn.textContent = this.t('popup.common.goToSettings');
             settingsBtn.style.cssText = `
                 background: ${type === 'warning' ? '#ffc107' : '#17a2b8'};
                 color: white;
@@ -7924,7 +9869,6 @@ ${text}
             this.clearConfigurationNotice();
         }, 8000); // 8秒后自动隐藏
     }
-
     // 清除配置提示信息
     clearConfigurationNotice() {
         const noticeContainer = document.getElementById('configuration-notice');
@@ -7963,7 +9907,7 @@ ${text}
         console.log('startNewSession: 知识库状态变量已重置');
 
         // 显示提示消息
-        this.showMessage('已开启新会话，可以开始新的问答', 'success');
+        this.showMessage(this.t('popup.message.newSessionStarted'), 'success');
 
         // 重置一些会话相关的状态
         // 重置计时
@@ -8377,7 +10321,7 @@ ${text}
         const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.id);
 
         if (selectedIds.length === 0) {
-            this.showMessage('请先选择要导出的记录', 'warning');
+            this.showMessage(this.t('popup.message.selectRecordsToExport'), 'warning');
             return;
         }
 
@@ -8406,10 +10350,10 @@ ${text}
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            this.showMessage(`已导出 ${selectedHistory.length} 条历史记录`, 'success');
+            this.showMessage(this.t('popup.message.exportHistorySelectionSuccess', { count: selectedHistory.length }), 'success');
         } catch (error) {
             console.error('批量导出历史记录失败:', error);
-            this.showMessage('批量导出失败', 'error');
+            this.showMessage(this.t('popup.message.batchExportFailed'), 'error');
         }
     }
     // 新增方法：添加用户交互监听
@@ -8584,7 +10528,7 @@ ${text}
 
             // 标题
             const titleEl = document.createElement('div');
-            titleEl.textContent = '参考知识库：';
+            titleEl.textContent = this.t('popup.knowledge.referenceTitle');
             titleEl.className = 'cankao-list';
             titleEl.style.cssText = 'margin-top: 12px; font-weight: 600; color: #111827;';
             knowlistEl.appendChild(titleEl);
@@ -8609,7 +10553,7 @@ ${text}
 
                 const toggleEl = document.createElement('a');
                 toggleEl.href = '#';
-                toggleEl.textContent = '查看全部';
+                toggleEl.textContent = this.t('popup.common.viewAll');
                 toggleEl.style.cssText = 'color: #2563eb; text-decoration: none;';
                 toggleEl.dataset.index = String(index);
                 itemEl.appendChild(toggleEl);
@@ -8624,7 +10568,9 @@ ${text}
                     e.preventDefault();
                     const isHidden = fullEl.style.display === 'none';
                     fullEl.style.display = isHidden ? 'block' : 'none';
-                    toggleEl.textContent = isHidden ? '收起' : '查看全部';
+                    toggleEl.textContent = isHidden
+                        ? this.t('popup.common.collapseDetails')
+                        : this.t('popup.common.viewAll');
                 });
 
                 listEl.appendChild(itemEl);
@@ -8653,14 +10599,14 @@ ${text}
             const resultTitle = currentContainer ? currentContainer.querySelector('.result-title') : null;
 
             if (resultTitle) {
-                resultTitle.textContent = '已停止回答';
+                resultTitle.textContent = this.t('popup.progress.stopped');
             }
 
             // 获取最新的对话容器中的result-text-tips
             const resultTextTips = currentContainer ? currentContainer.querySelector('.result-text-tips') : null;
 
             if (resultTextTips) {
-                resultTextTips.textContent = '已停止作答，请重新提问';
+                resultTextTips.textContent = this.t('popup.progress.stoppedDescription');
             }
         } catch (e) {
             console.error('停止处理失败:', e);
@@ -8678,7 +10624,6 @@ ${text}
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${month}-${day} ${hours}:${minutes}`;
     }
-
     // 更新问题显示
     updateQuestionDisplay(question, container = null) {
         // 获取目标容器
@@ -8711,7 +10656,7 @@ ${text}
                         <img src="icons/bic-user.png" alt="用户" class="avatar-img">
                     </div>
                     <div class="question-info">
-                        <div class="question-name">用户</div>
+                        <div class="question-name" data-i18n="popup.result.userName">用户</div>
                         <div class="question-time">${timeStr}</div>
                     </div>
                 </div>
@@ -8727,7 +10672,6 @@ ${text}
         // 滚动到底部
         this.scrollToBottom();
     }
-
     // 更新AI助手显示
     updateAIDisplay(container = null) {
         // 获取目标容器
@@ -8772,6 +10716,11 @@ ${text}
                     </div>
                 </div>
             `;
+
+            const questionNameEl = questionDisplay.querySelector('.question-name');
+            if (questionNameEl) {
+                questionNameEl.textContent = this.t('popup.result.userName');
+            }
         }
 
         // 滚动到底部
@@ -8803,7 +10752,7 @@ ${text}
                             <img src="icons/bic-user.png" alt="用户" class="avatar-img">
                         </div>
                         <div class="question-info">
-                            <div class="question-name">用户</div>
+                            <div class="question-name" data-i18n="popup.result.userName">用户</div>
                             <div class="question-time"></div>
                         </div>
                     </div>
@@ -8854,6 +10803,21 @@ ${text}
                 </div>
             </div>
         `;
+
+        const questionNameEl = conversationContainer.querySelector('.question-display .question-name');
+        if (questionNameEl) {
+            questionNameEl.textContent = this.t('popup.result.userName');
+        }
+
+        const aiNameEl = conversationContainer.querySelector('.ai-display .ai-name');
+        if (aiNameEl) {
+            aiNameEl.textContent = this.t('popup.result.aiName');
+        }
+
+        const resultTitleEl = conversationContainer.querySelector('.result-title');
+        if (resultTitleEl) {
+            resultTitleEl.textContent = this.t('popup.result.title');
+        }
 
         // 将新容器添加到主结果容器中
         if (this.resultContainer) {
@@ -8991,7 +10955,7 @@ ${text}
         // 重置标题
         const resultTitle = container.querySelector('.result-title');
         if (resultTitle) {
-            resultTitle.textContent = '回答：';
+            resultTitle.textContent = this.t('popup.result.title');
         }
 
         // 清空结果文本
@@ -9056,7 +11020,7 @@ ${text}
 
             if (!apiKey) {
                 console.error('未配置API密钥，无法提交反馈', 'error');
-                this.showMessage("感谢您的反馈!", 'success');
+                this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
                 // this.showMessage('未配置API密钥，无法提交反馈', 'error');
                 return;
             }
@@ -9090,7 +11054,7 @@ ${text}
                     } else {
                         // 没有ID，直接移除样式
                         this.removeFeedbackStyle(targetContainer);
-                        this.showMessage('已取消点赞', 'info');
+                        this.showMessage(this.t('popup.message.likeCancelled'), 'info');
                         return;
                     }
                 } else {
@@ -9114,7 +11078,7 @@ ${text}
                     } else {
                         // 没有ID，直接移除样式
                         this.removeFeedbackStyle(targetContainer);
-                        this.showMessage('已取消否定', 'info');
+                        this.showMessage(this.t('popup.message.dislikeCancelled'), 'info');
                         return;
                     }
                 } else {
@@ -9151,13 +11115,13 @@ ${text}
                 // 显示错误消息
                 const errorMsg = response ? response.message || '操作失败' : '网络错误';
                 console.error('反馈操作失败:', errorMsg);
-                this.showMessage("感谢您的反馈!", 'success');
+                this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
                 // this.showMessage(errorMsg, 'error');
             }
 
         } catch (error) {
             console.error('反馈操作失败:', error);
-            this.showMessage("感谢您的反馈!", 'success');
+            this.showMessage(this.t('popup.message.feedbackThanksPositive'), 'success');
             // this.showMessage('操作失败，请稍后重试', 'error');
         }
     }
@@ -9352,7 +11316,7 @@ ${text}
     }
 
     // 显示复制成功提示
-    // 简洁蓝色提示：屏幕居中显示“复制成功”
+    // 简洁蓝色提示：屏幕居中显示"复制成功"
     showCopySuccess() {
         try {
             const existing = document.querySelector('.bicqa-toast');
@@ -9360,7 +11324,7 @@ ${text}
 
             const toast = document.createElement('div');
             toast.className = 'bicqa-toast';
-            toast.textContent = '复制成功';
+            toast.textContent = this.t('popup.message.copied');
             toast.style.cssText = `
 			position: fixed;
 			top: 50%;

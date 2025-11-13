@@ -42,9 +42,9 @@ BIC-QA is a comprehensive database knowledge Q&A platform that supports all main
 
 ## 🚀 Download Now
 
-[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.7-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.7/BIC-QA_v1.0.7.zip)
+[![Download](https://img.shields.io/badge/📥_Download_BIC--QA_v1.0.8.2-orange?style=for-the-badge&logo=download)](https://gitee.com/BIC-QA/bic-qa/releases/download/v1.0.8.2/BIC-QA_v1.0.8.2.zip)
 
-**Version**: v1.0.7 | **Size**: ~15MB | **Updated**: November 2025
+**Version**: v1.0.8.2 | **Size**: ~1MB | **Updated**: August 2025
 
 </div>
 
@@ -459,6 +459,7 @@ ollama list
 - **GitHub**: [Submit Issue](https://gitee.com/BIC-QA/BIC-QA/issues)
 
 ### 🔄 Update Log
+- **v1.0.8.2**: Added multi-language support, fixed known bugs
 - **v1.0.7**: Added AWR report analysis feature, supporting Oracle database performance diagnosis
 - **v1.0.6**: Support for adding large model service providers, fixed known issues
 - **v1.0.5**: Performance optimization, fixed known issues
@@ -471,7 +472,7 @@ ollama list
 
 **BIC-QA Intelligent Q&A Assistant** - Making knowledge retrieval smarter, making Q&A more efficient
 
-**Version**: v1.0.7 | **Update Date**: November 2025
+**Version**: v1.0.8.2 | **Update Date**: November 2025
 
 [⭐ Give us a star](https://gitee.com/BIC-QA/BIC-QA) | [🐛 Report Issues](https://gitee.com/BIC-QA/BIC-QA/issues)
 
