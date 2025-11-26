@@ -159,6 +159,17 @@ BIC-QA 支持自定义提示词和检索参数，提供三种预设模式：
 
 BIC-QA 提供了强大的 Oracle 数据库 AWR（Automatic Workload Repository）报告分析功能，帮助数据库管理员快速诊断数据库性能问题，获取专业的分析报告和优化建议。
 
+#### 📹 功能演示视频
+
+<div align="center">
+
+<video width="800" controls>
+  <source src="assets/BIC-QA 解析AWR功能使用介绍.mp4" type="video/mp4">
+  您的浏览器不支持视频播放。
+</video>
+
+</div>
+
 #### 🎯 功能概述
 
 AWR 分析功能可以：
@@ -169,6 +180,14 @@ AWR 分析功能可以：
 - **历史管理**：查看和管理历史分析记录，支持重新分析
 
 > ⚠️ **版本说明**：AWR 报告分析功能当前为 Beta 测试版本。我们诚挚邀请您在使用过程中提供宝贵的意见和建议，您的反馈将帮助我们持续改进产品。当前版本无使用限制，可正常使用所有功能。
+
+#### 📋 AWR 报告分析数据源提示
+
+**AWR 报告分析数据源提示**：
+
+- ✅ **支持**：Oracle 单实例数据库的 AWR 报告。
+- ✅ **RAC 建议**：如为 RAC 环境，请使用 `awrrpt.sql` 或 `awrrpti.sql` 生成报告。
+- ❌ **暂不支持**：`awrddrpi.sql` 生成的 AWR 对比报告和 `awrgrpt.sql` 生成全局报告。
 
 #### 📝 使用步骤
 
@@ -332,6 +351,7 @@ ollama list
 1. **重新加载扩展**
    - 打开扩展管理页面
    - 点击重新加载按钮
+![](./assets/reload_plugin.png)
 
 2. **清除缓存**
    - 清除浏览器缓存和 Cookie
