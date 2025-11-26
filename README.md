@@ -218,10 +218,9 @@ BIC-QA provides a powerful Oracle database AWR (Automatic Workload Repository) r
 
 <div align="center">
 
-<video width="800" controls>
-  <source src="assets/BIC-QA 解析AWR功能使用介绍.mp4" type="video/mp4">
-  Your browser does not support video playback.
-</video>
+[![Watch Demo Video](https://img.shields.io/badge/📹_Download_Demo_Video-blue?style=for-the-badge&logo=video)](assets/BIC-QA%20解析AWR功能使用介绍.mp4)
+
+> 💡 **Note**: Not support direct video playback in Markdown. Click the button above to download and watch the demo video.
 
 </div>
 
