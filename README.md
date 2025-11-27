@@ -414,6 +414,20 @@ ollama list
 - Re-obtain API Key
 - Verify network access permissions
 
+#### 5. Connection Test Failed, Please Check Network and URL
+
+**Possible Causes**:
+- Local network cannot connect to the internet
+- Proxy is enabled on this machine
+- Network security restrictions
+
+**Solutions**:
+- Use network diagnostic tools (such as computer management software) to check if the network is functioning properly
+
+- Manually check if proxy is enabled
+   
+   ![image-20251127092329509](assets/image-20251127092329509.png)
+
 ### 🔍 Debug Steps
 
 1. **Reload Extension**
