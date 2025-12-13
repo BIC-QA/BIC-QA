@@ -2810,6 +2810,9 @@ class BicQASettings {
                 if (choice.message && choice.message.content) {
                     hasValidResponse = true;
                     console.log('模型回复内容:', choice.message.content);
+                } else if (choice.message && choice.message.reasoning_content) {
+                    hasValidResponse = true;
+                    console.log('模型回复内容:', choice.message.reasoning_content);
                 }
             }
 
@@ -2927,8 +2930,8 @@ class BicQASettings {
         };
 
         try {
-            console.log(this,'1221211');
-            
+            console.log(this, '1221211');
+
             await chrome.storage.sync.set({
                 providers: this.providers,
                 models: this.models,
@@ -3629,7 +3632,7 @@ class BicQASettings {
 
                 } catch (storageError) {
                     console.error('保存注册信息到本地存储失败:', storageError);
-            this.showMessage(this.m('settings.message.registerSuccessLocalSaveFailed', 'Registration succeeded, but saving to local storage failed'), 'warning');
+                    this.showMessage(this.m('settings.message.registerSuccessLocalSaveFailed', 'Registration succeeded, but saving to local storage failed'), 'warning');
                 }
 
             } else {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BIC-QA",
-  "version": "1.0.7",
+  "version": "1.0.8.2",
   "description": "佰晟智算 - BIC问答助手",
   "icons": {
     "16": "icons/logo.png",

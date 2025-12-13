@@ -6519,7 +6519,8 @@ ${text}
     </script>
 </body>
 </html>`;
-
+			// 创建 Blob 对象
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
             // 创建下载链接
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
