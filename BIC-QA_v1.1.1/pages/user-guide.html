@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="userGuide.meta.title">BIC-QA 用户使用手册</title>
+    <link id="favicon" rel="icon" type="image/png" href="../icons/logo.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav {
+            background: #2c3e50;
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav > ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav ul {
+            list-style: none;
+        }
+
+        .nav > ul > li {
+            margin: 0;
+            position: relative;
+        }
+
+        .nav li {
+            position: relative;
+        }
+
+        .nav a {
+            display: block;
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .nav a:hover {
+            background: #34495e;
+        }
+
+        .nav .submenu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #34495e;
+            min-width: 200px;
+            max-width: 300px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-radius: 0 0 4px 4px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav li:hover .submenu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .nav .submenu li {
+            margin: 0;
+            padding: 0;
+            display: block;
+        }
+
+        .nav .submenu a {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            font-size: 0.9em;
+            display: block;
+            color: white;
+        }
+
+        .nav .submenu li:last-child a {
+            border-bottom: none;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .nav .submenu a:hover {
+            background: #667eea;
+            padding-left: 25px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        section {
+            margin-bottom: 50px;
+            scroll-margin-top: 80px;
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+        }
+
+        h4 {
+            color: #666;
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .step-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .step-box h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #0dcaf0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Courier New", monospace;
+            color: #e83e8c;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .feature-card h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .screenshot {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            text-decoration: none;
+            font-size: 24px;
+        }
+
+        .back-to-top:hover {
+            background: #764ba2;
+            transform: translateY(-3px);
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+
+            .nav > ul {
+                flex-direction: column;
+            }
+
+            .nav .submenu {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                box-shadow: none;
+                border-radius: 0;
+                background: #2a3d4f;
+                margin-top: 0;
+            }
+
+            .nav .submenu a {
+                padding-left: 40px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .qr-code-popup {
+                left: 50%;
+                transform: translateX(-50%) translateY(-10px);
+                min-width: 280px;
+                max-width: 320px;
+                padding: 15px;
+            }
+
+            .qr-code-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .qr-code-image {
+                width: 100px;
+                height: 100px;
+            }
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .feature-card {
+            position: relative;
+        }
+
+        .contact-icon-wrapper {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .contact-icon {
+            width: 24px;
+            height: 24px;
+            opacity: 0.7;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .feature-card:hover .contact-icon {
+            opacity: 1;
+        }
+
+        .qr-code-popup {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            padding: 20px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            min-width: 320px;
+            max-width: 360px;
+        }
+
+        .qr-code-popup::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid #ddd;
+        }
+
+        .qr-code-popup::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid white;
+        }
+
+        .feature-card:hover .qr-code-popup {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .qr-code-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-code-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qr-code-image {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            border-radius: 4px;
+            display: block;
+        }
+
+        .qr-code-label {
+            margin-top: 0;
+            text-align: center;
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 0;
+            font-weight: 500;
+        }
+
+        .repo-link-text {
+            color: #667eea;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .repo-link-text:hover {
+            border-bottom-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 data-i18n="userGuide.header.title">BIC-QA 用户使用手册</h1>
+            <p data-i18n="userGuide.header.subtitle">佰晟智算 - 智能问答助手</p>
+            <span class="version-badge" data-i18n="userGuide.header.version">v1.1.1</span>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li>
+                    <a href="#introduction" data-i18n="userGuide.nav.introduction">产品介绍</a>
+                    <ul class="submenu">
+                        <li><a href="#about-bic-qa" data-i18n="userGuide.nav.aboutBicQa">关于 BIC-QA</a></li>
+                        <li><a href="#core-positioning" data-i18n="userGuide.nav.corePositioning">核心定位</a></li>
+                        <li><a href="#supported-databases" data-i18n="userGuide.nav.supportedDatabases">支持的数据库</a></li>
+                        <li><a href="#technical-advantages" data-i18n="userGuide.nav.technicalAdvantages">技术优势</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#installation" data-i18n="userGuide.nav.installation">安装指南</a>
+                    <ul class="submenu">
+                        <li><a href="#system-requirements" data-i18n="userGuide.nav.systemRequirements">系统要求</a></li>
+                        <li><a href="#installation-steps" data-i18n="userGuide.nav.installationSteps">安装步骤</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#configuration" data-i18n="userGuide.nav.configuration">配置指南</a>
+                    <ul class="submenu">
+                        <li><a href="#step1-registration" data-i18n="userGuide.nav.step1Registration">步骤 1：用户注册</a></li>
+                        <li><a href="#step2-knowledge-service" data-i18n="userGuide.nav.step2KnowledgeService">步骤 2：知识库服务配置</a></li>
+                        <li><a href="#step3-ai-model" data-i18n="userGuide.nav.step3AiModel">步骤 3：AI 模型配置</a></li>
+                        <li><a href="#step4-parameter-rules" data-i18n="userGuide.nav.step4ParameterRules">步骤 4：参数规则配置</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#usage" data-i18n="userGuide.nav.usage">使用说明</a>
+                    <ul class="submenu">
+                        <li><a href="#usage-modes" data-i18n="userGuide.nav.usageModes">使用模式</a></li>
+                        <li><a href="#basic-qa-operations" data-i18n="userGuide.nav.basicQaOperations">基本问答操作</a></li>
+                        <li><a href="#quick-actions" data-i18n="userGuide.nav.quickActions">快捷操作</a></li>
+                        <li><a href="#result-operations" data-i18n="userGuide.nav.resultOperations">结果操作</a></li>
+                        <li><a href="#multi-language-support" data-i18n="userGuide.nav.multiLanguageSupport">多语言支持</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#features" data-i18n="userGuide.nav.features">功能详解</a>
+                    <ul class="submenu">
+                        <li><a href="#intelligent-qa-function" data-i18n="userGuide.nav.intelligentQaFunction">智能问答功能</a></li>
+                        <li><a href="#knowledge-base-retrieval" data-i18n="userGuide.nav.knowledgeBaseRetrieval">知识库检索功能</a></li>
+                        <li><a href="#awr-report-analysis" data-i18n="userGuide.nav.awrReportAnalysis">AWR 报告分析功能</a></li>
+                        <li><a href="#history-management" data-i18n="userGuide.nav.historyManagement">历史记录管理</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#troubleshooting" data-i18n="userGuide.nav.troubleshooting">故障排除</a>
+                    <ul class="submenu">
+                        <li><a href="#common-issues" data-i18n="userGuide.nav.commonIssues">常见问题</a></li>
+                        <li><a href="#debug-steps" data-i18n="userGuide.nav.debugSteps">调试步骤</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#support" data-i18n="userGuide.nav.support">技术支持</a>
+                    <ul class="submenu">
+                        <li><a href="#get-help" data-i18n="userGuide.nav.getHelp">获取帮助</a></li>
+                        <li><a href="#contact-info" data-i18n="userGuide.nav.contactInfo">联系方式</a></li>
+                        <li><a href="#update-log" data-i18n="userGuide.nav.updateLog">更新日志</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <!-- 产品介绍 -->
+            <section id="introduction">
+                <h2 data-i18n="userGuide.introduction.title">📖 产品介绍</h2>
+                
+                <h3 id="about-bic-qa" data-i18n="userGuide.introduction.aboutBicQa.title">关于 BIC-QA</h3>
+                <p data-i18n-html="userGuide.introduction.aboutBicQa.content"><strong>BIC-QA（Business Intelligence & Knowledge Query Assistant）</strong> 是一款专为企业级数据库知识管理而设计的智能问答系统。作为新一代数据库知识检索解决方案，BIC-QA 致力于为数据库管理员、开发人员和运维工程师提供高效、精准的知识查询服务。</p>
+
+                <h3 id="core-positioning" data-i18n="userGuide.introduction.corePositioning.title">核心定位</h3>
+                <p data-i18n="userGuide.introduction.corePositioning.content">BIC-QA 是一个全面的数据库知识问答平台，支持所有主流数据库系统，特别针对国产数据库生态进行了深度优化。系统集成了丰富的数据库知识库，涵盖 SQL 语法、性能优化、故障诊断、最佳实践等全方位内容，为用户提供即问即答的专业数据库技术支持。</p>
+
+                <h3 id="supported-databases" data-i18n="userGuide.introduction.supportedDatabases.title">支持的数据库</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.introduction.supportedDatabases.international.title">国际主流数据库</h4>
+                        <ul>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.oracle">Oracle</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.mysql">MySQL</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.postgresql">PostgreSQL</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.sqlserver">SQL Server</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.mongodb">MongoDB</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.international.redis">Redis</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.introduction.supportedDatabases.domestic.title">国产数据库</h4>
+                        <ul>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.dm">达梦数据库（DM）</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.kingbase">人大金仓（KingBase）</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.oceanbase">OceanBase</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.goldendb">GoldenDB</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.gaussdb">华为 GaussDB</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.domestic.tdsql">腾讯 TDSQL</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.introduction.supportedDatabases.cloud.title">云原生数据库</h4>
+                        <ul>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.cloud.polardb">阿里云 PolarDB</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.cloud.tdsqlc">腾讯云 TDSQL-C</li>
+                            <li data-i18n="userGuide.introduction.supportedDatabases.cloud.gaussdb">华为云 GaussDB</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 id="technical-advantages" data-i18n="userGuide.introduction.technicalAdvantages.title">技术优势</h3>
+                <ul>
+                    <li data-i18n-html="userGuide.introduction.technicalAdvantages.nlp"><strong>智能语义理解</strong>：基于先进的 NLP 技术，准确理解用户查询意图</li>
+                    <li data-i18n-html="userGuide.introduction.technicalAdvantages.knowledgeGraph"><strong>知识图谱构建</strong>：构建完整的数据库知识关联网络，提供上下文相关的答案</li>
+                    <li data-i18n-html="userGuide.introduction.technicalAdvantages.realTimeUpdate"><strong>实时知识更新</strong>：持续更新数据库版本特性和最佳实践</li>
+                    <li data-i18n-html="userGuide.introduction.technicalAdvantages.multiDimension"><strong>多维度检索</strong>：支持按数据库类型、问题类型、技术领域等多维度精准检索</li>
+                </ul>
+            </section>
+
+            <!-- 安装指南 -->
+            <section id="installation">
+                <h2 data-i18n="userGuide.installation.title">🚀 安装指南</h2>
+
+                <h3 id="system-requirements" data-i18n="userGuide.installation.systemRequirements.title">系统要求</h3>
+                <div class="info-box">
+                    <h4 data-i18n="userGuide.installation.systemRequirements.browser.title">浏览器支持</h4>
+                    <ul>
+                        <li data-i18n="userGuide.installation.systemRequirements.browser.chrome">Chrome 88+</li>
+                        <li data-i18n="userGuide.installation.systemRequirements.browser.edge">Edge 88+</li>
+                        <li data-i18n="userGuide.installation.systemRequirements.browser.other">其他基于 Chromium 的浏览器</li>
+                    </ul>
+                    <h4 data-i18n="userGuide.installation.systemRequirements.network.title">网络要求</h4>
+                    <ul>
+                        <li data-i18n="userGuide.installation.systemRequirements.network.https">支持 HTTPS/HTTP 请求</li>
+                        <li data-i18n="userGuide.installation.systemRequirements.network.stable">稳定的网络连接</li>
+                        <li data-i18n="userGuide.installation.systemRequirements.network.firewall">防火墙允许扩展访问</li>
+                    </ul>
+                </div>
+
+                <h3 id="installation-steps" data-i18n="userGuide.installation.steps.title">安装步骤</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step1.title">步骤 1：下载扩展文件</h4>
+                    <p data-i18n="userGuide.installation.steps.step1.content">从官方网站或 GitHub 下载 BIC-QA 扩展压缩包（BIC-QA_v1.1.1.zip）</p>
+                </div>
+
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step2.title">步骤 2：解压文件</h4>
+                    <p data-i18n="userGuide.installation.steps.step2.content">将下载的压缩包解压到本地目录，确保解压后的文件夹结构完整</p>
+                </div>
+
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step3.title">步骤 3：打开浏览器扩展管理页面</h4>
+                    <ul>
+                        <li data-i18n-html="userGuide.installation.steps.step3.chrome"><strong>Chrome</strong>：在地址栏输入 <code>chrome://extensions/</code> 或通过菜单：更多工具 → 扩展程序</li>
+                        <li data-i18n-html="userGuide.installation.steps.step3.edge"><strong>Edge</strong>：在地址栏输入 <code>edge://extensions/</code> 或通过菜单：扩展</li>
+                    </ul>
+                </div>
+
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step4.title">步骤 4：启用开发者模式</h4>
+                    <p data-i18n="userGuide.installation.steps.step4.content">在扩展管理页面的右上角，打开"开发者模式"开关</p>
+                </div>
+
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step5.title">步骤 5：加载扩展</h4>
+                    <p data-i18n-html="userGuide.installation.steps.step5.content">点击"加载已解压的扩展程序"按钮，选择解压后的 <code>BIC-QA_v1.1.1</code> 文件夹</p>
+                    <div class="warning-box">
+                        <strong data-i18n="userGuide.installation.steps.step5.warning.title">⚠️ 重要提示</strong><span data-i18n-html="userGuide.installation.steps.step5.warning.content">：选择的文件夹必须包含 <code>manifest.json</code> 文件。请确保选择的是最内层的插件文件夹，而不是外层压缩包文件夹。</span>
+                    </div>
+                </div>
+
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.installation.steps.step6.title">步骤 6：验证安装</h4>
+                    <p data-i18n="userGuide.installation.steps.step6.content">安装成功后，浏览器工具栏会显示 BIC-QA 图标。点击图标即可打开插件界面。</p>
+                </div>
+            </section>
+
+            <!-- 配置指南 -->
+            <section id="configuration">
+                <h2 data-i18n="userGuide.configuration.title">⚙️ 配置指南</h2>
+
+                <p data-i18n="userGuide.configuration.intro">首次使用 BIC-QA 需要进行四步配置，完成后即可开始使用。</p>
+
+                <h3 id="step1-registration" data-i18n="userGuide.configuration.step1.title">步骤 1：用户注册</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step1.operationSteps">操作步骤</h4>
+                    <ol>
+                        <li data-i18n="userGuide.configuration.step1.step1">点击浏览器工具栏中的 BIC-QA 图标</li>
+                        <li data-i18n="userGuide.configuration.step1.step2">点击右上角的"⚙️ 设置"按钮</li>
+                        <li data-i18n="userGuide.configuration.step1.step3">在设置页面找到"用户注册"部分</li>
+                        <li data-i18n="userGuide.configuration.step1.step4.label">填写以下信息：</li>
+                        <li>
+                            <ul>
+                                <li data-i18n-html="userGuide.configuration.step1.step4.item1"><strong>用户名</strong>：您的用户名（必填）</li>
+                                <li data-i18n-html="userGuide.configuration.step1.step4.item2"><strong>所属企业名称</strong>：您所在的企业名称（必填）</li>
+                                <li data-i18n-html="userGuide.configuration.step1.step4.item3"><strong>邮箱</strong>：您的邮箱地址（必填）</li>
+                            </ul>
+                        </li>
+                        <li data-i18n="userGuide.configuration.step1.step5">勾选同意用户协议和隐私政策</li>
+                        <li data-i18n="userGuide.configuration.step1.step6">点击"注册"按钮</li>
+                        <li data-i18n="userGuide.configuration.step1.step7">查收邮件获取 API Key</li>
+                    </ol>
+                    <div class="warning-box">
+                        <strong data-i18n="userGuide.configuration.step1.warning.title">⚠️ 重要提醒</strong><span data-i18n="userGuide.configuration.step1.warning.content">：请勿随意修改默认的注册服务 URL，以免影响插件正常运行。如已修改，请重置设置恢复默认值。</span>
+                    </div>
+                </div>
+
+                <h3 id="step2-knowledge-service" data-i18n="userGuide.configuration.step2.title">步骤 2：知识库服务配置</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step2.operationSteps">操作步骤</h4>
+                    <ol>
+                        <li data-i18n="userGuide.configuration.step2.step1">在设置页面找到"知识库服务配置"部分</li>
+                        <li data-i18n="userGuide.configuration.step2.step2">将注册邮件中收到的 API Key 填入"API密钥"字段</li>
+                        <li data-i18n="userGuide.configuration.step2.step3">确认"服务URL"为默认值（通常无需修改）</li>
+                        <li data-i18n="userGuide.configuration.step2.step4">点击"保存配置"按钮</li>
+                        <li data-i18n="userGuide.configuration.step2.step5">可点击"测试连接"验证配置是否正确</li>
+                    </ol>
+                </div>
+
+                <h3 id="step3-ai-model" data-i18n="userGuide.configuration.step3.title">步骤 3：AI 模型配置</h3>
+                
+                <h4 data-i18n="userGuide.configuration.step3.section1.title">3.1 配置服务商接口</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step3.section1.operationSteps">操作步骤</h4>
+                    <ol>
+                        <li data-i18n="userGuide.configuration.step3.section1.step1">在设置页面找到"大模型接口配置"部分</li>
+                        <li data-i18n="userGuide.configuration.step3.section1.step2">点击"+ 添加服务商"按钮</li>
+                        <li><span data-i18n="userGuide.configuration.step3.section1.step3.label">填写服务商信息：</span>
+                            <ul>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item1"><strong>服务商类型</strong>：选择或自定义服务商类型（如 ollama、deepseek 等）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item2"><strong>服务商名称</strong>：输入服务商名称（如 OpenAI、百度文心、阿里通义等）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item3"><strong>API地址</strong>：填写 API 接口地址</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item4"><strong>API密钥</strong>：填写 API Key（如果需要）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item5"><strong>认证类型</strong>：选择认证方式（Bearer Token、API Key 或自定义）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section1.step3.item6"><strong>请求格式</strong>：选择请求格式（OpenAI格式、Claude格式或自定义格式）</li>
+                            </ul>
+                        </li>
+                        <li data-i18n="userGuide.configuration.step3.section1.step4">点击"保存服务商"按钮</li>
+                    </ol>
+                    <div class="info-box">
+                        <strong data-i18n="userGuide.configuration.step3.section1.example.title">💡 本地 Ollama 配置示例</strong><span data-i18n="userGuide.configuration.step3.section1.example.content">：</span>
+                        <pre><code data-i18n="userGuide.configuration.step3.section1.example.code">API 地址：http://localhost:11434/v1
+认证类型：Bearer Token（通常本地 Ollama 不需要 API Key）</code></pre>
+                    </div>
+                </div>
+
+                <h4 data-i18n="userGuide.configuration.step3.section2.title">3.2 自动发现模型</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step3.section2.operationSteps">操作步骤</h4>
+                    <ol>
+                        <li data-i18n="userGuide.configuration.step3.section2.step1">在服务商配置中，点击"测试"按钮连接服务</li>
+                        <li data-i18n="userGuide.configuration.step3.section2.step2">系统会自动发现该服务商下可用的模型</li>
+                        <li data-i18n="userGuide.configuration.step3.section2.step3">在模型列表中勾选需要使用的模型</li>
+                        <li data-i18n="userGuide.configuration.step3.section2.step4">点击"批量纳管"保存模型配置</li>
+                    </ol>
+                    <div class="info-box">
+                        <strong data-i18n="userGuide.configuration.step3.section2.hint.title">💡 提示</strong><span data-i18n="userGuide.configuration.step3.section2.hint.content">：首页下拉菜单会显示"模型名（服务商）"格式，避免同名模型混淆。</span>
+                    </div>
+                </div>
+
+                <h4 data-i18n="userGuide.configuration.step3.section3.title">3.3 手动配置模型</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step3.section3.operationSteps">操作步骤</h4>
+                    <p data-i18n="userGuide.configuration.step3.section3.intro">对于不支持自动发现的服务商，可以手动添加模型：</p>
+                    <ol>
+                        <li data-i18n="userGuide.configuration.step3.section3.step1">在设置页面找到"模型配置"部分</li>
+                        <li data-i18n="userGuide.configuration.step3.section3.step2">点击"+ 添加模型"按钮</li>
+                        <li data-i18n="userGuide.configuration.step3.section3.step3.label">填写模型信息：</li>
+                        <li>
+                            <ul>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item1"><strong>所属服务商</strong>：选择已配置的服务商</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item2"><strong>模型名称</strong>：输入模型名称（如 gpt-3.5-turbo、gpt-4 等）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item3"><strong>显示名称</strong>：输入显示名称（可选）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item4"><strong>最大Token数</strong>：设置模型的最大 Token 限制</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item5"><strong>温度参数</strong>：设置温度值（0-2，控制回答的创造性）</li>
+                                <li data-i18n-html="userGuide.configuration.step3.section3.step3.item6"><strong>设为默认模型</strong>：勾选此项可将此模型设为默认模型</li>
+                            </ul>
+                        </li>
+                        <li data-i18n="userGuide.configuration.step3.section3.step4">点击"保存模型"按钮</li>
+                    </ol>
+                </div>
+
+                <h3 id="step4-parameter-rules" data-i18n="userGuide.configuration.step4.title">步骤 4：参数规则配置（可选）</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.configuration.step4.operationSteps">操作步骤</h4>
+                    <p data-i18n="userGuide.configuration.step4.intro">BIC-QA 支持自定义提示词和检索参数，提供三种预设模式：</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="userGuide.configuration.step4.table.header.mode">模式</th>
+                                <th data-i18n="userGuide.configuration.step4.table.header.temperature">温度</th>
+                                <th data-i18n="userGuide.configuration.step4.table.header.similarity">相似度</th>
+                                <th data-i18n="userGuide.configuration.step4.table.header.scenario">适用场景</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td data-i18n-html="userGuide.configuration.step4.table.creative.mode"><strong>创意模式</strong></td>
+                                <td data-i18n="userGuide.configuration.step4.table.creative.temperature">高</td>
+                                <td data-i18n="userGuide.configuration.step4.table.creative.similarity">中等</td>
+                                <td data-i18n="userGuide.configuration.step4.table.creative.scenario">需要创造性回答</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n-html="userGuide.configuration.step4.table.precise.mode"><strong>精确模式</strong></td>
+                                <td data-i18n="userGuide.configuration.step4.table.precise.temperature">低</td>
+                                <td data-i18n="userGuide.configuration.step4.table.precise.similarity">高</td>
+                                <td data-i18n="userGuide.configuration.step4.table.precise.scenario">需要准确性优先</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n-html="userGuide.configuration.step4.table.custom.mode"><strong>自定义模式</strong></td>
+                                <td data-i18n="userGuide.configuration.step4.table.custom.temperature">可调</td>
+                                <td data-i18n="userGuide.configuration.step4.table.custom.similarity">可调</td>
+                                <td data-i18n="userGuide.configuration.step4.table.custom.scenario">完全自定义需求</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p data-i18n="userGuide.configuration.step4.description">在设置页面的"知识库参数规则配置"部分，您可以：</p>
+                    <ul>
+                        <li data-i18n="userGuide.configuration.step4.item1">添加自定义规则</li>
+                        <li data-i18n="userGuide.configuration.step4.item2">设置相似度阈值（0-1，数值越高匹配越精确）</li>
+                        <li data-i18n="userGuide.configuration.step4.item3">设置 TOP N（1-10，返回最相关的N个结果）</li>
+                        <li data-i18n="userGuide.configuration.step4.item4">设置温度参数（0-2，控制回答的创造性）</li>
+                        <li data-i18n="userGuide.configuration.step4.item5">自定义提示词模板</li>
+                    </ul>
+                    <div class="warning-box">
+                        <strong data-i18n="userGuide.configuration.step4.warning.title">⚠️ 参数影响</strong><span data-i18n="userGuide.configuration.step4.warning.content">：温度越高创造性越强，相似度/TOP N 影响知识库检索范围和数量。</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 使用说明 -->
+            <section id="usage">
+                <h2 data-i18n="userGuide.usage.title">🎯 使用说明</h2>
+
+                <h3 id="usage-modes" data-i18n="userGuide.usage.modes.title">使用模式</h3>
+                
+                <h4 data-i18n="userGuide.usage.modes.popup.title">弹窗模式</h4>
+                <div class="step-box">
+                    <p data-i18n="userGuide.usage.modes.popup.content">点击浏览器工具栏中的 BIC-QA 图标，会弹出一个小窗口，提供基本的问答功能。适合快速提问和简单对话。</p>
+                </div>
+
+                <h4 data-i18n="userGuide.usage.modes.fullpage.title">完整页面模式</h4>
+                <div class="step-box">
+                    <p data-i18n="userGuide.usage.modes.fullpage.content">在弹窗中点击右上角的"🖥️ 完整页面"按钮，会在新标签页中打开完整的 BIC-QA 界面，提供更大的操作空间和更多功能。适合复杂对话和长时间使用。</p>
+                </div>
+
+                <h3 id="basic-qa-operations" data-i18n="userGuide.usage.basicQa.title">基本问答操作</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.usage.basicQa.operationSteps">操作步骤</h4>
+                    <ol>
+                        <li data-i18n-html="userGuide.usage.basicQa.step1">在首页选择已配置的<strong>模型（服务商）</strong></li>
+                        <li data-i18n-html="userGuide.usage.basicQa.step2">从<strong>知识库</strong>下拉菜单选择目标知识库（可选，选择"不使用知识库"则仅使用AI模型）</li>
+                        <li data-i18n-html="userGuide.usage.basicQa.step3">选择<strong>参数规则</strong>（可选，使用默认规则或自定义规则）</li>
+                        <li data-i18n="userGuide.usage.basicQa.step4">在输入框中输入您的问题</li>
+                        <li data-i18n-html="userGuide.usage.basicQa.step5">点击<strong>发送</strong>按钮或按<strong>Enter</strong>键提交问题</li>
+                        <li data-i18n="userGuide.usage.basicQa.step6">等待AI生成回答（支持流式输出，实时显示）</li>
+                    </ol>
+                    <div class="info-box">
+                        <strong data-i18n="userGuide.usage.basicQa.tip.title">💡 使用技巧</strong><span data-i18n="userGuide.usage.basicQa.tip.content">：开启知识库后，系统会自动加载最新配置并优先使用知识库服务。</span>
+                    </div>
+                </div>
+
+                <h3 id="quick-actions" data-i18n="userGuide.usage.quickActions.title">快捷操作</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.usage.quickActions.newSession.title">🆕 开启新会话</h4>
+                        <p data-i18n="userGuide.usage.quickActions.newSession.content">点击左侧边栏的"开启新会话"按钮，可以开始一次全新的对话，清空当前对话历史。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.usage.quickActions.history.title">📚 历史记录</h4>
+                        <p data-i18n="userGuide.usage.quickActions.history.content">点击"历史记录"按钮，可以查看和管理所有历史对话记录，支持搜索、导出和删除。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.usage.quickActions.awr.title">📊 AWR分析</h4>
+                        <p data-i18n="userGuide.usage.quickActions.awr.content">点击"AWR分析"按钮，可以上传Oracle AWR报告进行分析，获取专业的性能诊断报告。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.usage.quickActions.help.title">❓ 使用说明</h4>
+                        <p data-i18n="userGuide.usage.quickActions.help.content">点击"使用说明"按钮，可以查看详细的帮助文档和使用指南。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.usage.quickActions.announcement.title">📢 公告</h4>
+                        <p data-i18n="userGuide.usage.quickActions.announcement.content">点击"公告"按钮，可以查看最新的产品公告和更新信息。</p>
+                    </div>
+                </div>
+
+                <h3 id="result-operations" data-i18n="userGuide.usage.resultOperations.title">结果操作</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.usage.resultOperations.availableOperations">可用操作</h4>
+                    <ul>
+                        <li data-i18n-html="userGuide.usage.resultOperations.export"><strong>📥 导出HTML</strong>：将对话内容导出为格式化的HTML文件</li>
+                        <li data-i18n-html="userGuide.usage.resultOperations.copy"><strong>📋 复制</strong>：快速复制回答内容到剪贴板</li>
+                        <li data-i18n-html="userGuide.usage.resultOperations.clear"><strong>🗑️ 清空</strong>：清除当前对话内容</li>
+                        <li data-i18n-html="userGuide.usage.resultOperations.like"><strong>👍 点赞</strong>：对回答进行点赞反馈，帮助系统优化</li>
+                        <li data-i18n-html="userGuide.usage.resultOperations.dislike"><strong>👎 否定</strong>：对回答进行否定反馈，帮助系统改进</li>
+                        <li data-i18n-html="userGuide.usage.resultOperations.stop"><strong>⏹️ 停止生成</strong>：在AI生成回答过程中，可以随时点击停止按钮中断生成</li>
+                    </ul>
+                </div>
+
+                <h3 id="multi-language-support" data-i18n="userGuide.usage.multiLanguage.title">多语言支持</h3>
+                <div class="step-box">
+                    <p data-i18n="userGuide.usage.multiLanguage.intro">BIC-QA 支持多语言界面，您可以在右上角的语言选择器中选择：</p>
+                    <ul>
+                        <li data-i18n="userGuide.usage.multiLanguage.zhcn">中文简体</li>
+                        <li data-i18n="userGuide.usage.multiLanguage.en">English</li>
+                        <li data-i18n="userGuide.usage.multiLanguage.jap">日本語</li>
+                    </ul>
+                    <p data-i18n="userGuide.usage.multiLanguage.note">选择语言后，界面会立即切换为对应语言。</p>
+                </div>
+            </section>
+
+            <!-- 功能详解 -->
+            <section id="features">
+                <h2 data-i18n="userGuide.features.title">🔧 功能详解</h2>
+
+                <h3 id="intelligent-qa-function" data-i18n="userGuide.features.intelligentQa.title">智能问答功能</h3>
+                <div class="feature-card">
+                    <h4 data-i18n="userGuide.features.intelligentQa.multiModel.title">多模型支持</h4>
+                    <p data-i18n="userGuide.features.intelligentQa.multiModel.intro">BIC-QA 支持集成多种AI模型，包括：</p>
+                    <ul>
+                        <li data-i18n="userGuide.features.intelligentQa.multiModel.gpt">GPT系列（GPT-3.5、GPT-4等）</li>
+                        <li data-i18n="userGuide.features.intelligentQa.multiModel.claude">Claude系列</li>
+                        <li data-i18n="userGuide.features.intelligentQa.multiModel.ollama">本地Ollama模型</li>
+                        <li data-i18n="userGuide.features.intelligentQa.multiModel.other">其他兼容OpenAI API格式的模型</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4 data-i18n="userGuide.features.intelligentQa.streaming.title">流式输出</h4>
+                    <p data-i18n="userGuide.features.intelligentQa.streaming.content">支持实时流式显示AI回答，无需等待完整回答生成即可看到内容，提升用户体验。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h4 data-i18n="userGuide.features.intelligentQa.conversation.title">对话管理</h4>
+                    <p data-i18n="userGuide.features.intelligentQa.conversation.content">自动保存对话历史，支持一键清空、导出对话记录，方便管理和回顾。</p>
+                </div>
+
+                <h3 id="knowledge-base-retrieval" data-i18n="userGuide.features.knowledgeBase.title">知识库检索功能</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.features.knowledgeBase.features">功能特点</h4>
+                    <ul>
+                        <li data-i18n-html="userGuide.features.knowledgeBase.enterprise"><strong>企业集成</strong>：无缝连接企业知识库系统</li>
+                        <li data-i18n-html="userGuide.features.knowledgeBase.matching"><strong>智能匹配</strong>：基于语义相似度进行精准内容检索</li>
+                        <li data-i18n-html="userGuide.features.knowledgeBase.multiLibrary"><strong>多库支持</strong>：同时管理多个知识库</li>
+                        <li data-i18n-html="userGuide.features.knowledgeBase.optimization"><strong>结果优化</strong>：智能排序和相关性过滤</li>
+                    </ul>
+                </div>
+
+                <h3 id="awr-report-analysis" data-i18n="userGuide.features.awr.title">AWR 报告分析功能</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.features.awr.overview.title">功能概述</h4>
+                    <p data-i18n="userGuide.features.awr.overview.content">BIC-QA 提供了强大的 Oracle 数据库 AWR（Automatic Workload Repository）报告分析功能，帮助数据库管理员快速诊断数据库性能问题，获取专业的分析报告和优化建议。</p>
+                    
+                    <h4 data-i18n="userGuide.features.awr.mainFeatures.title">主要功能</h4>
+                    <ul>
+                        <li data-i18n-html="userGuide.features.awr.mainFeatures.parse"><strong>智能解析</strong>：自动解析 Oracle AWR 报告的 HTML 格式文件</li>
+                        <li data-i18n-html="userGuide.features.awr.mainFeatures.analysis"><strong>深度分析</strong>：基于 AI 大模型进行全面的性能问题诊断</li>
+                        <li data-i18n-html="userGuide.features.awr.mainFeatures.report"><strong>专业报告</strong>：生成结构化的分析报告，包含问题诊断和优化建议</li>
+                        <li data-i18n-html="userGuide.features.awr.mainFeatures.multilang"><strong>多语言支持</strong>：支持中文和英文分析报告</li>
+                        <li data-i18n-html="userGuide.features.awr.mainFeatures.history"><strong>历史管理</strong>：查看和管理历史分析记录，支持重新分析</li>
+                    </ul>
+
+                    <div class="warning-box">
+                        <strong data-i18n="userGuide.features.awr.version.title">⚠️ 版本说明</strong><span data-i18n="userGuide.features.awr.version.content">：AWR 报告分析功能当前为 Beta 测试版本。我们诚挚邀请您在使用过程中提供宝贵的意见和建议。</span>
+                    </div>
+
+                    <h4 data-i18n="userGuide.features.awr.steps.title">使用步骤</h4>
+                    <ol>
+                        <li data-i18n="userGuide.features.awr.steps.step1">点击左侧导航栏的"📊 AWR分析"按钮</li>
+                        <li data-i18n="userGuide.features.awr.steps.step2.label">在"新建分析"标签页中：</li>
+                        <li>
+                            <ul>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item1">选择数据库类型（Oracle 或 KingBase）</li>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item2">填写系统问题概述（可选，建议填写明确的问题描述）</li>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item3">填写接收邮箱（必填）</li>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item4">上传 AWR 报告 HTML 文件（必填）</li>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item5">选择分析语言（中文或English）</li>
+                                <li data-i18n="userGuide.features.awr.steps.step2.item6">勾选同意免责声明和安全声明</li>
+                            </ul>
+                        </li>
+                        <li data-i18n="userGuide.features.awr.steps.step3">点击"执行分析"按钮提交任务</li>
+                        <li data-i18n="userGuide.features.awr.steps.step4">在"历史记录"标签页中查看分析进度和结果</li>
+                        <li data-i18n="userGuide.features.awr.steps.step5">分析完成后，报告会发送到您填写的邮箱</li>
+                    </ol>
+
+                    <div class="info-box">
+                        <strong data-i18n="userGuide.features.awr.datasource.title">📋 AWR 报告分析数据源提示</strong><span data-i18n="userGuide.features.awr.datasource.content">：</span>
+                        <ul>
+                            <li data-i18n-html="userGuide.features.awr.datasource.supported">✅ <strong>支持</strong>：Oracle 单实例数据库的 AWR 报告</li>
+                            <li data-i18n-html="userGuide.features.awr.datasource.rac">✅ <strong>RAC 建议</strong>：如为 RAC 环境，请使用 <code>awrrpt.sql</code> 或 <code>awrrpti.sql</code> 生成报告</li>
+                            <li data-i18n-html="userGuide.features.awr.datasource.unsupported">❌ <strong>暂不支持</strong>：<code>awrddrpi.sql</code> 生成的 AWR 对比报告和 <code>awrgrpt.sql</code> 生成全局报告</li>
+                        </ul>
+                    </div>
+
+                    <h4 data-i18n="userGuide.features.awr.reportContent.title">分析报告内容</h4>
+                    <p data-i18n="userGuide.features.awr.reportContent.intro">系统生成的 AWR 分析报告通常包含以下内容：</p>
+                    <ul>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.overview"><strong>报告概览</strong>：数据库版本、报告时间范围等基本信息</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.load"><strong>负载概况</strong>：数据库整体负载情况分析</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.metrics"><strong>性能指标</strong>：关键性能指标（如命中率、等待事件等）的详细分析</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.diagnosis"><strong>问题诊断</strong>：识别出的潜在性能问题和瓶颈</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.optimization"><strong>优化建议</strong>：针对发现问题的具体优化建议和解决方案</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.sql"><strong>SQL 分析</strong>：高负载 SQL 语句的分析和优化建议</li>
+                        <li data-i18n-html="userGuide.features.awr.reportContent.events"><strong>等待事件分析</strong>：等待事件的详细分析和处理建议</li>
+                    </ul>
+                </div>
+
+                <h3 id="history-management" data-i18n="userGuide.features.history.title">历史记录管理</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.features.history.features">功能特点</h4>
+                    <ul>
+                        <li data-i18n="userGuide.features.history.autoSave">自动保存所有对话内容</li>
+                        <li data-i18n="userGuide.features.history.search">支持按时间、关键词搜索历史记录</li>
+                        <li data-i18n="userGuide.features.history.export">支持导出历史记录为 HTML 格式</li>
+                        <li data-i18n="userGuide.features.history.delete">支持批量删除历史记录</li>
+                        <li data-i18n="userGuide.features.history.reload">支持重新加载历史对话继续提问</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 故障排除 -->
+            <section id="troubleshooting">
+                <h2 data-i18n="userGuide.troubleshooting.title">🛠️ 故障排除</h2>
+
+                <h3 id="common-issues" data-i18n="userGuide.troubleshooting.commonIssues.title">常见问题</h3>
+
+                <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue1.title">问题 1：插件导入失败</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue1.causes.title">可能原因</h4>
+                    <ul>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue1.causes.item1">解压出现文件损坏</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue1.causes.item2">浏览器选择插件时没有选最后一层文件夹</li>
+                    </ul>
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue1.solution.title">解决方案</h4>
+                    <ol>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue1.solution.step1">重新下载扩展文件并解压</li>
+                        <li data-i18n-html="userGuide.troubleshooting.commonIssues.issue1.solution.step2">确保选择的文件夹下有 <code>manifest.json</code> 文件</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue1.solution.step3">选择最内层的插件文件夹（BIC-QA_v1.1.1），而不是外层压缩包文件夹</li>
+                    </ol>
+                </div>
+
+                <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue2.title">问题 2：请求失败</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue2.causes.title">可能原因</h4>
+                    <ul>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.causes.item1">模型服务地址错误</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.causes.item2">网络连接问题</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.causes.item3">API Key 无效</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.causes.item4">本地模型权限未放行</li>
+                    </ul>
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.title">解决方案</h4>
+                    <ol>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step1.label">检查服务地址是否正确：</li>
+                        <li>
+                            <pre><code data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step1.code"># 检查本地 Ollama 服务
+curl http://localhost:11434/v1/models
+
+# 验证网络连接
+ping your-api-endpoint.com</code></pre>
+                        </li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step2">验证 API Key 是否正确</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step3.label">对于本地 Ollama，配置系统环境变量：</li>
+                        <li>
+                            <pre><code data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step3.code">设置系统变量 OLLAMA_ORIGINS 值为 *</code></pre>
+                        </li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue2.solution.step4">检查防火墙设置，确保允许扩展访问</li>
+                    </ol>
+                </div>
+
+                <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue3.title">问题 3：模型无法加载</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue3.causes.title">可能原因</h4>
+                    <ul>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue3.causes.item1">Ollama 服务未启动</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue3.causes.item2">API 地址格式错误</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue3.causes.item3">模型未正确部署</li>
+                    </ul>
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue3.solution.title">解决方案</h4>
+                    <ol>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue3.solution.step1.label">启动 Ollama 服务：</li>
+                        <li>
+                            <pre><code data-i18n="userGuide.troubleshooting.commonIssues.issue3.solution.step1.code">ollama serve</code></pre>
+                        </li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue3.solution.step2.label">检查模型列表：</li>
+                        <li>
+                            <pre><code data-i18n="userGuide.troubleshooting.commonIssues.issue3.solution.step2.code">ollama list</code></pre>
+                        </li>
+                        <li data-i18n-html="userGuide.troubleshooting.commonIssues.issue3.solution.step3">确认 API 地址格式为：<code>http://localhost:11434/v1</code></li>
+                        <li data-i18n-html="userGuide.troubleshooting.commonIssues.issue3.solution.step4">如果模型不存在，使用 <code>ollama pull &lt;model-name&gt;</code> 下载模型</li>
+                    </ol>
+                </div>
+
+                <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue4.title">问题 4：知识库连接失败</h4>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue4.causes.title">可能原因</h4>
+                    <ul>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.causes.item1">知识库服务 URL 错误</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.causes.item2">API Key 过期或无效</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.causes.item3">网络权限限制</li>
+                    </ul>
+                    <h4 data-i18n="userGuide.troubleshooting.commonIssues.issue4.solution.title">解决方案</h4>
+                    <ol>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.solution.step1">检查知识库服务状态</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.solution.step2">重新获取 API Key（检查注册邮箱）</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.solution.step3">验证网络访问权限</li>
+                        <li data-i18n="userGuide.troubleshooting.commonIssues.issue4.solution.step4">在设置页面点击"测试连接"验证配置</li>
+                    </ol>
+                </div>
+
+                <h3 id="debug-steps" data-i18n="userGuide.troubleshooting.debugSteps.title">调试步骤</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.troubleshooting.debugSteps.methods.title">通用调试方法</h4>
+                    <ol>
+                        <li data-i18n-html="userGuide.troubleshooting.debugSteps.methods.reload.title">重新加载扩展</li>
+                        <li>
+                            <ul>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.reload.step1">打开扩展管理页面</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.reload.step2">找到 BIC-QA 扩展</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.reload.step3">点击重新加载按钮</li>
+                            </ul>
+                        </li>
+                        <li data-i18n-html="userGuide.troubleshooting.debugSteps.methods.clear.title">清除缓存</li>
+                        <li>
+                            <ul>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.clear.step1">清除浏览器缓存和 Cookie</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.clear.step2">重启浏览器</li>
+                            </ul>
+                        </li>
+                        <li data-i18n-html="userGuide.troubleshooting.debugSteps.methods.console.title">检查控制台</li>
+                        <li>
+                            <ul>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.console.step1">按 F12 打开开发者工具</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.console.step2">切换到 Console 标签页</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.console.step3">查看错误信息</li>
+                            </ul>
+                        </li>
+                        <li data-i18n-html="userGuide.troubleshooting.debugSteps.methods.verify.title">验证配置</li>
+                        <li>
+                            <ul>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.verify.step1">检查配置文件格式</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.verify.step2">确认所有必填字段已填写</li>
+                                <li data-i18n="userGuide.troubleshooting.debugSteps.methods.verify.step3">验证 API 地址和密钥格式</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- 技术支持 -->
+            <section id="support">
+                <h2 data-i18n="userGuide.support.title">📞 技术支持</h2>
+
+                <h3 id="get-help" data-i18n="userGuide.support.getHelp.title">获取帮助</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.support.getHelp.email.title">📧 技术支持邮箱</h4>
+                        <p><strong>support@dbaiops.com</strong></p>
+                        <p data-i18n="userGuide.support.getHelp.email.content">如有技术问题或使用疑问，请发送邮件至技术支持邮箱，我们会在24小时内回复。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.support.getHelp.website.title">🌐 官方网站</h4>
+                        <p><strong>https://www.dbaiops.com/</strong></p>
+                        <p data-i18n="userGuide.support.getHelp.website.content">访问官方网站获取最新产品信息和文档。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.support.getHelp.community.title">💬 社区支持</h4>
+                        <p data-i18n-html="userGuide.support.getHelp.community.content">扫码关注 <strong>DBAIOps 社区</strong> 公众号，获取最新资讯和技术支持。</p>
+                        <div class="contact-icon-wrapper">
+                            <img src="../icons/chatUs.png" alt="联系方式" class="contact-icon">
+                        </div>
+                        <div class="qr-code-popup">
+                            <div class="qr-code-container">
+                                <!-- 二维码将通过JavaScript动态加载 -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.support.getHelp.feedback.title">🐛 问题反馈</h4>
+                        <p data-i18n-html="userGuide.support.getHelp.feedback.content">访问代码仓库：<a href="https://gitee.com/BIC-QA/bic-qa" target="_blank" class="repo-link-text">Gitee</a> / <a href="https://github.com/BIC-QA/BIC-QA" target="_blank" class="repo-link-text">GitHub</a>，提交 <a href="https://gitee.com/BIC-QA/bic-qa/issues" target="_blank" class="repo-link-text">Issue</a> 报告 Bug 或提出功能建议。</p>
+                    </div>
+                </div>
+
+                <h3 id="contact-info" data-i18n="userGuide.support.contact.title">联系方式</h3>
+                <div class="info-box">
+                    <ul>
+                        <li data-i18n-html="userGuide.support.contact.hotline"><strong>客服热线</strong>：400 880 0486</li>
+                        <li data-i18n-html="userGuide.support.contact.address"><strong>公司地址</strong>：北京市朝阳区裕民路12号元辰鑫大厦E1座 516</li>
+                        <li data-i18n-html="userGuide.support.contact.email"><strong>技术支持邮箱</strong>：support@dbaiops.com</li>
+                        <li data-i18n-html="userGuide.support.contact.website"><strong>官方网站</strong>：<a href="https://www.dbaiops.com/" target="_blank">https://www.dbaiops.com/</a></li>
+                    </ul>
+                </div>
+
+                <h3 id="update-log" data-i18n="userGuide.support.updateLog.title">更新日志</h3>
+                <div class="step-box">
+                    <h4 data-i18n="userGuide.support.updateLog.history.title">版本历史</h4>
+                    <ul>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v1082"><strong>v1.0.8.2</strong>：新增多语言支持，修复已知BUG</li>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v107"><strong>v1.0.7</strong>：新增 AWR 报告分析功能，支持 Oracle 数据库性能诊断</li>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v106"><strong>v1.0.6</strong>：支持添加大模型服务商，修复已知问题</li>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v105"><strong>v1.0.5</strong>：优化性能，修复已知问题</li>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v104"><strong>v1.0.4</strong>：新增知识库功能</li>
+                        <li data-i18n-html="userGuide.support.updateLog.history.v103"><strong>v1.0.3</strong>：支持本地 Ollama 模型</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 隐私安全 -->
+            <section id="privacy">
+                <h2 data-i18n="userGuide.privacy.title">🔒 隐私安全</h2>
+
+                <h3 data-i18n="userGuide.privacy.dataProtection.title">数据保护</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.privacy.dataProtection.localStorage.title">本地存储</h4>
+                        <p data-i18n="userGuide.privacy.dataProtection.localStorage.content">对话历史存储在本地浏览器中，不会上传到服务器。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.privacy.dataProtection.encryption.title">加密传输</h4>
+                        <p data-i18n="userGuide.privacy.dataProtection.encryption.content">所有网络请求使用 HTTPS 加密传输，确保数据安全。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4 data-i18n="userGuide.privacy.dataProtection.permissions.title">权限控制</h4>
+                        <p data-i18n="userGuide.privacy.dataProtection.permissions.content">最小化权限要求，仅请求必要的浏览器权限。</p>
+                    </div>
+                </div>
+
+                <h3 data-i18n="userGuide.privacy.securityFeatures.title">安全特性</h3>
+                <div class="step-box">
+                    <ul>
+                        <li data-i18n-html="userGuide.privacy.securityFeatures.localModel"><strong>本地模型</strong>：支持完全本地部署，数据不出本地环境</li>
+                        <li data-i18n-html="userGuide.privacy.securityFeatures.apiKey"><strong>API 密钥</strong>：安全存储和传输，不会泄露给第三方</li>
+                        <li data-i18n-html="userGuide.privacy.securityFeatures.accessControl"><strong>访问控制</strong>：可配置网络访问权限，控制数据流向</li>
+                    </ul>
+                </div>
+
+                <h3 data-i18n="userGuide.privacy.policy.title">隐私政策</h3>
+                <div class="info-box">
+                    <ul>
+                        <li data-i18n="userGuide.privacy.policy.item1">不收集个人敏感信息</li>
+                        <li data-i18n="userGuide.privacy.policy.item2">不向第三方分享数据</li>
+                        <li data-i18n="userGuide.privacy.policy.item3">支持数据导出和删除</li>
+                        <li data-i18n="userGuide.privacy.policy.item4">详细隐私政策请查看插件内的"隐私政策"页面</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p data-i18n-html="userGuide.footer.tagline"><strong>BIC-QA 智能问答助手</strong> - 让知识检索更智能，让问答更高效</p>
+            <p data-i18n="userGuide.footer.version">版本：v1.1.1 | 更新日期：2025年11月 | 佰晟智算</p>
+        </footer>
+    </div>
+
+    <a href="#" class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;">↑</a>
+
+    <script src="../i18n/i18n.js"></script>
+    <script src="../js/user-guide.js"></script>
+</body>
+</html>

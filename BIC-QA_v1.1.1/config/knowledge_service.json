@@ -1,0 +1,10 @@
+{
+    "knowledge_service": {
+        "default_url": "https://api.bic-qa.com/api/chat/message",
+        "api_key": "",
+        "enabled": false,
+        "letter_limit": 5,
+        "isOpenLetterLimit": true,
+        "updated_at": "2024-01-01T00:00:00.000Z"
+    }
+} 

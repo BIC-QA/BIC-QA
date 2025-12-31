@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL处理测试</title>
+</head>
+<body>
+    <h1>URL处理测试</h1>
+    <div id="results"></div>
+
+    <script>
+        // 模拟设置保存时的URL处理逻辑
+        function processServiceUrl(serviceUrl) {
+            let processedUrl = serviceUrl;
+
+            // 如果URL不包含路径（只有协议、主机和端口），添加默认API路径
+            if (serviceUrl && typeof serviceUrl === 'string') {
+                // 规范化URL格式（处理不完整的协议）
+                let normalizedUrl = serviceUrl.trim();
+                if (normalizedUrl.startsWith('http:') && !normalizedUrl.startsWith('http://')) {
+                    normalizedUrl = normalizedUrl.replace('http:', 'http://');
+                } else if (normalizedUrl.startsWith('https:') && !normalizedUrl.startsWith('https://')) {
+                    normalizedUrl = normalizedUrl.replace('https:', 'https://');
+                }
+
+                try {
+                    const urlObj = new URL(normalizedUrl);
+                    // 如果pathname是/或空，说明用户只输入了基础URL，需要添加默认路径
+                    if (!urlObj.pathname || urlObj.pathname === '/' || urlObj.pathname.trim() === '') {
+                        processedUrl = normalizedUrl.replace(/\/+$/, '') + '/api/chat/message';
+                        console.log('自动添加默认API路径:', serviceUrl, '->', processedUrl);
+                    } else {
+                        processedUrl = normalizedUrl;
+                    }
+                } catch (e) {
+                    // 如果URL解析失败，尝试简单处理
+                    console.warn('URL解析失败，尝试简单处理:', e);
+                    if (!normalizedUrl.includes('/api/chat/message') && !normalizedUrl.includes('/knowledge')) {
+                        const trimmedUrl = normalizedUrl.replace(/\/+$/, '');
+                        processedUrl = trimmedUrl + '/api/chat/message';
+                        console.log('自动添加默认API路径（异常处理）:', serviceUrl, '->', processedUrl);
+                    } else {
+                        processedUrl = normalizedUrl;
+                    }
+                }
+            }
+
+            return processedUrl;
+        }
+
+        // 测试数据
+        const testCases = [
+            'http://192.168.32.98:8180',           // 基础URL，应该添加路径
+            'http:192.168.32.98:8180',             // 不完整协议，应该规范化并添加路径
+            '192.168.32.98:8180',                  // 无协议，应该添加协议和路径
+            'http://192.168.32.98:8180/api/chat/message', // 完整URL，不应该修改
+            'http://192.168.32.98:8180/knowledge', // 包含knowledge，应该保持原样（在实际代码中会处理）
+        ];
+
+        const results = document.getElementById('results');
+
+        testCases.forEach(testUrl => {
+            const processed = processServiceUrl(testUrl);
+
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h3>输入: ${testUrl}</h3>
+                <p>处理后: ${processed}</p>
+                <hr>
+            `;
+            results.appendChild(div);
+        });
+    </script>
+</body>
+</html>
